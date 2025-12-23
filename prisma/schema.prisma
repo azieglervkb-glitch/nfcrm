@@ -1,0 +1,489 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==================== ENUMS ====================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  COACH
+}
+
+enum MemberStatus {
+  AKTIV
+  PAUSIERT
+  GEKUENDIGT
+  INAKTIV
+}
+
+enum ProductType {
+  VPMC
+  NFM
+  PREMIUM
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  OPEN
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CommunicationChannel {
+  EMAIL
+  WHATSAPP
+  INTERNAL
+}
+
+enum CommunicationType {
+  REMINDER
+  FEEDBACK
+  ALERT
+  CELEBRATION
+  MANUAL
+}
+
+enum UpsellStatus {
+  IDENTIFIED
+  KONTAKTIERT
+  SETTING_GESPRAECH
+  BERATUNG
+  ABGESCHLOSSEN
+  VERLOREN
+}
+
+// ==================== MODELS ====================
+
+// Admin/Coach Benutzer
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  vorname       String
+  nachname      String
+  role          UserRole  @default(COACH)
+  avatarUrl     String?
+  isActive      Boolean   @default(true)
+  lastLogin     DateTime?
+
+  // Relations
+  assignedMembers Member[]  @relation("CoachMembers")
+  tasks           Task[]    @relation("AssignedTasks")
+  createdTasks    Task[]    @relation("CreatedTasks")
+  sessions        Session[]
+  accounts        Account[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// NextAuth Account
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+// NextAuth Session
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// NextAuth Verification Token
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Mentoring-Mitglieder
+model Member {
+  id String @id @default(cuid())
+
+  // Persönliche Daten
+  email          String  @unique
+  vorname        String
+  nachname       String
+  telefon        String?
+  whatsappNummer String? // Format: +49XXXXXXXXXXX
+
+  // Membership
+  produkte          ProductType[]
+  status            MemberStatus  @default(AKTIV)
+  membershipStart   DateTime      @default(now())
+  membershipEnd     DateTime?
+  copecartCustomerId String?
+
+  // Coach Zuordnung
+  assignedCoach   User?   @relation("CoachMembers", fields: [assignedCoachId], references: [id])
+  assignedCoachId String?
+
+  // Onboarding Daten (Formular 1: "Starte jetzt dein NF Mentoring")
+  unternehmen           String?
+  position              String?
+  aktuellerMonatsumsatz Decimal?  @db.Decimal(12, 2)
+  wasNervtAmMeisten     String?   @db.Text
+  groessetesProblem     String?   @db.Text
+  zielMonatsumsatz      Decimal?  @db.Decimal(12, 2)
+  groessteZielWarum     String?   @db.Text
+  wieAufmerksam         String? // Marketing Attribution
+
+  // Onboarding Status
+  onboardingCompleted  Boolean   @default(false)
+  onboardingDate       DateTime?
+  welcomeCallCompleted Boolean   @default(false)
+  welcomeCallDate      DateTime?
+
+  // KPI Tracking Setup (Formular 2: "Starte dein persönliches KPI-Tracking")
+  kpiTrackingActive    Boolean   @default(false)
+  kpiTrackingStartDate DateTime?
+  hauptzielEinSatz     String?
+
+  // Welche KPIs werden getrackt (Checkboxen)
+  trackKontakte    Boolean @default(false)
+  trackTermine     Boolean @default(false)
+  trackEinheiten   Boolean @default(false)
+  trackEmpfehlungen Boolean @default(false)
+  trackEntscheider Boolean @default(false)
+  trackAbschluesse Boolean @default(false)
+  trackUmsatz      Boolean @default(true) // Immer aktiv
+
+  // SOLL-Werte (Ziele)
+  umsatzSollWoche          Decimal? @db.Decimal(12, 2)
+  umsatzSollMonat          Decimal? @db.Decimal(12, 2)
+  kontakteSoll             Int?
+  entscheiderSoll          Int?
+  termineVereinbartSoll    Int?
+  termineStattgefundenSoll Int?
+  termineAbschlussSoll     Int?
+  einheitenSoll            Int?
+  empfehlungenSoll         Int?
+
+  // Flags (von Automationen gesetzt)
+  reviewFlag     Boolean @default(false)
+  churnRisk      Boolean @default(false)
+  upsellCandidate Boolean @default(false)
+  dangerZone     Boolean @default(false)
+
+  // Relations
+  kpiWeeks          KpiWeek[]
+  tasks             Task[]
+  automationLogs    AutomationLog[]
+  communicationLogs CommunicationLog[]
+  upsellPipeline    UpsellPipeline[]
+  notes             MemberNote[]
+  formTokens        FormToken[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([assignedCoachId])
+  @@index([churnRisk])
+}
+
+// Wöchentliche KPI-Einträge (Formular 3: "Dein Weekly KPI-Update")
+model KpiWeek {
+  id String @id @default(cuid())
+
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId String
+
+  // Zeitraum
+  weekStart  DateTime // Montag der Woche
+  weekNumber Int
+  year       Int
+
+  // IST-Werte (eingetragen vom Member)
+  umsatzIst                Decimal? @db.Decimal(12, 2)
+  kontakteIst              Int?
+  entscheiderIst           Int?
+  termineVereinbartIst     Int?
+  termineStattgefundenIst  Int?
+  termineErstIst           Int?
+  termineFolgeIst          Int?
+  termineAbschlussIst      Int?
+  termineNoshowIst         Int?
+  einheitenIst             Int?
+  empfehlungenIst          Int?
+
+  // Berechnete Werte
+  noshowQuote Decimal? @db.Decimal(5, 4) // z.B. 0.3000 = 30%
+
+  // Reflexion & Motivation
+  feelingScore   Int?    // 1-10
+  heldentat      String? @db.Text
+  blockiert      String? @db.Text
+  herausforderung String? @db.Text
+
+  // KI-Feedback
+  aiFeedbackGenerated   Boolean   @default(false)
+  aiFeedbackText        String?   @db.Text
+  aiFeedbackStyle       String? // "standard", "locker", "coachend"
+  aiFeedbackGeneratedAt DateTime?
+  aiFeedbackBlocked     Boolean   @default(false) // Bei Anomalie
+  aiFeedbackBlockReason String?
+
+  // Kommunikation
+  whatsappFeedbackSent Boolean   @default(false)
+  whatsappSentAt       DateTime?
+  emailReminderSent    Boolean   @default(false)
+
+  // Meta
+  submittedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([memberId, weekStart])
+  @@index([memberId])
+  @@index([weekStart])
+  @@index([year, weekNumber])
+}
+
+// Automation Logs
+model AutomationLog {
+  id String @id @default(cuid())
+
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  memberId String?
+
+  ruleId       String // z.B. "R1", "P1", "L1"
+  ruleName     String
+  triggered    Boolean  @default(true)
+  actionsTaken String[] // Liste der durchgeführten Aktionen
+  details      Json? // Zusätzliche Details
+
+  firedAt   DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([ruleId])
+  @@index([firedAt])
+}
+
+// Tasks
+model Task {
+  id String @id @default(cuid())
+
+  member   Member? @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  memberId String?
+
+  assignedTo   User?   @relation("AssignedTasks", fields: [assignedToId], references: [id])
+  assignedToId String?
+
+  createdBy   User?   @relation("CreatedTasks", fields: [createdById], references: [id])
+  createdById String?
+
+  title       String
+  description String?      @db.Text
+  ruleId      String? // Falls von Automation erstellt
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(OPEN)
+  dueDate     DateTime?
+  completedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([assignedToId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+// Kommunikations-Log
+model CommunicationLog {
+  id String @id @default(cuid())
+
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId String
+
+  channel   CommunicationChannel
+  type      CommunicationType
+  subject   String?
+  content   String               @db.Text
+  recipient String // E-Mail oder Telefonnummer
+
+  sent         Boolean   @default(false)
+  sentAt       DateTime?
+  delivered    Boolean?
+  errorMessage String?
+
+  // Bei Automation
+  ruleId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([memberId])
+  @@index([channel])
+  @@index([sentAt])
+}
+
+// Upsell Pipeline
+model UpsellPipeline {
+  id String @id @default(cuid())
+
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId String
+
+  triggerReason String // z.B. "3x 20k+ Umsatz", "Feeling ≥ 8 + Performance"
+  triggerRuleId String? // z.B. "P1", "L2"
+
+  status UpsellStatus @default(IDENTIFIED)
+
+  kontaktiertAm   DateTime?
+  settingCallDate DateTime?
+  beratungDate    DateTime?
+  abschlussDate   DateTime?
+
+  produkt String? // Welches Produkt angeboten
+  wert    Decimal? @db.Decimal(12, 2)
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+  @@index([status])
+}
+
+// Member Notizen (von Coaches)
+model MemberNote {
+  id String @id @default(cuid())
+
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId String
+
+  authorId   String? // User ID des Autors
+  authorName String
+  content    String  @db.Text
+  isPinned   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([memberId])
+}
+
+// System Settings
+model SystemSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+// Automation Rules (konfigurierbar)
+model AutomationRule {
+  id          String  @id @default(cuid())
+  ruleId      String  @unique // "R1", "P1", etc.
+  name        String
+  description String? @db.Text
+  category    String // "retention", "performance", "quality", "coaching", "lifecycle"
+
+  isActive Boolean @default(true)
+
+  // Konfiguration
+  triggerType String // "NEW_KPI", "SCHEDULER"
+  schedule    String? // Cron Expression für Scheduler
+
+  conditions Json // Bedingungen als JSON
+  actions    Json // Aktionen als JSON
+
+  cooldownHours Int  @default(168) // Default: 7 Tage
+  maxPerWeek    Int?
+  maxPerMonth   Int?
+
+  // Quiet Hours
+  quietHoursStart    Int? // z.B. 21 für 21:00
+  quietHoursEnd      Int? // z.B. 8 für 08:00
+  quietHoursChannels String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// E-Mail & Message Templates
+model MessageTemplate {
+  id      String               @id @default(cuid())
+  slug    String               @unique // z.B. "kpi_reminder", "welcome_email"
+  name    String
+  channel CommunicationChannel
+
+  subject String? // Für E-Mails
+  content String  @db.Text
+
+  // Variablen: {{vorname}}, {{weekNumber}}, {{link}}, etc.
+  variables String[]
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// Form Tokens for public forms
+model FormToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  type      String // "onboarding", "kpi-setup", "weekly"
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId  String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([memberId])
+}
+
+// Cooldown Tracking for Automations
+model AutomationCooldown {
+  id        String   @id @default(cuid())
+  memberId  String
+  ruleId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@unique([memberId, ruleId])
+  @@index([memberId])
+  @@index([ruleId])
+  @@index([expiresAt])
+}
