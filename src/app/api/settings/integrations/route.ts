@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+
+// Integration settings are managed via environment variables
+// This endpoint returns masked values and status only
 
 export async function GET() {
   try {
@@ -14,36 +16,20 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Get settings from database
-    const settings = await prisma.systemSettings.findMany({
-      where: {
-        key: {
-          in: [
-            "whatsapp_api_url",
-            "whatsapp_api_key",
-            "whatsapp_enabled",
-            "openai_api_key",
-            "openai_enabled",
-            "copecart_webhook_secret",
-            "copecart_enabled",
-          ],
-        },
-      },
-    });
-
-    const settingsMap: { [key: string]: string } = {};
-    settings.forEach((s) => {
-      settingsMap[s.key] = s.value;
-    });
+    // Get settings from environment variables
+    const whatsappApiUrl = process.env.WHATSAPP_API_URL || "";
+    const whatsappApiKey = process.env.WHATSAPP_API_KEY || "";
+    const openaiApiKey = process.env.OPENAI_API_KEY || "";
+    const copecartWebhookSecret = process.env.COPECART_WEBHOOK_SECRET || "";
 
     return NextResponse.json({
-      whatsappApiUrl: settingsMap.whatsapp_api_url || "",
-      whatsappApiKey: settingsMap.whatsapp_api_key ? "••••••••" : "",
-      whatsappEnabled: settingsMap.whatsapp_enabled === "true",
-      openaiApiKey: settingsMap.openai_api_key ? "••••••••" : "",
-      openaiEnabled: settingsMap.openai_enabled === "true",
-      copecartWebhookSecret: settingsMap.copecart_webhook_secret ? "••••••••" : "",
-      copecartEnabled: settingsMap.copecart_enabled === "true",
+      whatsappApiUrl: whatsappApiUrl ? whatsappApiUrl : "",
+      whatsappApiKey: whatsappApiKey ? "••••••••" : "",
+      whatsappEnabled: !!whatsappApiUrl && !!whatsappApiKey,
+      openaiApiKey: openaiApiKey ? "••••••••" : "",
+      openaiEnabled: !!openaiApiKey,
+      copecartWebhookSecret: copecartWebhookSecret ? "••••••••" : "",
+      copecartEnabled: !!copecartWebhookSecret,
     });
   } catch (error) {
     console.error("Failed to fetch integration settings:", error);
@@ -66,47 +52,12 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { integration, ...data } = body;
-
-    const updates: { key: string; value: string }[] = [];
-
-    if (integration === "whatsapp") {
-      if (data.whatsappApiUrl !== undefined) {
-        updates.push({ key: "whatsapp_api_url", value: data.whatsappApiUrl });
-      }
-      if (data.whatsappApiKey && data.whatsappApiKey !== "••••••••") {
-        updates.push({ key: "whatsapp_api_key", value: data.whatsappApiKey });
-      }
-      if (data.whatsappEnabled !== undefined) {
-        updates.push({ key: "whatsapp_enabled", value: String(data.whatsappEnabled) });
-      }
-    } else if (integration === "openai") {
-      if (data.openaiApiKey && data.openaiApiKey !== "••••••••") {
-        updates.push({ key: "openai_api_key", value: data.openaiApiKey });
-      }
-      if (data.openaiEnabled !== undefined) {
-        updates.push({ key: "openai_enabled", value: String(data.openaiEnabled) });
-      }
-    } else if (integration === "copecart") {
-      if (data.copecartWebhookSecret && data.copecartWebhookSecret !== "••••••••") {
-        updates.push({ key: "copecart_webhook_secret", value: data.copecartWebhookSecret });
-      }
-      if (data.copecartEnabled !== undefined) {
-        updates.push({ key: "copecart_enabled", value: String(data.copecartEnabled) });
-      }
-    }
-
-    // Upsert all settings
-    for (const update of updates) {
-      await prisma.systemSettings.upsert({
-        where: { key: update.key },
-        update: { value: update.value },
-        create: { key: update.key, value: update.value },
-      });
-    }
-
-    return NextResponse.json({ success: true });
+    // Integration settings are managed via environment variables
+    // Changes require server restart - inform the user
+    return NextResponse.json({
+      success: false,
+      message: "Integration settings are managed via environment variables. Please update the server configuration.",
+    });
   } catch (error) {
     console.error("Failed to update integration settings:", error);
     return NextResponse.json(

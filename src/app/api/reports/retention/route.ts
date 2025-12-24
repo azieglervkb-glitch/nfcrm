@@ -25,10 +25,10 @@ export async function GET(request: NextRequest) {
 
     // Summary stats
     const totalMembers = members.length;
-    const activeMembers = members.filter((m) => m.status === "ACTIVE").length;
-    const atRiskMembers = members.filter((m) => m.status === "AT_RISK").length;
-    const pausedMembers = members.filter((m) => m.status === "PAUSED").length;
-    const churnedMembers = members.filter((m) => m.status === "CHURNED").length;
+    const activeMembers = members.filter((m) => m.status === "AKTIV").length;
+    const atRiskMembers = members.filter((m) => m.churnRisk).length;
+    const pausedMembers = members.filter((m) => m.status === "PAUSIERT").length;
+    const churnedMembers = members.filter((m) => m.status === "GEKUENDIGT").length;
 
     const retentionRate =
       totalMembers > 0
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
 
     // At-risk list with reasons
     const atRiskList = members
-      .filter((m) => m.status === "AT_RISK" || m.status === "PAUSED")
+      .filter((m) => m.churnRisk || m.status === "PAUSIERT")
       .map((m) => {
         const lastActivity = m.communicationLogs[0]?.sentAt || m.updatedAt;
         const daysInactive = Math.floor(
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
         );
 
         let riskReason = "Unknown";
-        if (m.status === "PAUSED") {
+        if (m.status === "PAUSIERT") {
           riskReason = "Membership paused";
         } else if (daysInactive > 14) {
           riskReason = "No activity for 14+ days";
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 
         return {
           id: m.id,
-          name: `${m.firstName} ${m.lastName}`,
+          name: `${m.vorname} ${m.nachname}`,
           email: m.email,
           status: m.status,
           riskReason,
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // Churned list
     const churnedList = members
-      .filter((m) => m.status === "CHURNED")
+      .filter((m) => m.status === "GEKUENDIGT")
       .map((m) => {
         const membershipDuration = Math.floor(
           (Date.now() - new Date(m.createdAt).getTime()) / (24 * 60 * 60 * 1000)
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
         return {
           id: m.id,
-          name: `${m.firstName} ${m.lastName}`,
+          name: `${m.vorname} ${m.nachname}`,
           email: m.email,
           churnDate: m.updatedAt?.toISOString() || null,
           membershipDuration,
@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
       if (date >= startDate) {
         const key = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
         if (months[key]) {
-          if (m.status === "CHURNED") {
+          if (m.status === "GEKUENDIGT") {
             months[key].churned++;
           } else {
             months[key].retained++;

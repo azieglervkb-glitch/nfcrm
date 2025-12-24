@@ -13,7 +13,8 @@ export async function GET() {
       where: { id: session.user.id },
       select: {
         id: true,
-        name: true,
+        vorname: true,
+        nachname: true,
         email: true,
         role: true,
       },
@@ -23,7 +24,14 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    return NextResponse.json(user);
+    return NextResponse.json({
+      id: user.id,
+      name: `${user.vorname} ${user.nachname}`,
+      vorname: user.vorname,
+      nachname: user.nachname,
+      email: user.email,
+      role: user.role,
+    });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
     return NextResponse.json(
@@ -41,7 +49,17 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { name, email } = body;
+    const { vorname, nachname, name, email } = body;
+
+    // Support both name (legacy) and vorname/nachname
+    let updateVorname = vorname;
+    let updateNachname = nachname;
+
+    if (name && !vorname && !nachname) {
+      const parts = name.split(" ");
+      updateVorname = parts[0] || "";
+      updateNachname = parts.slice(1).join(" ") || "";
+    }
 
     // Check if email is already taken by another user
     if (email !== session.user.email) {
@@ -60,18 +78,27 @@ export async function PUT(request: Request) {
     const updatedUser = await prisma.user.update({
       where: { id: session.user.id },
       data: {
-        name,
+        vorname: updateVorname,
+        nachname: updateNachname,
         email,
       },
       select: {
         id: true,
-        name: true,
+        vorname: true,
+        nachname: true,
         email: true,
         role: true,
       },
     });
 
-    return NextResponse.json(updatedUser);
+    return NextResponse.json({
+      id: updatedUser.id,
+      name: `${updatedUser.vorname} ${updatedUser.nachname}`,
+      vorname: updatedUser.vorname,
+      nachname: updatedUser.nachname,
+      email: updatedUser.email,
+      role: updatedUser.role,
+    });
   } catch (error) {
     console.error("Failed to update profile:", error);
     return NextResponse.json(

@@ -657,11 +657,14 @@ export async function checkSilentMember(member: Member): Promise<void> {
       await sendEmail({
         to: member.email,
         subject: "Erinnerung: Dein Weekly KPI-Update",
-        template: "kpi_reminder",
-        data: {
-          vorname: member.vorname,
-          link: `${process.env.APP_URL}/form/weekly/${member.id}`,
-        },
+        html: `
+          <h2>Hallo ${member.vorname}!</h2>
+          <p>Es ist wieder Zeit für dein wöchentliches KPI-Update.</p>
+          <p>Bitte trage deine Zahlen für diese Woche ein:</p>
+          <p><a href="${process.env.APP_URL}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">KPIs eintragen</a></p>
+          <p>Dauert nur 2 Minuten!</p>
+          <p>Beste Grüße,<br>Dein NF Mentoring Team</p>
+        `,
       });
       actions.push("SEND_EMAIL: kpi_reminder");
     }
@@ -941,11 +944,14 @@ export async function runWeeklyReminders(): Promise<void> {
       await sendEmail({
         to: member.email,
         subject: "Guten Morgen! Dein Weekly KPI-Update wartet",
-        template: "weekly_reminder_morning",
-        data: {
-          vorname: member.vorname,
-          link: `${process.env.APP_URL}/form/weekly/${member.id}`,
-        },
+        html: `
+          <h2>Guten Morgen, ${member.vorname}!</h2>
+          <p>Wir hoffen, du hast eine gute Woche bisher!</p>
+          <p>Kurze Erinnerung: Dein KPI-Update für diese Woche steht noch aus.</p>
+          <p><a href="${process.env.APP_URL}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px;">Jetzt eintragen</a></p>
+          <p>Dauert nur 2 Minuten!</p>
+          <p>Beste Grüße,<br>Dein NF Mentoring Team</p>
+        `,
       });
       actions.push("SEND_EMAIL: weekly_reminder_morning");
     }

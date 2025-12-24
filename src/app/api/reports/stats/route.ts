@@ -15,7 +15,7 @@ export async function GET() {
     // Get all members
     const members = await prisma.member.findMany({
       include: {
-        kpiEntries: {
+        kpiWeeks: {
           orderBy: { weekStart: "desc" },
           take: 1,
         },
@@ -23,8 +23,8 @@ export async function GET() {
     });
 
     const totalMembers = members.length;
-    const activeMembers = members.filter((m) => m.status === "ACTIVE").length;
-    const churnedMembers = members.filter((m) => m.status === "CHURNED").length;
+    const activeMembers = members.filter((m) => m.status === "AKTIV").length;
+    const churnedMembers = members.filter((m) => m.status === "GEKUENDIGT").length;
 
     // Calculate retention rate
     const retentionRate =
@@ -36,22 +36,21 @@ export async function GET() {
     let totalKpiScore = 0;
     let kpiCount = 0;
     members.forEach((m) => {
-      if (m.kpiEntries.length > 0) {
-        const entry = m.kpiEntries[0];
-        // Calculate simple KPI score based on available metrics
+      if (m.kpiWeeks.length > 0) {
+        const entry = m.kpiWeeks[0];
         let score = 0;
         let metrics = 0;
 
-        if (entry.kontakteGenerated !== null && entry.kontakteTarget) {
-          score += Math.min(100, (entry.kontakteGenerated / entry.kontakteTarget) * 100);
+        if (entry.kontakteIst !== null && m.kontakteSoll) {
+          score += Math.min(100, (entry.kontakteIst / m.kontakteSoll) * 100);
           metrics++;
         }
-        if (entry.termineClosed !== null && entry.termineTarget) {
-          score += Math.min(100, (entry.termineClosed / entry.termineTarget) * 100);
+        if (entry.termineVereinbartIst !== null && m.termineVereinbartSoll) {
+          score += Math.min(100, (entry.termineVereinbartIst / m.termineVereinbartSoll) * 100);
           metrics++;
         }
-        if (entry.abschluesseCount !== null && entry.abschluesseTarget) {
-          score += Math.min(100, (entry.abschluesseCount / entry.abschluesseTarget) * 100);
+        if (entry.termineAbschlussIst !== null && m.termineAbschlussSoll) {
+          score += Math.min(100, (entry.termineAbschlussIst / m.termineAbschlussSoll) * 100);
           metrics++;
         }
 
@@ -66,17 +65,17 @@ export async function GET() {
     // Count top performers (KPI > 80%)
     let topPerformers = 0;
     members.forEach((m) => {
-      if (m.kpiEntries.length > 0) {
-        const entry = m.kpiEntries[0];
+      if (m.kpiWeeks.length > 0) {
+        const entry = m.kpiWeeks[0];
         let score = 0;
         let metrics = 0;
 
-        if (entry.kontakteGenerated !== null && entry.kontakteTarget) {
-          score += Math.min(100, (entry.kontakteGenerated / entry.kontakteTarget) * 100);
+        if (entry.kontakteIst !== null && m.kontakteSoll) {
+          score += Math.min(100, (entry.kontakteIst / m.kontakteSoll) * 100);
           metrics++;
         }
-        if (entry.termineClosed !== null && entry.termineTarget) {
-          score += Math.min(100, (entry.termineClosed / entry.termineTarget) * 100);
+        if (entry.termineVereinbartIst !== null && m.termineVereinbartSoll) {
+          score += Math.min(100, (entry.termineVereinbartIst / m.termineVereinbartSoll) * 100);
           metrics++;
         }
 
@@ -86,9 +85,9 @@ export async function GET() {
       }
     });
 
-    // Count at-risk members
+    // Count at-risk members (using churnRisk flag)
     const atRiskMembers = members.filter(
-      (m) => m.status === "AT_RISK" || m.status === "PAUSED"
+      (m) => m.churnRisk || m.status === "PAUSIERT"
     ).length;
 
     // Weekly growth - members created in last 7 days

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
@@ -21,14 +20,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (integration === "whatsapp") {
-      const apiUrl = await prisma.systemSettings.findUnique({
-        where: { key: "whatsapp_api_url" },
-      });
-      const apiKey = await prisma.systemSettings.findUnique({
-        where: { key: "whatsapp_api_key" },
-      });
+      const apiUrl = process.env.WHATSAPP_API_URL;
+      const apiKey = process.env.WHATSAPP_API_KEY;
 
-      if (!apiUrl?.value || !apiKey?.value) {
+      if (!apiUrl || !apiKey) {
         return NextResponse.json(
           { error: "WhatsApp not configured" },
           { status: 400 }
@@ -37,9 +32,9 @@ export async function GET(request: NextRequest) {
 
       // Test WhatsApp API connection
       try {
-        const response = await fetch(`${apiUrl.value}/health`, {
+        const response = await fetch(`${apiUrl}/health`, {
           headers: {
-            Authorization: `Bearer ${apiKey.value}`,
+            Authorization: `Bearer ${apiKey}`,
           },
           signal: AbortSignal.timeout(5000),
         });
@@ -54,14 +49,12 @@ export async function GET(request: NextRequest) {
         }
       } catch {
         // If the health endpoint doesn't exist, assume connection is OK if we have credentials
-        return NextResponse.json({ success: true, message: "Credentials saved" });
+        return NextResponse.json({ success: true, message: "Credentials configured" });
       }
     } else if (integration === "openai") {
-      const apiKey = await prisma.systemSettings.findUnique({
-        where: { key: "openai_api_key" },
-      });
+      const apiKey = process.env.OPENAI_API_KEY;
 
-      if (!apiKey?.value) {
+      if (!apiKey) {
         return NextResponse.json(
           { error: "OpenAI not configured" },
           { status: 400 }
@@ -72,7 +65,7 @@ export async function GET(request: NextRequest) {
       try {
         const response = await fetch("https://api.openai.com/v1/models", {
           headers: {
-            Authorization: `Bearer ${apiKey.value}`,
+            Authorization: `Bearer ${apiKey}`,
           },
           signal: AbortSignal.timeout(5000),
         });
@@ -85,7 +78,7 @@ export async function GET(request: NextRequest) {
             { status: 400 }
           );
         }
-      } catch (error) {
+      } catch {
         return NextResponse.json(
           { error: "Failed to connect to OpenAI" },
           { status: 400 }

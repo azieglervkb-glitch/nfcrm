@@ -13,13 +13,13 @@ export async function GET(request: NextRequest) {
     const days = parseInt(searchParams.get("days") || "30");
     const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
 
-    // Get all members with their KPI entries
+    // Get all active members with their KPI weeks
     const members = await prisma.member.findMany({
       where: {
-        status: { in: ["ACTIVE", "AT_RISK"] },
+        status: "AKTIV",
       },
       include: {
-        kpiEntries: {
+        kpiWeeks: {
           where: {
             weekStart: { gte: startDate },
           },
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
     // Calculate scores for each member
     const memberScores = members
       .map((m) => {
-        if (m.kpiEntries.length === 0) return null;
+        if (m.kpiWeeks.length === 0) return null;
 
         let totalKontakteRate = 0;
         let totalTermineRate = 0;
@@ -40,17 +40,17 @@ export async function GET(request: NextRequest) {
         let termineCount = 0;
         let abschluesseCount = 0;
 
-        m.kpiEntries.forEach((entry) => {
-          if (entry.kontakteGenerated !== null && entry.kontakteTarget) {
-            totalKontakteRate += (entry.kontakteGenerated / entry.kontakteTarget) * 100;
+        m.kpiWeeks.forEach((entry) => {
+          if (entry.kontakteIst !== null && m.kontakteSoll) {
+            totalKontakteRate += (entry.kontakteIst / m.kontakteSoll) * 100;
             kontakteCount++;
           }
-          if (entry.termineClosed !== null && entry.termineTarget) {
-            totalTermineRate += (entry.termineClosed / entry.termineTarget) * 100;
+          if (entry.termineVereinbartIst !== null && m.termineVereinbartSoll) {
+            totalTermineRate += (entry.termineVereinbartIst / m.termineVereinbartSoll) * 100;
             termineCount++;
           }
-          if (entry.abschluesseCount !== null && entry.abschluesseTarget) {
-            totalAbschluesseRate += (entry.abschluesseCount / entry.abschluesseTarget) * 100;
+          if (entry.termineAbschlussIst !== null && m.termineAbschlussSoll) {
+            totalAbschluesseRate += (entry.termineAbschlussIst / m.termineAbschlussSoll) * 100;
             abschluesseCount++;
           }
         });
@@ -88,7 +88,7 @@ export async function GET(request: NextRequest) {
 
         return {
           id: m.id,
-          name: `${m.firstName} ${m.lastName}`,
+          name: `${m.vorname} ${m.nachname}`,
           email: m.email,
           kpiScore,
           kontakteRate,
@@ -134,19 +134,27 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => a.kpiScore - b.kpiScore)
       .slice(0, 10);
 
-    // KPI trend by week
-    const kpiTrend: { [key: string]: { total: number; count: number } } = {};
-
-    // Get all KPI entries in the range
-    const allKpiEntries = await prisma.kPIEntry.findMany({
+    // KPI trend by week - get all KPI weeks with member data for targets
+    const kpiWeeksWithMembers = await prisma.kpiWeek.findMany({
       where: {
         weekStart: { gte: startDate },
-        member: { status: { in: ["ACTIVE", "AT_RISK"] } },
+        member: { status: "AKTIV" },
+      },
+      include: {
+        member: {
+          select: {
+            kontakteSoll: true,
+            termineVereinbartSoll: true,
+            termineAbschlussSoll: true,
+          },
+        },
       },
       orderBy: { weekStart: "asc" },
     });
 
-    allKpiEntries.forEach((entry) => {
+    const kpiTrend: { [key: string]: { total: number; count: number } } = {};
+
+    kpiWeeksWithMembers.forEach((entry) => {
       const weekKey = entry.weekStart.toISOString().split("T")[0];
       if (!kpiTrend[weekKey]) {
         kpiTrend[weekKey] = { total: 0, count: 0 };
@@ -155,16 +163,16 @@ export async function GET(request: NextRequest) {
       let score = 0;
       let metrics = 0;
 
-      if (entry.kontakteGenerated !== null && entry.kontakteTarget) {
-        score += Math.min(100, (entry.kontakteGenerated / entry.kontakteTarget) * 100);
+      if (entry.kontakteIst !== null && entry.member.kontakteSoll) {
+        score += Math.min(100, (entry.kontakteIst / entry.member.kontakteSoll) * 100);
         metrics++;
       }
-      if (entry.termineClosed !== null && entry.termineTarget) {
-        score += Math.min(100, (entry.termineClosed / entry.termineTarget) * 100);
+      if (entry.termineVereinbartIst !== null && entry.member.termineVereinbartSoll) {
+        score += Math.min(100, (entry.termineVereinbartIst / entry.member.termineVereinbartSoll) * 100);
         metrics++;
       }
-      if (entry.abschluesseCount !== null && entry.abschluesseTarget) {
-        score += Math.min(100, (entry.abschluesseCount / entry.abschluesseTarget) * 100);
+      if (entry.termineAbschlussIst !== null && entry.member.termineAbschlussSoll) {
+        score += Math.min(100, (entry.termineAbschlussIst / entry.member.termineAbschlussSoll) * 100);
         metrics++;
       }
 
