@@ -28,10 +28,37 @@ export const createMemberSchema = z.object({
   email: z.string().email("Ungültige E-Mail-Adresse"),
   vorname: z.string().min(1, "Vorname erforderlich"),
   nachname: z.string().min(1, "Nachname erforderlich"),
-  telefon: z.string().optional(),
-  whatsappNummer: z.string().optional(),
+  telefon: z.string().optional().nullable(),
+  whatsappNummer: z.string().optional().nullable(),
+  unternehmen: z.string().optional().nullable(),
+  position: z.string().optional().nullable(),
   produkte: z.array(z.enum(["VPMC", "NFM", "PREMIUM"])).default([]),
-  assignedCoachId: z.string().optional(),
+  status: z.enum(["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"]).default("AKTIV"),
+  assignedCoachId: z.string().optional().nullable(),
+  notizen: z.string().optional().nullable(),
+  // Goals
+  hauptzielEinSatz: z.string().optional().nullable(),
+  zielMonatsumsatz: z.number().optional().nullable(),
+  aktuellerMonatsumsatz: z.number().optional().nullable(),
+  // KPI Settings
+  kpiTrackingActive: z.boolean().default(false),
+  trackKontakte: z.boolean().default(false),
+  trackTermine: z.boolean().default(false),
+  trackEinheiten: z.boolean().default(false),
+  trackEmpfehlungen: z.boolean().default(false),
+  trackEntscheider: z.boolean().default(false),
+  trackAbschluesse: z.boolean().default(false),
+  // Soll-Werte
+  umsatzSollWoche: z.number().optional().nullable(),
+  umsatzSollMonat: z.number().optional().nullable(),
+  kontakteSoll: z.number().optional().nullable(),
+  termineVereinbartSoll: z.number().optional().nullable(),
+  termineAbschlussSoll: z.number().optional().nullable(),
+  einheitenSoll: z.number().optional().nullable(),
+  empfehlungenSoll: z.number().optional().nullable(),
+  // Flags
+  churnRisk: z.boolean().default(false),
+  upsellCandidate: z.boolean().default(false),
 });
 
 export const updateMemberSchema = z.object({

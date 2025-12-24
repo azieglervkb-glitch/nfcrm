@@ -31,7 +31,7 @@ interface MemberFormProps {
   initialData?: any;
 }
 
-const PRODUKTE = ["NFM", "PREMIUM", "VPMC", "ELITE"];
+const PRODUKTE = ["NFM", "PREMIUM", "VPMC"];
 const STATUSES = ["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"];
 
 export function MemberForm({ memberId, initialData }: MemberFormProps) {
@@ -96,8 +96,17 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
     setSaving(true);
 
     try {
+      // Convert empty strings to null for optional fields
+      const emptyToNull = (val: string) => val === "" ? null : val;
+
       const payload = {
         ...formData,
+        telefon: emptyToNull(formData.telefon),
+        whatsappNummer: emptyToNull(formData.whatsappNummer),
+        unternehmen: emptyToNull(formData.unternehmen),
+        position: emptyToNull(formData.position),
+        hauptzielEinSatz: emptyToNull(formData.hauptzielEinSatz),
+        notizen: emptyToNull(formData.notizen),
         zielMonatsumsatz: formData.zielMonatsumsatz ? Number(formData.zielMonatsumsatz) : null,
         aktuellerMonatsumsatz: formData.aktuellerMonatsumsatz ? Number(formData.aktuellerMonatsumsatz) : null,
         umsatzSollWoche: formData.umsatzSollWoche ? Number(formData.umsatzSollWoche) : null,
