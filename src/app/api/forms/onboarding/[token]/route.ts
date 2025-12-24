@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { sendWelcomeEmail } from "@/lib/email";
+import { randomBytes } from "crypto";
 
 export async function GET(
   request: NextRequest,
@@ -121,6 +123,30 @@ export async function POST(
         status: "OPEN",
       },
     });
+
+    // Create KPI setup token
+    const kpiSetupToken = randomBytes(32).toString("hex");
+    await prisma.formToken.create({
+      data: {
+        token: kpiSetupToken,
+        type: "kpi-setup",
+        memberId: formToken.memberId,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+
+    const kpiSetupLink = `${process.env.APP_URL || "http://localhost:3000"}/form/kpi-setup/${kpiSetupToken}`;
+
+    // Send welcome email with KPI setup link
+    sendWelcomeEmail(
+      {
+        id: formToken.memberId,
+        email: formToken.member.email,
+        vorname: formToken.member.vorname,
+        nachname: formToken.member.nachname,
+      },
+      kpiSetupLink
+    ).catch(console.error);
 
     return NextResponse.json({ success: true });
   } catch (error) {
