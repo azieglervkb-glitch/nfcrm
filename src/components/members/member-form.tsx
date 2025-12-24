@@ -269,14 +269,14 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
           <div className="space-y-2">
             <Label>Coach zuweisen</Label>
             <Select
-              value={formData.assignedCoachId}
-              onValueChange={(value) => setFormData({ ...formData, assignedCoachId: value })}
+              value={formData.assignedCoachId || "__none__"}
+              onValueChange={(value) => setFormData({ ...formData, assignedCoachId: value === "__none__" ? "" : value })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Keinen Coach zugewiesen" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Keinen Coach</SelectItem>
+                <SelectItem value="__none__">Keinen Coach</SelectItem>
                 {coaches.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.vorname} {c.nachname}
