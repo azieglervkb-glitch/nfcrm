@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
         vorname: true,
         nachname: true,
         status: true,
+        kpiTrackingActive: true,
+        onboardingCompleted: true,
+        zielMonatsumsatz: true,
       },
     });
 
@@ -75,6 +78,9 @@ export async function POST(request: NextRequest) {
         id: member.id,
         firstName: member.vorname,
         lastName: member.nachname,
+        kpiTrackingActive: member.kpiTrackingActive,
+        onboardingCompleted: member.onboardingCompleted,
+        zielMonatsumsatz: member.zielMonatsumsatz ? Number(member.zielMonatsumsatz) : null,
       },
     });
   } catch (error) {
