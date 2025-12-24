@@ -105,11 +105,11 @@ export function Sidebar({ user }: SidebarProps) {
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar">
       <div className="flex h-full flex-col overflow-y-auto scrollbar-thin">
         {/* Logo - NF Mentoring */}
-        <div className="px-5 py-4">
+        <div className="flex justify-center py-5">
           <img
             src="/nf-logo.png"
             alt="NF Mentoring"
-            className="h-10 w-auto"
+            className="h-12 w-auto"
           />
         </div>
 

@@ -84,22 +84,13 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       {/* Welcome Header */}
       <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 text-white">
-        <div className="flex items-center gap-4">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 p-2">
-            <img
-              src="/nf-logo.png"
-              alt="NF Mentoring"
-              className="h-8 w-auto"
-            />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">
-              Willkommen, {session?.user?.vorname}!
-            </h1>
-            <p className="text-gray-300">
-              Verwalte deine Member und tracke ihre KPIs.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">
+            Willkommen, {session?.user?.vorname}!
+          </h1>
+          <p className="text-gray-300">
+            Verwalte deine Member und tracke ihre KPIs.
+          </p>
         </div>
       </div>
 
