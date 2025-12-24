@@ -452,6 +452,19 @@ model SystemSettings {
   updatedAt DateTime @updatedAt
 }
 
+// AI Prompt Configuration
+model AiPrompt {
+  id          String   @id @default(cuid())
+  promptKey   String   @unique // e.g., "KPI_FEEDBACK_SYSTEM", "KPI_FEEDBACK_USER"
+  name        String   // Human readable name
+  description String?  @db.Text
+  content     String   @db.Text
+  isActive    Boolean  @default(true)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 // Automation Rules (konfigurierbar)
 model AutomationRule {
   id          String  @id @default(cuid())

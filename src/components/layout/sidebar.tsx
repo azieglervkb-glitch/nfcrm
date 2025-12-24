@@ -17,6 +17,8 @@ import {
   Settings,
   UserCog,
   HelpCircle,
+  Bot,
+  ClipboardList,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -69,6 +71,8 @@ const menuItems = [
     category: "EINSTELLUNGEN",
     items: [
       { label: "Team", href: "/settings/team", icon: UserCog },
+      { label: "AI Prompts", href: "/settings/prompts", icon: Bot },
+      { label: "Formulare", href: "/settings/forms", icon: ClipboardList },
       { label: "System", href: "/settings", icon: Settings },
     ],
   },
