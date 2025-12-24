@@ -192,10 +192,13 @@ async function generateAiFeedback(
     });
 
     // Send via WhatsApp if not in quiet hours and member has WhatsApp number
-    if (member.whatsappNummer && !isInQuietHours()) {
+    const quietHours = await isInQuietHours();
+    if (member.whatsappNummer && !quietHours) {
       const sent = await sendWhatsApp({
-        recipient: member.whatsappNummer,
+        phone: member.whatsappNummer,
         message: text,
+        memberId: member.id,
+        type: "FEEDBACK",
       });
 
       if (sent) {

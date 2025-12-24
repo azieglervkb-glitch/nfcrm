@@ -1,0 +1,569 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check } from "lucide-react";
+import { toast } from "sonner";
+
+interface SystemSettings {
+  id: string;
+  quietHoursEnabled: boolean;
+  quietHoursStart: number;
+  quietHoursEnd: number;
+  kpiReminderEnabled: boolean;
+  kpiReminderDay1: number;
+  kpiReminderTime1: string;
+  kpiReminderDay2: number;
+  kpiReminderTime2: string;
+  kpiReminderChannels: string[];
+  aiFeedbackEnabled: boolean;
+  aiFeedbackDelay: number;
+  aiFeedbackChannels: string[];
+  automationsEnabled: boolean;
+  automationsDay: number;
+  automationsTime: string;
+  churnRiskWeeks: number;
+  dangerZoneWeeks: number;
+  upsellRevenueThreshold: number;
+  upsellConsecutiveWeeks: number;
+  coachEmailNotifications: boolean;
+  adminEmailDigest: boolean;
+  adminEmailDigestTime: string;
+}
+
+const DAYS = [
+  { value: 0, label: "Sonntag" },
+  { value: 1, label: "Montag" },
+  { value: 2, label: "Dienstag" },
+  { value: 3, label: "Mittwoch" },
+  { value: 4, label: "Donnerstag" },
+  { value: 5, label: "Freitag" },
+  { value: 6, label: "Samstag" },
+];
+
+export function SettingsForm() {
+  const [settings, setSettings] = useState<SystemSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  async function fetchSettings() {
+    try {
+      const response = await fetch("/api/settings");
+      if (response.ok) {
+        const data = await response.json();
+        setSettings(data);
+      }
+    } catch (error) {
+      console.error("Error fetching settings:", error);
+      toast.error("Fehler beim Laden der Einstellungen");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function saveSettings() {
+    if (!settings) return;
+
+    setSaving(true);
+    setSaved(false);
+
+    try {
+      const response = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+
+      if (response.ok) {
+        setSaved(true);
+        toast.success("Einstellungen gespeichert");
+        setTimeout(() => setSaved(false), 2000);
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Fehler beim Speichern");
+      }
+    } catch (error) {
+      console.error("Error saving settings:", error);
+      toast.error("Fehler beim Speichern der Einstellungen");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function updateSetting<K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) {
+    if (settings) {
+      setSettings({ ...settings, [key]: value });
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!settings) {
+    return (
+      <div className="text-center py-12 text-muted-foreground">
+        Einstellungen konnten nicht geladen werden.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Save Button (floating) */}
+      <div className="flex justify-end sticky top-4 z-10">
+        <Button onClick={saveSettings} disabled={saving} className="shadow-lg">
+          {saving ? (
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+          ) : saved ? (
+            <Check className="h-4 w-4 mr-2" />
+          ) : null}
+          {saved ? "Gespeichert" : "Alle Änderungen speichern"}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* Quiet Hours */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Ruhezeiten (Quiet Hours)
+            </CardTitle>
+            <CardDescription>
+              Keine WhatsApp-Nachrichten während dieser Zeit
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Ruhezeiten aktiviert</Label>
+              <Switch
+                checked={settings.quietHoursEnabled}
+                onCheckedChange={(v) => updateSetting("quietHoursEnabled", v)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Beginn</Label>
+                <Select
+                  value={String(settings.quietHoursStart)}
+                  onValueChange={(v) => updateSetting("quietHoursStart", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {String(i).padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Ende</Label>
+                <Select
+                  value={String(settings.quietHoursEnd)}
+                  onValueChange={(v) => updateSetting("quietHoursEnd", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Array.from({ length: 24 }, (_, i) => (
+                      <SelectItem key={i} value={String(i)}>
+                        {String(i).padStart(2, "0")}:00
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Standardmäßig: 21:00 - 08:00
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* KPI Reminder Schedule */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              KPI-Erinnerungen
+            </CardTitle>
+            <CardDescription>
+              Wann werden Mitglieder an KPI-Abgabe erinnert?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Erinnerungen aktiviert</Label>
+              <Switch
+                checked={settings.kpiReminderEnabled}
+                onCheckedChange={(v) => updateSetting("kpiReminderEnabled", v)}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Erste Erinnerung</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  value={String(settings.kpiReminderDay1)}
+                  onValueChange={(v) => updateSetting("kpiReminderDay1", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((day) => (
+                      <SelectItem key={day.value} value={String(day.value)}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="time"
+                  value={settings.kpiReminderTime1}
+                  onChange={(e) => updateSetting("kpiReminderTime1", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Zweite Erinnerung</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  value={String(settings.kpiReminderDay2)}
+                  onValueChange={(v) => updateSetting("kpiReminderDay2", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((day) => (
+                      <SelectItem key={day.value} value={String(day.value)}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="time"
+                  value={settings.kpiReminderTime2}
+                  onChange={(e) => updateSetting("kpiReminderTime2", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Kanäle</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.kpiReminderChannels.includes("EMAIL")}
+                    onChange={(e) => {
+                      const channels = e.target.checked
+                        ? [...settings.kpiReminderChannels, "EMAIL"]
+                        : settings.kpiReminderChannels.filter((c) => c !== "EMAIL");
+                      updateSetting("kpiReminderChannels", channels);
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">E-Mail</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.kpiReminderChannels.includes("WHATSAPP")}
+                    onChange={(e) => {
+                      const channels = e.target.checked
+                        ? [...settings.kpiReminderChannels, "WHATSAPP"]
+                        : settings.kpiReminderChannels.filter((c) => c !== "WHATSAPP");
+                      updateSetting("kpiReminderChannels", channels);
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">WhatsApp</span>
+                </label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* AI Feedback Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Brain className="h-4 w-4" />
+              KI-Feedback
+            </CardTitle>
+            <CardDescription>
+              Automatisches Feedback nach KPI-Einreichung
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>KI-Feedback aktiviert</Label>
+              <Switch
+                checked={settings.aiFeedbackEnabled}
+                onCheckedChange={(v) => updateSetting("aiFeedbackEnabled", v)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Verzögerung (Minuten)</Label>
+              <Input
+                type="number"
+                min="0"
+                max="60"
+                value={settings.aiFeedbackDelay}
+                onChange={(e) => updateSetting("aiFeedbackDelay", parseInt(e.target.value) || 0)}
+              />
+              <p className="text-xs text-muted-foreground">
+                0 = sofort nach KPI-Einreichung
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Feedback senden via</Label>
+              <div className="flex gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.aiFeedbackChannels.includes("WHATSAPP")}
+                    onChange={(e) => {
+                      const channels = e.target.checked
+                        ? [...settings.aiFeedbackChannels, "WHATSAPP"]
+                        : settings.aiFeedbackChannels.filter((c) => c !== "WHATSAPP");
+                      updateSetting("aiFeedbackChannels", channels);
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">WhatsApp</span>
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.aiFeedbackChannels.includes("EMAIL")}
+                    onChange={(e) => {
+                      const channels = e.target.checked
+                        ? [...settings.aiFeedbackChannels, "EMAIL"]
+                        : settings.aiFeedbackChannels.filter((c) => c !== "EMAIL");
+                      updateSetting("aiFeedbackChannels", channels);
+                    }}
+                    className="rounded border-gray-300"
+                  />
+                  <span className="text-sm">E-Mail</span>
+                </label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Scheduled Automations */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Geplante Automationen
+            </CardTitle>
+            <CardDescription>
+              Wöchentliche Checks (Churn, Danger Zone, etc.)
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label>Automationen aktiviert</Label>
+              <Switch
+                checked={settings.automationsEnabled}
+                onCheckedChange={(v) => updateSetting("automationsEnabled", v)}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Tag</Label>
+                <Select
+                  value={String(settings.automationsDay)}
+                  onValueChange={(v) => updateSetting("automationsDay", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((day) => (
+                      <SelectItem key={day.value} value={String(day.value)}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Uhrzeit</Label>
+                <Input
+                  type="time"
+                  value={settings.automationsTime}
+                  onChange={(e) => updateSetting("automationsTime", e.target.value)}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Churn Risk Thresholds */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" />
+              Inaktivitäts-Schwellwerte
+            </CardTitle>
+            <CardDescription>
+              Ab wann werden Mitglieder als Risiko markiert?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Churn-Risiko (Wochen ohne KPI)</Label>
+              <Input
+                type="number"
+                min="1"
+                max="12"
+                value={settings.churnRiskWeeks}
+                onChange={(e) => updateSetting("churnRiskWeeks", parseInt(e.target.value) || 2)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Standardmäßig: 2 Wochen
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Danger Zone (Wochen ohne KPI)</Label>
+              <Input
+                type="number"
+                min="1"
+                max="24"
+                value={settings.dangerZoneWeeks}
+                onChange={(e) => updateSetting("dangerZoneWeeks", parseInt(e.target.value) || 4)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Standardmäßig: 4 Wochen
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Upsell Triggers */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Upsell-Trigger
+            </CardTitle>
+            <CardDescription>
+              Wann werden Mitglieder als Upsell-Kandidaten markiert?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Umsatz-Schwelle (EUR)</Label>
+              <Input
+                type="number"
+                min="0"
+                step="1000"
+                value={settings.upsellRevenueThreshold}
+                onChange={(e) => updateSetting("upsellRevenueThreshold", parseFloat(e.target.value) || 20000)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Mindest-Wochenumsatz für Upsell-Signal
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Aufeinanderfolgende Wochen</Label>
+              <Input
+                type="number"
+                min="1"
+                max="12"
+                value={settings.upsellConsecutiveWeeks}
+                onChange={(e) => updateSetting("upsellConsecutiveWeeks", parseInt(e.target.value) || 3)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Wie viele Wochen in Folge über Schwelle?
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Coach Notifications */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mail className="h-4 w-4" />
+              Coach-Benachrichtigungen
+            </CardTitle>
+            <CardDescription>
+              E-Mail-Benachrichtigungen für Coaches
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Task-Benachrichtigungen</Label>
+                <p className="text-sm text-muted-foreground">
+                  E-Mail wenn neue Task erstellt wird
+                </p>
+              </div>
+              <Switch
+                checked={settings.coachEmailNotifications}
+                onCheckedChange={(v) => updateSetting("coachEmailNotifications", v)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Admin Daily Digest</Label>
+                <p className="text-sm text-muted-foreground">
+                  Tägliche Zusammenfassung für Admins
+                </p>
+              </div>
+              <Switch
+                checked={settings.adminEmailDigest}
+                onCheckedChange={(v) => updateSetting("adminEmailDigest", v)}
+              />
+            </div>
+
+            {settings.adminEmailDigest && (
+              <div className="space-y-2">
+                <Label>Digest-Uhrzeit</Label>
+                <Input
+                  type="time"
+                  value={settings.adminEmailDigestTime}
+                  onChange={(e) => updateSetting("adminEmailDigestTime", e.target.value)}
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

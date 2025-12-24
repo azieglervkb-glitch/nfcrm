@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       errors: [] as string[],
     };
 
-    const inQuietHours = isInQuietHours();
+    const inQuietHours = await isInQuietHours();
 
     for (const member of membersWithoutKpi) {
       try {
@@ -78,24 +78,16 @@ export async function GET(request: NextRequest) {
           const message = `Hey ${member.vorname}! 👋 Deine KPIs für diese Woche (KW${weekNumber}) fehlen noch. Hier ist dein Link:\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
 
           const whatsappSent = await sendWhatsApp({
-            recipient: member.whatsappNummer,
+            phone: member.whatsappNummer,
             message,
+            memberId: member.id,
+            type: "REMINDER",
+            ruleId: "CRON",
           });
 
           if (whatsappSent) {
             results.whatsappSent++;
-
-            await prisma.communicationLog.create({
-              data: {
-                memberId: member.id,
-                channel: "WHATSAPP",
-                type: "REMINDER",
-                content: message,
-                recipient: member.whatsappNummer,
-                sent: true,
-                sentAt: new Date(),
-              },
-            });
+            // Note: Communication already logged by sendWhatsApp function
           }
         }
       } catch (error) {

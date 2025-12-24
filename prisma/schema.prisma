@@ -400,13 +400,56 @@ model MemberNote {
   @@index([memberId])
 }
 
-// System Settings
+// System Settings (key-value)
 model SystemSetting {
   id          String   @id @default(cuid())
   key         String   @unique
   value       Json
   description String?
   updatedAt   DateTime @updatedAt
+}
+
+// Global System Settings
+model SystemSettings {
+  id String @id @default("default")
+
+  // Quiet Hours (keine WhatsApp-Nachrichten)
+  quietHoursEnabled Boolean @default(true)
+  quietHoursStart   Int     @default(21) // 21:00
+  quietHoursEnd     Int     @default(8)  // 08:00
+
+  // KPI Reminder Schedule
+  kpiReminderEnabled     Boolean @default(true)
+  kpiReminderDay1        Int     @default(0) // 0 = Sonntag
+  kpiReminderTime1       String  @default("18:00")
+  kpiReminderDay2        Int     @default(1) // 1 = Montag
+  kpiReminderTime2       String  @default("10:00")
+  kpiReminderChannels    String[] @default(["EMAIL", "WHATSAPP"])
+
+  // AI Feedback Settings
+  aiFeedbackEnabled      Boolean @default(true)
+  aiFeedbackDelay        Int     @default(0) // Minuten nach KPI-Einreichung
+  aiFeedbackChannels     String[] @default(["WHATSAPP"])
+
+  // Scheduled Automations
+  automationsEnabled     Boolean @default(true)
+  automationsDay         Int     @default(1) // Montag
+  automationsTime        String  @default("09:00")
+
+  // Inaktivitäts-Schwellwerte
+  churnRiskWeeks         Int     @default(2)
+  dangerZoneWeeks        Int     @default(4)
+
+  // Upsell-Trigger
+  upsellRevenueThreshold Decimal @default(20000) @db.Decimal(12, 2)
+  upsellConsecutiveWeeks Int     @default(3)
+
+  // Notifications
+  coachEmailNotifications Boolean @default(true)
+  adminEmailDigest        Boolean @default(true)
+  adminEmailDigestTime    String  @default("08:00")
+
+  updatedAt DateTime @updatedAt
 }
 
 // Automation Rules (konfigurierbar)

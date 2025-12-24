@@ -260,32 +260,24 @@ export async function checkMomentumStreak(
     return kpisAtGoal >= 2;
   });
 
-  if (hasMomentum && member.whatsappNummer && !isInQuietHours()) {
+  const quietHours = await isInQuietHours();
+  if (hasMomentum && member.whatsappNummer && !quietHours) {
     const actions: string[] = [];
 
     // Send celebration message
     const message = `Hey ${member.vorname}! 3 Wochen in Folge on fire - das nenne ich Momentum! Weiter so, du bist auf dem besten Weg! Was ist dein Geheimnis?`;
 
     const sent = await sendWhatsApp({
-      recipient: member.whatsappNummer,
+      phone: member.whatsappNummer,
       message,
+      memberId: member.id,
+      type: "CELEBRATION",
+      ruleId,
     });
 
     if (sent) {
       actions.push("SEND_WHATSAPP: celebration_momentum");
-
-      await prisma.communicationLog.create({
-        data: {
-          memberId: member.id,
-          channel: "WHATSAPP",
-          type: "CELEBRATION",
-          content: message,
-          recipient: member.whatsappNummer,
-          sent: true,
-          sentAt: new Date(),
-          ruleId,
-        },
-      });
+      // Note: Communication already logged by sendWhatsApp function
     }
 
     // Add note
@@ -471,6 +463,118 @@ export async function checkBlockade(
   }
 }
 
+// P2: Goal Celebration
+export async function checkGoalCelebration(
+  member: Member,
+  kpiWeek: KpiWeek
+): Promise<void> {
+  const ruleId = "P2";
+  const ruleName = "Ziel erreicht Celebration";
+
+  if (await isCooldownActive(member.id, ruleId)) return;
+
+  // Check if weekly goal is achieved
+  const umsatzGoalMet =
+    member.umsatzSollWoche &&
+    kpiWeek.umsatzIst &&
+    Number(kpiWeek.umsatzIst) >= Number(member.umsatzSollWoche);
+
+  if (umsatzGoalMet && member.whatsappNummer) {
+    const quietHours = await isInQuietHours();
+    if (quietHours) return;
+
+    const actions: string[] = [];
+    const umsatz = Number(kpiWeek.umsatzIst).toLocaleString("de-DE");
+
+    const message = `🎉 Mega, ${member.vorname}! Du hast dein Wochenziel erreicht! ${umsatz}€ Umsatz - weiter so! 💪`;
+
+    const sent = await sendWhatsApp({
+      phone: member.whatsappNummer,
+      message,
+      memberId: member.id,
+      type: "CELEBRATION",
+      ruleId,
+    });
+
+    if (sent) {
+      actions.push("SEND_WHATSAPP: goal_celebration");
+    }
+
+    await logAutomation(member.id, ruleId, ruleName, actions, {
+      umsatzIst: Number(kpiWeek.umsatzIst),
+      umsatzSoll: Number(member.umsatzSollWoche),
+    });
+
+    await setCooldown(member.id, ruleId, 168); // 7 days
+  }
+}
+
+// L2: Happy High Performer (Feeling ≥ 8 + Goal achieved = Upsell candidate)
+export async function checkHappyHighPerformer(
+  member: Member,
+  kpiWeek: KpiWeek
+): Promise<void> {
+  const ruleId = "L2";
+  const ruleName = "Happy High Performer";
+
+  if (await isCooldownActive(member.id, ruleId)) return;
+
+  const highFeeling = kpiWeek.feelingScore !== null && kpiWeek.feelingScore >= 8;
+  const goalAchieved =
+    member.umsatzSollWoche &&
+    kpiWeek.umsatzIst &&
+    Number(kpiWeek.umsatzIst) >= Number(member.umsatzSollWoche);
+
+  if (highFeeling && goalAchieved) {
+    const actions: string[] = [];
+
+    // Set upsell candidate flag
+    await prisma.member.update({
+      where: { id: member.id },
+      data: { upsellCandidate: true },
+    });
+    actions.push("SET_FLAG: upsellCandidate = true");
+
+    // Check if already in upsell pipeline
+    const existingUpsell = await prisma.upsellPipeline.findFirst({
+      where: {
+        memberId: member.id,
+        status: { not: "VERLOREN" },
+      },
+    });
+
+    if (!existingUpsell) {
+      await prisma.upsellPipeline.create({
+        data: {
+          memberId: member.id,
+          triggerReason: `Feeling ${kpiWeek.feelingScore}/10 + Ziel erreicht (${Number(kpiWeek.umsatzIst).toLocaleString("de-DE")}€)`,
+          triggerRuleId: ruleId,
+          status: "IDENTIFIED",
+        },
+      });
+      actions.push("CREATE_UPSELL_PIPELINE: Happy High Performer");
+    }
+
+    // Add note
+    await prisma.memberNote.create({
+      data: {
+        memberId: member.id,
+        authorName: "System (Automation)",
+        content: `Happy High Performer identifiziert: Feeling ${kpiWeek.feelingScore}/10, Umsatz ${Number(kpiWeek.umsatzIst).toLocaleString("de-DE")}€`,
+        isPinned: false,
+      },
+    });
+    actions.push("ADD_NOTE: Happy High Performer");
+
+    await logAutomation(member.id, ruleId, ruleName, actions, {
+      feeling: kpiWeek.feelingScore,
+      umsatz: Number(kpiWeek.umsatzIst),
+    });
+
+    await setCooldown(member.id, ruleId, 720); // 30 days
+  }
+}
+
 // Main function to run all rules after KPI submission
 export async function runKpiAutomations(
   memberId: string,
@@ -500,6 +604,8 @@ export async function runKpiAutomations(
     checkHighNoShow(member, kpiWeek),
     checkHeldentat(member, kpiWeek),
     checkBlockade(member, kpiWeek),
+    checkGoalCelebration(member, kpiWeek),
+    checkHappyHighPerformer(member, kpiWeek),
   ]);
 }
 
