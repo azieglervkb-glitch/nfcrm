@@ -625,3 +625,351 @@ export async function runScheduledAutomations(): Promise<void> {
     await Promise.allSettled([checkChurnRisk(member)]);
   }
 }
+
+// R2: Silent Member (Scheduled reminder for missing KPI)
+export async function checkSilentMember(member: Member): Promise<void> {
+  const ruleId = "R2";
+  const ruleName = "Silent Member";
+
+  if (await isCooldownActive(member.id, ruleId)) return;
+
+  // Get current week start (Monday)
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  // Check if KPI exists for current week
+  const kpiThisWeek = await prisma.kpiWeek.findFirst({
+    where: {
+      memberId: member.id,
+      weekStart: { gte: weekStart },
+    },
+  });
+
+  if (!kpiThisWeek) {
+    const actions: string[] = [];
+
+    // Send email reminder
+    if (member.email) {
+      await sendEmail({
+        to: member.email,
+        subject: "Erinnerung: Dein Weekly KPI-Update",
+        template: "kpi_reminder",
+        data: {
+          vorname: member.vorname,
+          link: `${process.env.APP_URL}/form/weekly/${member.id}`,
+        },
+      });
+      actions.push("SEND_EMAIL: kpi_reminder");
+    }
+
+    // Schedule WhatsApp for later if not in quiet hours
+    const quietHours = await isInQuietHours();
+    if (member.whatsappNummer && !quietHours) {
+      const message = `Hey ${member.vorname}! Vergiss nicht, deine KPIs für diese Woche einzutragen. 📊`;
+      await sendWhatsApp({
+        phone: member.whatsappNummer,
+        message,
+        memberId: member.id,
+        type: "REMINDER",
+        ruleId,
+      });
+      actions.push("SEND_WHATSAPP: kpi_reminder");
+    }
+
+    await logAutomation(member.id, ruleId, ruleName, actions);
+    await setCooldown(member.id, ruleId, 48); // 2 days (max 2x per week)
+  }
+}
+
+// P2-Funnel: Funnel-Leak Detection
+export async function checkFunnelLeak(
+  member: Member,
+  kpiWeek: KpiWeek
+): Promise<void> {
+  const ruleId = "P2-FUNNEL";
+  const ruleName = "Funnel-Leak";
+
+  if (await isCooldownActive(member.id, ruleId)) return;
+
+  // Check conversion rates
+  const kontakteOk =
+    member.kontakteSoll && kpiWeek.kontakteIst
+      ? kpiWeek.kontakteIst >= member.kontakteSoll * 0.9
+      : false;
+
+  const entscheiderRatio =
+    kpiWeek.kontakteIst && kpiWeek.entscheiderIst
+      ? kpiWeek.entscheiderIst / kpiWeek.kontakteIst
+      : 1;
+
+  const termineRatio =
+    kpiWeek.termineVereinbartIst && kpiWeek.termineStattgefundenIst
+      ? kpiWeek.termineStattgefundenIst / kpiWeek.termineVereinbartIst
+      : 1;
+
+  const hasFunnelLeak = kontakteOk && (entscheiderRatio < 0.3 || termineRatio < 0.7);
+
+  if (hasFunnelLeak) {
+    const actions: string[] = [];
+    const issue = entscheiderRatio < 0.3 ? "Pitch optimieren" : "Terminierung verbessern";
+
+    // Create task
+    await prisma.task.create({
+      data: {
+        memberId: member.id,
+        title: "Konvertierungs-Training empfehlen",
+        description: `${member.vorname} ${member.nachname} zeigt Funnel-Leak: ${issue}. Entscheider-Quote: ${Math.round(entscheiderRatio * 100)}%, Termin-Quote: ${Math.round(termineRatio * 100)}%`,
+        priority: "MEDIUM",
+        ruleId,
+        assignedToId: member.assignedCoachId,
+      },
+    });
+    actions.push("CREATE_TASK: Konvertierungs-Training");
+
+    // Add note
+    await prisma.memberNote.create({
+      data: {
+        memberId: member.id,
+        authorName: "System (Automation)",
+        content: `Funnel-Leak erkannt: ${issue}. Entscheider ${Math.round(entscheiderRatio * 100)}%, Termine ${Math.round(termineRatio * 100)}%`,
+        isPinned: false,
+      },
+    });
+    actions.push("ADD_NOTE: Funnel-Leak erkannt");
+
+    await logAutomation(member.id, ruleId, ruleName, actions, {
+      entscheiderRatio: Math.round(entscheiderRatio * 100),
+      termineRatio: Math.round(termineRatio * 100),
+    });
+
+    await setCooldown(member.id, ruleId, 168); // 7 days
+  }
+}
+
+// Q2: Daten-Anomalie
+export async function checkDatenAnomalie(
+  member: Member,
+  kpiWeek: KpiWeek
+): Promise<{ hasAnomaly: boolean; reason?: string }> {
+  const ruleId = "Q2";
+  const ruleName = "Daten-Anomalie";
+
+  // Check for anomalies
+  const anomalies: string[] = [];
+
+  // Negative values
+  if (kpiWeek.umsatzIst && Number(kpiWeek.umsatzIst) < 0) {
+    anomalies.push("Negativer Umsatz");
+  }
+  if (kpiWeek.kontakteIst && kpiWeek.kontakteIst < 0) {
+    anomalies.push("Negative Kontakte");
+  }
+
+  // Unrealistic values
+  if (kpiWeek.umsatzIst && Number(kpiWeek.umsatzIst) > 200000) {
+    anomalies.push("Umsatz > 200.000€/Woche");
+  }
+
+  // Subset > Total checks
+  if (
+    kpiWeek.entscheiderIst &&
+    kpiWeek.kontakteIst &&
+    kpiWeek.entscheiderIst > kpiWeek.kontakteIst
+  ) {
+    anomalies.push("Entscheider > Kontakte");
+  }
+
+  if (
+    kpiWeek.termineStattgefundenIst &&
+    kpiWeek.termineVereinbartIst &&
+    kpiWeek.termineStattgefundenIst > kpiWeek.termineVereinbartIst
+  ) {
+    anomalies.push("Stattgefundene > Vereinbarte Termine");
+  }
+
+  if (anomalies.length > 0) {
+    const actions: string[] = [];
+
+    // Block AI feedback
+    await prisma.kpiWeek.update({
+      where: { id: kpiWeek.id },
+      data: {
+        aiFeedbackBlocked: true,
+        aiFeedbackBlockReason: `Daten-Anomalie: ${anomalies.join(", ")}`,
+      },
+    });
+    actions.push("BLOCK_AI_FEEDBACK");
+
+    // Set review flag
+    await prisma.member.update({
+      where: { id: member.id },
+      data: { reviewFlag: true },
+    });
+    actions.push("SET_FLAG: reviewFlag = true");
+
+    await logAutomation(member.id, ruleId, ruleName, actions, { anomalies });
+
+    return { hasAnomaly: true, reason: anomalies.join(", ") };
+  }
+
+  return { hasAnomaly: false };
+}
+
+// Q3: Feld fehlt aber getrackt
+export async function checkMissingTrackedField(
+  member: Member,
+  kpiWeek: KpiWeek
+): Promise<void> {
+  const ruleId = "Q3";
+  const ruleName = "Feld fehlt aber getrackt";
+
+  const quietHours = await isInQuietHours();
+  if (quietHours || !member.whatsappNummer) return;
+
+  const missingFields: string[] = [];
+
+  if (member.trackKontakte && !kpiWeek.kontakteIst) {
+    missingFields.push("Kontakte");
+  }
+  if (member.trackTermine && !kpiWeek.termineVereinbartIst) {
+    missingFields.push("Termine");
+  }
+  if (member.trackEinheiten && !kpiWeek.einheitenIst) {
+    missingFields.push("Einheiten");
+  }
+  if (member.trackEmpfehlungen && !kpiWeek.empfehlungenIst) {
+    missingFields.push("Empfehlungen");
+  }
+  if (member.trackEntscheider && !kpiWeek.entscheiderIst) {
+    missingFields.push("Entscheider");
+  }
+
+  // Only notify for first missing field to avoid spam
+  if (missingFields.length > 0) {
+    const field = missingFields[0];
+    const cooldownKey = `${ruleId}-${field}`;
+
+    if (await isCooldownActive(member.id, cooldownKey)) return;
+
+    const actions: string[] = [];
+    const message = `Hey ${member.vorname}! Dir fehlt noch "${field}" in deinem KPI-Update diese Woche. Kannst du das noch nachtragen?`;
+
+    await sendWhatsApp({
+      phone: member.whatsappNummer,
+      message,
+      memberId: member.id,
+      type: "REMINDER",
+      ruleId,
+    });
+    actions.push(`SEND_WHATSAPP: missing_field_nudge (${field})`);
+
+    await logAutomation(member.id, ruleId, ruleName, actions, { missingFields });
+    await setCooldown(member.id, cooldownKey, 168); // 7 days per field
+  }
+}
+
+// C3: S.M.A.R.T-Nudge (Wochenziel fehlt)
+export async function checkSmartNudge(member: Member): Promise<void> {
+  const ruleId = "C3";
+  const ruleName = "S.M.A.R.T-Nudge";
+
+  if (await isCooldownActive(member.id, ruleId)) return;
+
+  const missingGoals =
+    !member.umsatzSollWoche && !member.einheitenSoll && !member.kontakteSoll;
+
+  const quietHours = await isInQuietHours();
+  if (missingGoals && member.whatsappNummer && !quietHours) {
+    const actions: string[] = [];
+
+    const message = `Hey ${member.vorname}! Ich hab gesehen, dass du noch keine Wochenziele eingetragen hast. S.M.A.R.T. Ziele helfen dir, fokussiert zu bleiben! Hier kannst du sie eintragen: ${process.env.APP_URL}/form/kpi-setup/${member.id}`;
+
+    await sendWhatsApp({
+      phone: member.whatsappNummer,
+      message,
+      memberId: member.id,
+      type: "REMINDER",
+      ruleId,
+    });
+    actions.push("SEND_WHATSAPP: smart_nudge");
+
+    await logAutomation(member.id, ruleId, ruleName, actions);
+    await setCooldown(member.id, ruleId, 168); // 7 days
+  }
+}
+
+// M1: Weekly-Reminder Process (Scheduled)
+export async function runWeeklyReminders(): Promise<void> {
+  const ruleId = "M1";
+  const ruleName = "Weekly-Reminder Process";
+
+  // Get current week start
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const weekStart = new Date(today);
+  weekStart.setDate(today.getDate() + mondayOffset);
+  weekStart.setHours(0, 0, 0, 0);
+
+  // Find active members without KPI this week
+  const membersWithoutKpi = await prisma.member.findMany({
+    where: {
+      status: "AKTIV",
+      kpiWeeks: {
+        none: {
+          weekStart: { gte: weekStart },
+        },
+      },
+    },
+  });
+
+  const hour = new Date().getHours();
+  const isEvening = hour >= 18 && hour < 21;
+  const isMorning = hour >= 5 && hour < 8;
+
+  for (const member of membersWithoutKpi) {
+    if (await isCooldownActive(member.id, `${ruleId}-daily`)) continue;
+
+    const actions: string[] = [];
+
+    // Morning: Send email
+    if (isMorning && member.email) {
+      await sendEmail({
+        to: member.email,
+        subject: "Guten Morgen! Dein Weekly KPI-Update wartet",
+        template: "weekly_reminder_morning",
+        data: {
+          vorname: member.vorname,
+          link: `${process.env.APP_URL}/form/weekly/${member.id}`,
+        },
+      });
+      actions.push("SEND_EMAIL: weekly_reminder_morning");
+    }
+
+    // Evening: Send WhatsApp (if still no submission)
+    if (isEvening && member.whatsappNummer) {
+      const quietHours = await isInQuietHours();
+      if (!quietHours) {
+        const message = `Hey ${member.vorname}! 👋 Bevor der Tag rum ist - hast du deine KPIs schon eingetragen? Dauert nur 2 Min: ${process.env.APP_URL}/form/weekly/${member.id}`;
+
+        await sendWhatsApp({
+          phone: member.whatsappNummer,
+          message,
+          memberId: member.id,
+          type: "REMINDER",
+          ruleId,
+        });
+        actions.push("SEND_WHATSAPP: weekly_reminder_evening");
+      }
+    }
+
+    if (actions.length > 0) {
+      await logAutomation(member.id, ruleId, ruleName, actions);
+      await setCooldown(member.id, `${ruleId}-daily`, 20); // 20 hours
+    }
+  }
+}
