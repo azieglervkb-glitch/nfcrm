@@ -141,16 +141,16 @@ export default function WeeklyKpiFormPage({
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 py-8 px-4">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-muted/30 py-6 px-4 sm:py-8">
+      <div className="max-w-lg mx-auto">
         {/* Header */}
-        <div className="text-center mb-8">
+        <div className="text-center mb-6 sm:mb-8">
           <div className="flex justify-center mb-4">
             <svg
               viewBox="0 0 40 40"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12"
+              className="h-10 w-10 sm:h-12 sm:w-12"
             >
               <path
                 d="M20 5L35 15V25L20 35L5 25V15L20 5Z"
@@ -160,8 +160,8 @@ export default function WeeklyKpiFormPage({
               <path d="M20 24V32" stroke="white" strokeWidth="2" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold">Dein Weekly KPI-Update</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-xl sm:text-2xl font-bold">Dein Weekly KPI-Update</h1>
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Hallo {memberData?.vorname}! Trage deine Zahlen für diese Woche ein.
           </p>
         </div>
@@ -197,9 +197,10 @@ export default function WeeklyKpiFormPage({
                 <Input
                   id="umsatzIst"
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
+                  className={`h-12 text-lg ${errors.umsatzIst ? "border-destructive" : ""}`}
                   {...register("umsatzIst", { valueAsNumber: true })}
-                  className={errors.umsatzIst ? "border-destructive" : ""}
                 />
                 {errors.umsatzIst && (
                   <p className="text-xs text-destructive">
@@ -218,12 +219,14 @@ export default function WeeklyKpiFormPage({
               </CardHeader>
               <CardContent className="space-y-4">
                 {memberData?.trackKontakte && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="kontakteIst">Kontakte</Label>
                       <Input
                         id="kontakteIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("kontakteIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -233,6 +236,8 @@ export default function WeeklyKpiFormPage({
                         <Input
                           id="entscheiderIst"
                           type="number"
+                          inputMode="numeric"
+                          className="h-12"
                           {...register("entscheiderIst", { valueAsNumber: true })}
                         />
                       </div>
@@ -241,7 +246,7 @@ export default function WeeklyKpiFormPage({
                 )}
 
                 {memberData?.trackTermine && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="termineVereinbartIst">
                         Termine vereinbart
@@ -249,6 +254,8 @@ export default function WeeklyKpiFormPage({
                       <Input
                         id="termineVereinbartIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("termineVereinbartIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -259,6 +266,8 @@ export default function WeeklyKpiFormPage({
                       <Input
                         id="termineStattgefundenIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("termineStattgefundenIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -266,7 +275,7 @@ export default function WeeklyKpiFormPage({
                 )}
 
                 {memberData?.trackAbschluesse && (
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="termineAbschlussIst">
                         Abschluss-Termine
@@ -274,6 +283,8 @@ export default function WeeklyKpiFormPage({
                       <Input
                         id="termineAbschlussIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("termineAbschlussIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -282,6 +293,8 @@ export default function WeeklyKpiFormPage({
                       <Input
                         id="termineNoshowIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("termineNoshowIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -298,13 +311,15 @@ export default function WeeklyKpiFormPage({
                 <CardTitle className="text-base">Weitere KPIs</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {memberData?.trackEinheiten && (
                     <div className="space-y-2">
                       <Label htmlFor="einheitenIst">Einheiten</Label>
                       <Input
                         id="einheitenIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("einheitenIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -315,6 +330,8 @@ export default function WeeklyKpiFormPage({
                       <Input
                         id="empfehlungenIst"
                         type="number"
+                        inputMode="numeric"
+                        className="h-12"
                         {...register("empfehlungenIst", { valueAsNumber: true })}
                       />
                     </div>
@@ -395,7 +412,7 @@ export default function WeeklyKpiFormPage({
             </CardContent>
           </Card>
 
-          <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+          <Button type="submit" className="w-full h-12 text-base" disabled={submitting}>
             {submitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
