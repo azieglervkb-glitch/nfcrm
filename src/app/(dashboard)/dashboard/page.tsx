@@ -87,13 +87,13 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10">
             <svg
-              viewBox="0 0 50 50"
+              viewBox="0 0 40 40"
               fill="none"
               xmlns="http://www.w3.org/2000/svg"
               className="h-8 w-8"
             >
               <path
-                d="M10 40 C10 40 10 15 10 10 C10 5 15 5 18 8 L32 28 C32 28 32 10 32 10 C32 5 42 5 42 10 C42 10 42 40 42 40 C42 45 37 45 34 42 L20 22 C20 22 20 40 20 40 C20 45 10 45 10 40 Z"
+                d="M8 32 C8 32 8 12 8 8 C8 4 12 4 14 6 C16 8 28 26 30 28 C30 28 30 8 30 8 C30 4 38 4 38 8 C38 8 38 28 38 32 C38 36 34 36 32 34 C30 32 18 14 16 12 C16 12 16 32 16 32 C16 36 8 36 8 32 Z"
                 fill="#dc2626"
               />
             </svg>
