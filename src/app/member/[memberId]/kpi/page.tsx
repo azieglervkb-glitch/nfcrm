@@ -13,42 +13,61 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Slider } from "@/components/ui/slider";
 import {
   BarChart3,
   Target,
   User,
   Home,
   Loader2,
-  Save,
   CheckCircle,
   TrendingUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
+interface MemberData {
+  vorname: string;
+  nachname: string;
+  trackKontakte: boolean;
+  trackTermine: boolean;
+  trackEinheiten: boolean;
+  trackEmpfehlungen: boolean;
+  trackEntscheider: boolean;
+  trackAbschluesse: boolean;
+  umsatzSollWoche: number | null;
+  kontakteSoll: number | null;
+  termineVereinbartSoll: number | null;
+  termineStattgefundenSoll: number | null;
+  termineAbschlussSoll: number | null;
+  einheitenSoll: number | null;
+  empfehlungenSoll: number | null;
+  entscheiderSoll: number | null;
+}
+
 interface KpiData {
-  member: {
-    vorname: string;
-    nachname: string;
-    kontakteSoll: number | null;
-    termineVereinbartSoll: number | null;
-    termineAbschlussSoll: number | null;
-    umsatzSollWoche: number | null;
-  };
+  member: MemberData;
   currentWeek: {
     id?: string;
-    kontakteIst: number | null;
-    termineVereinbartIst: number | null;
-    termineAbschlussIst: number | null;
     umsatzIst: number | null;
+    kontakteIst: number | null;
+    entscheiderIst: number | null;
+    termineVereinbartIst: number | null;
+    termineStattgefundenIst: number | null;
+    termineAbschlussIst: number | null;
+    termineNoshowIst: number | null;
+    einheitenIst: number | null;
+    empfehlungenIst: number | null;
     feelingScore: number | null;
+    heldentat: string | null;
+    blockiert: string | null;
+    herausforderung: string | null;
   } | null;
   history: Array<{
     weekStart: string;
     weekNumber: number;
-    kontakteIst: number | null;
-    termineVereinbartIst: number | null;
-    termineAbschlussIst: number | null;
     umsatzIst: number | null;
+    kontakteIst: number | null;
     feelingScore: number | null;
   }>;
 }
@@ -61,12 +80,22 @@ export default function MemberKpiPage() {
   const [data, setData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [feelingScore, setFeelingScore] = useState(5);
+
   const [formValues, setFormValues] = useState({
-    kontakteIst: "",
-    termineVereinbartIst: "",
-    termineAbschlussIst: "",
     umsatzIst: "",
-    feelingScore: "3",
+    kontakteIst: "",
+    entscheiderIst: "",
+    termineVereinbartIst: "",
+    termineStattgefundenIst: "",
+    termineAbschlussIst: "",
+    termineNoshowIst: "",
+    einheitenIst: "",
+    empfehlungenIst: "",
+    heldentat: "",
+    blockiert: "",
+    herausforderung: "",
   });
 
   useEffect(() => {
@@ -77,18 +106,26 @@ export default function MemberKpiPage() {
 
   const fetchKpiData = async () => {
     try {
-      const response = await fetch(`/api/member/kpi?memberId=${memberId}`);
+      const response = await fetch(`/api/member/kpi/full?memberId=${memberId}`);
       if (response.ok) {
         const result = await response.json();
         setData(result);
         if (result.currentWeek) {
           setFormValues({
-            kontakteIst: result.currentWeek.kontakteIst?.toString() || "",
-            termineVereinbartIst: result.currentWeek.termineVereinbartIst?.toString() || "",
-            termineAbschlussIst: result.currentWeek.termineAbschlussIst?.toString() || "",
             umsatzIst: result.currentWeek.umsatzIst?.toString() || "",
-            feelingScore: result.currentWeek.feelingScore?.toString() || "3",
+            kontakteIst: result.currentWeek.kontakteIst?.toString() || "",
+            entscheiderIst: result.currentWeek.entscheiderIst?.toString() || "",
+            termineVereinbartIst: result.currentWeek.termineVereinbartIst?.toString() || "",
+            termineStattgefundenIst: result.currentWeek.termineStattgefundenIst?.toString() || "",
+            termineAbschlussIst: result.currentWeek.termineAbschlussIst?.toString() || "",
+            termineNoshowIst: result.currentWeek.termineNoshowIst?.toString() || "",
+            einheitenIst: result.currentWeek.einheitenIst?.toString() || "",
+            empfehlungenIst: result.currentWeek.empfehlungenIst?.toString() || "",
+            heldentat: result.currentWeek.heldentat || "",
+            blockiert: result.currentWeek.blockiert || "",
+            herausforderung: result.currentWeek.herausforderung || "",
           });
+          setFeelingScore(result.currentWeek.feelingScore || 5);
         }
       }
     } catch (error) {
@@ -103,25 +140,33 @@ export default function MemberKpiPage() {
     setSaving(true);
 
     try {
-      const response = await fetch(`/api/member/kpi`, {
+      const response = await fetch(`/api/member/kpi/full`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           memberId,
-          kontakteIst: formValues.kontakteIst ? parseInt(formValues.kontakteIst) : null,
-          termineVereinbartIst: formValues.termineVereinbartIst ? parseInt(formValues.termineVereinbartIst) : null,
-          termineAbschlussIst: formValues.termineAbschlussIst ? parseInt(formValues.termineAbschlussIst) : null,
           umsatzIst: formValues.umsatzIst ? parseFloat(formValues.umsatzIst) : null,
-          feelingScore: parseInt(formValues.feelingScore),
+          kontakteIst: formValues.kontakteIst ? parseInt(formValues.kontakteIst) : null,
+          entscheiderIst: formValues.entscheiderIst ? parseInt(formValues.entscheiderIst) : null,
+          termineVereinbartIst: formValues.termineVereinbartIst ? parseInt(formValues.termineVereinbartIst) : null,
+          termineStattgefundenIst: formValues.termineStattgefundenIst ? parseInt(formValues.termineStattgefundenIst) : null,
+          termineAbschlussIst: formValues.termineAbschlussIst ? parseInt(formValues.termineAbschlussIst) : null,
+          termineNoshowIst: formValues.termineNoshowIst ? parseInt(formValues.termineNoshowIst) : null,
+          einheitenIst: formValues.einheitenIst ? parseInt(formValues.einheitenIst) : null,
+          empfehlungenIst: formValues.empfehlungenIst ? parseInt(formValues.empfehlungenIst) : null,
+          feelingScore,
+          heldentat: formValues.heldentat || null,
+          blockiert: formValues.blockiert || null,
+          herausforderung: formValues.herausforderung || null,
         }),
       });
 
       if (response.ok) {
+        setSuccess(true);
         toast({
           title: "Gespeichert!",
           description: "Deine KPIs wurden erfolgreich aktualisiert.",
         });
-        fetchKpiData();
       } else {
         throw new Error("Failed to save");
       }
@@ -150,6 +195,39 @@ export default function MemberKpiPage() {
       </div>
     );
   }
+
+  if (success) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardContent className="pt-6 text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Vielen Dank!</h2>
+            <p className="text-gray-600 mb-6">
+              Deine KPIs wurden erfolgreich gespeichert. Du erhältst in Kürze
+              dein persönliches Feedback.
+            </p>
+            <div className="space-y-2">
+              <Link href={`/member/${memberId}`}>
+                <Button className="w-full bg-red-600 hover:bg-red-700">
+                  Zurück zum Dashboard
+                </Button>
+              </Link>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setSuccess(false)}
+              >
+                Weitere Änderungen vornehmen
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const member = data?.member;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -199,145 +277,283 @@ export default function MemberKpiPage() {
       </nav>
 
       {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">KPI Tracking</h1>
-            <p className="text-gray-600">Trage deine wöchentlichen Zahlen ein</p>
+          {/* Header */}
+          <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <img src="/nf-logo.png" alt="NF Mentoring" className="h-12 sm:h-16 w-auto" />
+            </div>
+            <h1 className="text-xl sm:text-2xl font-bold">Dein Weekly KPI-Update</h1>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Hallo {member?.vorname}! Trage deine Zahlen für diese Woche ein.
+            </p>
           </div>
 
-          {/* Current Week Form */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-red-600" />
-                Diese Woche
-              </CardTitle>
-              <CardDescription>
-                Aktualisiere deine KPIs für diese Woche
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {data?.member.kontakteSoll && (
-                    <div className="space-y-2">
-                      <Label htmlFor="kontakte">
-                        Kontakte (Ziel: {data.member.kontakteSoll})
-                      </Label>
-                      <Input
-                        id="kontakte"
-                        type="number"
-                        min="0"
-                        value={formValues.kontakteIst}
-                        onChange={(e) =>
-                          setFormValues({ ...formValues, kontakteIst: e.target.value })
-                        }
-                        placeholder="0"
-                      />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Umsatz */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Umsatz</CardTitle>
+                <CardDescription>
+                  {member?.umsatzSollWoche && (
+                    <>
+                      Dein Wochenziel:{" "}
+                      {Number(member.umsatzSollWoche).toLocaleString("de-DE", {
+                        style: "currency",
+                        currency: "EUR",
+                        minimumFractionDigits: 0,
+                      })}
+                    </>
+                  )}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <Label htmlFor="umsatzIst">Umsatz diese Woche (€) *</Label>
+                  <Input
+                    id="umsatzIst"
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    className="h-12 text-lg"
+                    value={formValues.umsatzIst}
+                    onChange={(e) => setFormValues({ ...formValues, umsatzIst: e.target.value })}
+                    required
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Aktivitäten */}
+            {(member?.trackKontakte || member?.trackEntscheider || member?.trackTermine || member?.trackAbschluesse) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Aktivitäten</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {member?.trackKontakte && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="kontakteIst">
+                          Kontakte {member?.kontakteSoll ? `(Ziel: ${member.kontakteSoll})` : ""}
+                        </Label>
+                        <Input
+                          id="kontakteIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.kontakteIst}
+                          onChange={(e) => setFormValues({ ...formValues, kontakteIst: e.target.value })}
+                        />
+                      </div>
+                      {member?.trackEntscheider && (
+                        <div className="space-y-2">
+                          <Label htmlFor="entscheiderIst">
+                            Davon Entscheider {member?.entscheiderSoll ? `(Ziel: ${member.entscheiderSoll})` : ""}
+                          </Label>
+                          <Input
+                            id="entscheiderIst"
+                            type="number"
+                            inputMode="numeric"
+                            className="h-12"
+                            value={formValues.entscheiderIst}
+                            onChange={(e) => setFormValues({ ...formValues, entscheiderIst: e.target.value })}
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
 
-                  {data?.member.termineVereinbartSoll && (
-                    <div className="space-y-2">
-                      <Label htmlFor="termine">
-                        Termine vereinbart (Ziel: {data.member.termineVereinbartSoll})
-                      </Label>
-                      <Input
-                        id="termine"
-                        type="number"
-                        min="0"
-                        value={formValues.termineVereinbartIst}
-                        onChange={(e) =>
-                          setFormValues({ ...formValues, termineVereinbartIst: e.target.value })
-                        }
-                        placeholder="0"
-                      />
+                  {member?.trackTermine && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="termineVereinbartIst">
+                          Termine vereinbart {member?.termineVereinbartSoll ? `(Ziel: ${member.termineVereinbartSoll})` : ""}
+                        </Label>
+                        <Input
+                          id="termineVereinbartIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.termineVereinbartIst}
+                          onChange={(e) => setFormValues({ ...formValues, termineVereinbartIst: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="termineStattgefundenIst">
+                          Termine stattgefunden {member?.termineStattgefundenSoll ? `(Ziel: ${member.termineStattgefundenSoll})` : ""}
+                        </Label>
+                        <Input
+                          id="termineStattgefundenIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.termineStattgefundenIst}
+                          onChange={(e) => setFormValues({ ...formValues, termineStattgefundenIst: e.target.value })}
+                        />
+                      </div>
                     </div>
                   )}
 
-                  {data?.member.termineAbschlussSoll && (
-                    <div className="space-y-2">
-                      <Label htmlFor="abschluesse">
-                        Abschlüsse (Ziel: {data.member.termineAbschlussSoll})
-                      </Label>
-                      <Input
-                        id="abschluesse"
-                        type="number"
-                        min="0"
-                        value={formValues.termineAbschlussIst}
-                        onChange={(e) =>
-                          setFormValues({ ...formValues, termineAbschlussIst: e.target.value })
-                        }
-                        placeholder="0"
-                      />
+                  {member?.trackAbschluesse && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="termineAbschlussIst">
+                          Abschluss-Termine {member?.termineAbschlussSoll ? `(Ziel: ${member.termineAbschlussSoll})` : ""}
+                        </Label>
+                        <Input
+                          id="termineAbschlussIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.termineAbschlussIst}
+                          onChange={(e) => setFormValues({ ...formValues, termineAbschlussIst: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="termineNoshowIst">No-Shows</Label>
+                        <Input
+                          id="termineNoshowIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.termineNoshowIst}
+                          onChange={(e) => setFormValues({ ...formValues, termineNoshowIst: e.target.value })}
+                        />
+                      </div>
                     </div>
                   )}
+                </CardContent>
+              </Card>
+            )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="umsatz">
-                      Umsatz € {data?.member.umsatzSollWoche ? `(Ziel: ${data.member.umsatzSollWoche}€)` : ""}
-                    </Label>
-                    <Input
-                      id="umsatz"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={formValues.umsatzIst}
-                      onChange={(e) =>
-                        setFormValues({ ...formValues, umsatzIst: e.target.value })
-                      }
-                      placeholder="0.00"
-                    />
+            {/* Weitere KPIs */}
+            {(member?.trackEinheiten || member?.trackEmpfehlungen) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Weitere KPIs</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {member?.trackEinheiten && (
+                      <div className="space-y-2">
+                        <Label htmlFor="einheitenIst">
+                          Einheiten {member?.einheitenSoll ? `(Ziel: ${member.einheitenSoll})` : ""}
+                        </Label>
+                        <Input
+                          id="einheitenIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.einheitenIst}
+                          onChange={(e) => setFormValues({ ...formValues, einheitenIst: e.target.value })}
+                        />
+                      </div>
+                    )}
+                    {member?.trackEmpfehlungen && (
+                      <div className="space-y-2">
+                        <Label htmlFor="empfehlungenIst">
+                          Empfehlungen {member?.empfehlungenSoll ? `(Ziel: ${member.empfehlungenSoll})` : ""}
+                        </Label>
+                        <Input
+                          id="empfehlungenIst"
+                          type="number"
+                          inputMode="numeric"
+                          className="h-12"
+                          value={formValues.empfehlungenIst}
+                          onChange={(e) => setFormValues({ ...formValues, empfehlungenIst: e.target.value })}
+                        />
+                      </div>
+                    )}
                   </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Feeling Score */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Wie fühlst du dich?</CardTitle>
+                <CardDescription>
+                  Bewerte deine Woche auf einer Skala von 1 (schlecht) bis 10 (fantastisch)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Slider
+                    value={[feelingScore]}
+                    onValueChange={([value]) => setFeelingScore(value)}
+                    min={1}
+                    max={10}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>1 - Schlecht</span>
+                    <span className="text-2xl font-bold text-gray-900">{feelingScore}</span>
+                    <span>10 - Fantastisch</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Reflexion */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Reflexion</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="heldentat">Was war deine Heldentat diese Woche?</Label>
+                  <Textarea
+                    id="heldentat"
+                    placeholder="Erzähl uns von deinem größten Erfolg..."
+                    value={formValues.heldentat}
+                    onChange={(e) => setFormValues({ ...formValues, heldentat: e.target.value })}
+                    className="min-h-[100px]"
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Wie fühlst du dich diese Woche?</Label>
-                  <div className="flex gap-4 justify-center py-4">
-                    {[1, 2, 3, 4, 5].map((score) => (
-                      <button
-                        key={score}
-                        type="button"
-                        onClick={() =>
-                          setFormValues({ ...formValues, feelingScore: score.toString() })
-                        }
-                        className={`text-4xl transition-transform ${
-                          formValues.feelingScore === score.toString()
-                            ? "scale-125"
-                            : "opacity-50 hover:opacity-100"
-                        }`}
-                      >
-                        {score === 1 && "😞"}
-                        {score === 2 && "😕"}
-                        {score === 3 && "😐"}
-                        {score === 4 && "🙂"}
-                        {score === 5 && "😄"}
-                      </button>
-                    ))}
-                  </div>
+                  <Label htmlFor="blockiert">Was hat dich diese Woche blockiert?</Label>
+                  <Textarea
+                    id="blockiert"
+                    placeholder="Gab es Herausforderungen oder Hindernisse?"
+                    value={formValues.blockiert}
+                    onChange={(e) => setFormValues({ ...formValues, blockiert: e.target.value })}
+                    className="min-h-[100px]"
+                  />
                 </div>
 
-                <Button
-                  type="submit"
-                  className="w-full bg-red-600 hover:bg-red-700"
-                  disabled={saving}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Speichern...
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4 mr-2" />
-                      Speichern
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                <div className="space-y-2">
+                  <Label htmlFor="herausforderung">Was ist deine größte Herausforderung für nächste Woche?</Label>
+                  <Textarea
+                    id="herausforderung"
+                    placeholder="Worauf möchtest du dich fokussieren?"
+                    value={formValues.herausforderung}
+                    onChange={(e) => setFormValues({ ...formValues, herausforderung: e.target.value })}
+                    className="min-h-[100px]"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Button
+              type="submit"
+              className="w-full h-12 text-base bg-red-600 hover:bg-red-700"
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Wird gespeichert...
+                </>
+              ) : (
+                "KPIs absenden"
+              )}
+            </Button>
+          </form>
 
           {/* History */}
           {data?.history && data.history.length > 0 && (
@@ -360,19 +576,18 @@ export default function MemberKpiPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-4 text-sm">
-                        {week.kontakteIst !== null && (
-                          <span>Kontakte: {week.kontakteIst}</span>
-                        )}
                         {week.umsatzIst !== null && (
-                          <span>Umsatz: {Number(week.umsatzIst).toLocaleString("de-DE")}€</span>
+                          <span className="font-medium">
+                            {Number(week.umsatzIst).toLocaleString("de-DE", {
+                              style: "currency",
+                              currency: "EUR",
+                              minimumFractionDigits: 0,
+                            })}
+                          </span>
                         )}
                         {week.feelingScore && (
-                          <span className="text-xl">
-                            {week.feelingScore === 1 && "😞"}
-                            {week.feelingScore === 2 && "😕"}
-                            {week.feelingScore === 3 && "😐"}
-                            {week.feelingScore === 4 && "🙂"}
-                            {week.feelingScore === 5 && "😄"}
+                          <span className="text-lg font-bold text-gray-700">
+                            {week.feelingScore}/10
                           </span>
                         )}
                       </div>
