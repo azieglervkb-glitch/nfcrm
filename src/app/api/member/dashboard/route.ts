@@ -12,11 +12,10 @@ export async function GET() {
     const member = await prisma.member.findUnique({
       where: { id: session.memberId },
       include: {
-        kpiEntries: {
+        kpiWeeks: {
           orderBy: { weekStart: "desc" },
           take: 4,
         },
-        goals: true,
       },
     });
 
@@ -30,27 +29,30 @@ export async function GET() {
     weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
     weekStart.setHours(0, 0, 0, 0);
 
-    const currentWeekKpi = member.kpiEntries.find((entry) => {
+    const currentWeekKpi = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);
       return entryWeek.getTime() === weekStart.getTime();
     });
 
-    // Calculate weekly score
+    // Calculate weekly score based on available KPIs
     let weeklyScore = 0;
     if (currentWeekKpi) {
       let score = 0;
       let metrics = 0;
 
-      if (currentWeekKpi.kontakteGenerated !== null && currentWeekKpi.kontakteTarget) {
-        score += Math.min(100, (currentWeekKpi.kontakteGenerated / currentWeekKpi.kontakteTarget) * 100);
+      // Kontakte
+      if (currentWeekKpi.kontakteIst !== null && member.kontakteSoll) {
+        score += Math.min(100, (currentWeekKpi.kontakteIst / member.kontakteSoll) * 100);
         metrics++;
       }
-      if (currentWeekKpi.termineClosed !== null && currentWeekKpi.termineTarget) {
-        score += Math.min(100, (currentWeekKpi.termineClosed / currentWeekKpi.termineTarget) * 100);
+      // Termine
+      if (currentWeekKpi.termineVereinbartIst !== null && member.termineVereinbartSoll) {
+        score += Math.min(100, (currentWeekKpi.termineVereinbartIst / member.termineVereinbartSoll) * 100);
         metrics++;
       }
-      if (currentWeekKpi.abschluesseCount !== null && currentWeekKpi.abschluesseTarget) {
-        score += Math.min(100, (currentWeekKpi.abschluesseCount / currentWeekKpi.abschluesseTarget) * 100);
+      // Abschlüsse
+      if (currentWeekKpi.termineAbschlussIst !== null && member.termineAbschlussSoll) {
+        score += Math.min(100, (currentWeekKpi.termineAbschlussIst / member.termineAbschlussSoll) * 100);
         metrics++;
       }
 
@@ -59,11 +61,11 @@ export async function GET() {
 
     // Calculate streak (weeks with KPI entries)
     let streak = 0;
-    for (const entry of member.kpiEntries) {
+    for (const entry of member.kpiWeeks) {
       if (
-        entry.kontakteGenerated !== null ||
-        entry.termineClosed !== null ||
-        entry.abschluesseCount !== null
+        entry.kontakteIst !== null ||
+        entry.termineVereinbartIst !== null ||
+        entry.umsatzIst !== null
       ) {
         streak++;
       } else {
@@ -71,31 +73,27 @@ export async function GET() {
       }
     }
 
-    // Count goals
-    const pendingGoals = member.goals.filter((g) => g.status === "ACTIVE").length;
-    const completedGoals = member.goals.filter((g) => g.status === "COMPLETED").length;
-
     return NextResponse.json({
       member: {
-        firstName: member.firstName,
-        lastName: member.lastName,
+        firstName: member.vorname,
+        lastName: member.nachname,
         status: member.status,
         onboardingDate: member.onboardingDate?.toISOString() || null,
       },
       currentWeekKpi: currentWeekKpi
         ? {
-            kontakteGenerated: currentWeekKpi.kontakteGenerated,
-            kontakteTarget: currentWeekKpi.kontakteTarget,
-            termineClosed: currentWeekKpi.termineClosed,
-            termineTarget: currentWeekKpi.termineTarget,
-            abschluesseCount: currentWeekKpi.abschluesseCount,
-            abschluesseTarget: currentWeekKpi.abschluesseTarget,
+            kontakteGenerated: currentWeekKpi.kontakteIst,
+            kontakteTarget: member.kontakteSoll || 0,
+            termineClosed: currentWeekKpi.termineVereinbartIst,
+            termineTarget: member.termineVereinbartSoll || 0,
+            abschluesseCount: currentWeekKpi.termineAbschlussIst,
+            abschluesseTarget: member.termineAbschlussSoll || 0,
           }
         : null,
       weeklyScore,
       streak,
-      pendingGoals,
-      completedGoals,
+      pendingGoals: 0,
+      completedGoals: 0,
     });
   } catch (error) {
     console.error("Failed to fetch member dashboard:", error);

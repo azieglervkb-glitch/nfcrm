@@ -13,13 +13,13 @@ export async function GET() {
       where: { id: session.memberId },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        vorname: true,
+        nachname: true,
         email: true,
-        phone: true,
+        telefon: true,
         status: true,
         onboardingDate: true,
-        program: true,
+        produkte: true,
       },
     });
 
@@ -29,13 +29,13 @@ export async function GET() {
 
     return NextResponse.json({
       id: member.id,
-      firstName: member.firstName,
-      lastName: member.lastName,
+      firstName: member.vorname,
+      lastName: member.nachname,
       email: member.email,
-      phone: member.phone,
+      phone: member.telefon,
       status: member.status,
       onboardingDate: member.onboardingDate?.toISOString() || null,
-      program: member.program,
+      program: member.produkte.join(", ") || null,
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
@@ -73,32 +73,32 @@ export async function PUT(request: Request) {
     const member = await prisma.member.update({
       where: { id: session.memberId },
       data: {
-        firstName: firstName || undefined,
-        lastName: lastName || undefined,
+        vorname: firstName || undefined,
+        nachname: lastName || undefined,
         email: email ? email.toLowerCase() : undefined,
-        phone: phone || undefined,
+        telefon: phone || undefined,
       },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        vorname: true,
+        nachname: true,
         email: true,
-        phone: true,
+        telefon: true,
         status: true,
         onboardingDate: true,
-        program: true,
+        produkte: true,
       },
     });
 
     return NextResponse.json({
       id: member.id,
-      firstName: member.firstName,
-      lastName: member.lastName,
+      firstName: member.vorname,
+      lastName: member.nachname,
       email: member.email,
-      phone: member.phone,
+      phone: member.telefon,
       status: member.status,
       onboardingDate: member.onboardingDate?.toISOString() || null,
-      program: member.program,
+      program: member.produkte.join(", ") || null,
     });
   } catch (error) {
     console.error("Failed to update profile:", error);

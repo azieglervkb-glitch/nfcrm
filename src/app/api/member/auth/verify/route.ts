@@ -24,21 +24,21 @@ export async function POST() {
       where: { id: memberId },
       select: {
         id: true,
-        firstName: true,
-        lastName: true,
+        vorname: true,
+        nachname: true,
         email: true,
         status: true,
       },
     });
 
-    if (!member || member.status === "CHURNED") {
+    if (!member || member.status === "GEKUENDIGT" || member.status === "INAKTIV") {
       return NextResponse.json({ error: "Invalid session" }, { status: 401 });
     }
 
     return NextResponse.json({
       id: member.id,
-      firstName: member.firstName,
-      lastName: member.lastName,
+      firstName: member.vorname,
+      lastName: member.nachname,
       email: member.email,
       status: member.status,
     });

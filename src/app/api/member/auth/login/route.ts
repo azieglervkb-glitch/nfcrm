@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // Check if member is active
-    if (member.status === "CHURNED") {
+    if (member.status === "GEKUENDIGT" || member.status === "INAKTIV") {
       return NextResponse.json(
         { message: "Your membership is no longer active" },
         { status: 403 }
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
     const token = await new SignJWT({
       memberId: member.id,
       email: member.email,
-      firstName: member.firstName,
+      firstName: member.vorname,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
@@ -74,8 +74,8 @@ export async function POST(request: Request) {
       success: true,
       member: {
         id: member.id,
-        firstName: member.firstName,
-        lastName: member.lastName,
+        firstName: member.vorname,
+        lastName: member.nachname,
         email: member.email,
       },
     });
