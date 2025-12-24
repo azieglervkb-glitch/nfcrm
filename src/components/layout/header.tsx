@@ -1,13 +1,10 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { Bell, Search, Settings, LogOut, User, Menu } from "lucide-react";
+import { Bell, Settings, LogOut, User, Menu } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,16 +30,6 @@ function getInitials(vorname: string, nachname: string): string {
 }
 
 export function Header({ user, breadcrumbs, onMenuClick }: HeaderProps) {
-  const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
-  };
-
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/login" });
   };
@@ -50,7 +37,7 @@ export function Header({ user, breadcrumbs, onMenuClick }: HeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background">
       <div className="flex h-16 items-center justify-between px-6">
-        {/* Left side - Menu button (mobile) + Search */}
+        {/* Left side - Menu button (mobile) */}
         <div className="flex items-center gap-4">
           {onMenuClick && (
             <Button
@@ -62,19 +49,6 @@ export function Header({ user, breadcrumbs, onMenuClick }: HeaderProps) {
               <Menu className="h-5 w-5" />
             </Button>
           )}
-
-          <form onSubmit={handleSearch} className="hidden sm:block">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Suche"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-64 bg-secondary border-0 pl-10 focus-visible:ring-1 focus-visible:ring-primary"
-              />
-            </div>
-          </form>
         </div>
 
         {/* Right side - Actions */}

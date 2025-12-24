@@ -83,7 +83,7 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="bg-[#ae1d2b] rounded-2xl p-6 text-white">
+      <div className="bg-[#ae1d2b]/90 rounded-2xl p-6 text-white">
         <div>
           <h1 className="text-2xl font-bold">
             Willkommen, {session?.user?.vorname}!
