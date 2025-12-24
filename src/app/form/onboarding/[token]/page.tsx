@@ -41,6 +41,7 @@ export default function OnboardingFormPage({
   const [success, setSuccess] = useState(false);
   const [memberData, setMemberData] = useState<MemberData | null>(null);
   const [token, setToken] = useState<string>("");
+  const [isPreview, setIsPreview] = useState(false);
 
   const {
     register,
@@ -63,6 +64,7 @@ export default function OnboardingFormPage({
         }
         const data = await response.json();
         setMemberData(data.member);
+        setIsPreview(data.isPreview || false);
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
       } finally {
@@ -159,19 +161,21 @@ export default function OnboardingFormPage({
   return (
     <div className="min-h-screen bg-muted/30 py-6 px-4 sm:py-8">
       <div className="max-w-lg mx-auto">
+        {/* Preview Banner */}
+        {isPreview && (
+          <div className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-2 rounded-lg mb-4 text-center text-sm">
+            Vorschau-Modus – Daten werden nicht gespeichert
+          </div>
+        )}
+
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <div className="flex justify-center mb-4">
-            <svg
-              viewBox="0 0 40 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-10 w-10 sm:h-12 sm:w-12"
-            >
-              <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" fill="#ae1d2b" />
-              <path d="M12 18L20 12L28 18L20 24L12 18Z" fill="white" />
-              <path d="M20 24V32" stroke="white" strokeWidth="2" />
-            </svg>
+            <img
+              src="/nf-logo.png"
+              alt="NF Mentoring"
+              className="h-12 sm:h-16 w-auto"
+            />
           </div>
           <h1 className="text-xl sm:text-2xl font-bold">Starte jetzt dein NF Mentoring</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
@@ -397,13 +401,15 @@ export default function OnboardingFormPage({
               <Button
                 type="submit"
                 className="flex-1 h-12"
-                disabled={submitting}
+                disabled={submitting || isPreview}
               >
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Wird gespeichert...
                   </>
+                ) : isPreview ? (
+                  "Vorschau-Modus"
                 ) : (
                   "Absenden"
                 )}
