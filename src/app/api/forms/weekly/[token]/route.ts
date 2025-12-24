@@ -12,42 +12,72 @@ export async function GET(
 ) {
   const { token } = await params;
 
+  // First try to find a FormToken
   const formToken = await prisma.formToken.findUnique({
     where: { token },
     include: { member: true },
   });
 
-  if (!formToken) {
-    return NextResponse.json({ error: "Token nicht gefunden" }, { status: 404 });
+  if (formToken) {
+    if (formToken.expiresAt < new Date()) {
+      return NextResponse.json({ error: "Token abgelaufen" }, { status: 400 });
+    }
+
+    if (formToken.type !== "weekly") {
+      return NextResponse.json({ error: "Ungültiger Token-Typ" }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      member: {
+        id: formToken.member.id,
+        vorname: formToken.member.vorname,
+        nachname: formToken.member.nachname,
+        trackKontakte: formToken.member.trackKontakte,
+        trackTermine: formToken.member.trackTermine,
+        trackEinheiten: formToken.member.trackEinheiten,
+        trackEmpfehlungen: formToken.member.trackEmpfehlungen,
+        trackEntscheider: formToken.member.trackEntscheider,
+        trackAbschluesse: formToken.member.trackAbschluesse,
+        umsatzSollWoche: formToken.member.umsatzSollWoche,
+        kontakteSoll: formToken.member.kontakteSoll,
+        termineVereinbartSoll: formToken.member.termineVereinbartSoll,
+        termineAbschlussSoll: formToken.member.termineAbschlussSoll,
+        einheitenSoll: formToken.member.einheitenSoll,
+        empfehlungenSoll: formToken.member.empfehlungenSoll,
+      },
+      isPreview: false,
+    });
   }
 
-  if (formToken.expiresAt < new Date()) {
-    return NextResponse.json({ error: "Token abgelaufen" }, { status: 400 });
-  }
-
-  if (formToken.type !== "weekly") {
-    return NextResponse.json({ error: "Ungültiger Token-Typ" }, { status: 400 });
-  }
-
-  return NextResponse.json({
-    member: {
-      id: formToken.member.id,
-      vorname: formToken.member.vorname,
-      nachname: formToken.member.nachname,
-      trackKontakte: formToken.member.trackKontakte,
-      trackTermine: formToken.member.trackTermine,
-      trackEinheiten: formToken.member.trackEinheiten,
-      trackEmpfehlungen: formToken.member.trackEmpfehlungen,
-      trackEntscheider: formToken.member.trackEntscheider,
-      trackAbschluesse: formToken.member.trackAbschluesse,
-      umsatzSollWoche: formToken.member.umsatzSollWoche,
-      kontakteSoll: formToken.member.kontakteSoll,
-      termineVereinbartSoll: formToken.member.termineVereinbartSoll,
-      termineAbschlussSoll: formToken.member.termineAbschlussSoll,
-      einheitenSoll: formToken.member.einheitenSoll,
-      empfehlungenSoll: formToken.member.empfehlungenSoll,
-    },
+  // If no token found, try to find by member ID (for admin preview)
+  const member = await prisma.member.findUnique({
+    where: { id: token },
   });
+
+  if (member) {
+    return NextResponse.json({
+      member: {
+        id: member.id,
+        vorname: member.vorname,
+        nachname: member.nachname,
+        trackKontakte: member.trackKontakte,
+        trackTermine: member.trackTermine,
+        trackEinheiten: member.trackEinheiten,
+        trackEmpfehlungen: member.trackEmpfehlungen,
+        trackEntscheider: member.trackEntscheider,
+        trackAbschluesse: member.trackAbschluesse,
+        umsatzSollWoche: member.umsatzSollWoche,
+        kontakteSoll: member.kontakteSoll,
+        termineVereinbartSoll: member.termineVereinbartSoll,
+        termineAbschlussSoll: member.termineAbschlussSoll,
+        einheitenSoll: member.einheitenSoll,
+        empfehlungenSoll: member.empfehlungenSoll,
+      },
+      isPreview: true,
+    });
+  }
+
+  return NextResponse.json({ error: "Token nicht gefunden" }, { status: 404 });
 }
 
 export async function POST(

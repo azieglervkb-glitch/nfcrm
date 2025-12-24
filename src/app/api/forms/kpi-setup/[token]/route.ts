@@ -8,6 +8,7 @@ export async function GET(
   try {
     const { token } = await params;
 
+    // First try to find a FormToken
     const formToken = await prisma.formToken.findUnique({
       where: { token },
       include: {
@@ -23,33 +24,57 @@ export async function GET(
       },
     });
 
-    if (!formToken) {
-      return NextResponse.json({ error: "Token nicht gefunden" }, { status: 404 });
+    if (formToken) {
+      if (formToken.type !== "kpi-setup") {
+        return NextResponse.json({ error: "Falscher Token-Typ" }, { status: 400 });
+      }
+
+      if (formToken.expiresAt < new Date()) {
+        return NextResponse.json({ error: "Token abgelaufen" }, { status: 400 });
+      }
+
+      if (formToken.usedAt) {
+        return NextResponse.json({ error: "Token bereits verwendet" }, { status: 400 });
+      }
+
+      if (formToken.member.kpiTrackingActive) {
+        return NextResponse.json({ error: "KPI-Tracking bereits aktiviert" }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        member: {
+          vorname: formToken.member.vorname,
+          nachname: formToken.member.nachname,
+          zielMonatsumsatz: formToken.member.zielMonatsumsatz,
+        },
+        isPreview: false,
+      });
     }
 
-    if (formToken.type !== "kpi-setup") {
-      return NextResponse.json({ error: "Falscher Token-Typ" }, { status: 400 });
-    }
-
-    if (formToken.expiresAt < new Date()) {
-      return NextResponse.json({ error: "Token abgelaufen" }, { status: 400 });
-    }
-
-    if (formToken.usedAt) {
-      return NextResponse.json({ error: "Token bereits verwendet" }, { status: 400 });
-    }
-
-    if (formToken.member.kpiTrackingActive) {
-      return NextResponse.json({ error: "KPI-Tracking bereits aktiviert" }, { status: 400 });
-    }
-
-    return NextResponse.json({
-      member: {
-        vorname: formToken.member.vorname,
-        nachname: formToken.member.nachname,
-        zielMonatsumsatz: formToken.member.zielMonatsumsatz,
+    // If no token found, try to find by member ID (for admin preview)
+    const member = await prisma.member.findUnique({
+      where: { id: token },
+      select: {
+        id: true,
+        vorname: true,
+        nachname: true,
+        zielMonatsumsatz: true,
+        kpiTrackingActive: true,
       },
     });
+
+    if (member) {
+      return NextResponse.json({
+        member: {
+          vorname: member.vorname,
+          nachname: member.nachname,
+          zielMonatsumsatz: member.zielMonatsumsatz,
+        },
+        isPreview: true,
+      });
+    }
+
+    return NextResponse.json({ error: "Token nicht gefunden" }, { status: 404 });
   } catch (error) {
     console.error("Error fetching KPI setup form:", error);
     return NextResponse.json(
