@@ -32,11 +32,11 @@ export async function POST(request: NextRequest) {
     const admin = await prisma.user.create({
       data: {
         email: "admin@nf-mentoring.de",
-        password: hashedPassword,
+        passwordHash: hashedPassword,
         vorname: "Admin",
         nachname: "NF Mentoring",
         role: "SUPER_ADMIN",
-        aktiv: true,
+        isActive: true,
       },
     });
 
