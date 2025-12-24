@@ -4,6 +4,7 @@ import { weeklyKpiFormSchema } from "@/lib/validations";
 import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
+import { runKpiAutomations } from "@/lib/automation/engine";
 
 export async function GET(
   request: NextRequest,
@@ -156,6 +157,9 @@ export async function POST(
         console.error
       );
     }
+
+    // Run automation rules (async, don't wait)
+    runKpiAutomations(formToken.memberId, kpiWeek.id).catch(console.error);
 
     return NextResponse.json({ success: true, kpiWeekId: kpiWeek.id });
   } catch (error) {
