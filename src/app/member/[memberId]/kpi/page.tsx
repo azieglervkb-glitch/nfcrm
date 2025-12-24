@@ -281,9 +281,6 @@ export default function MemberKpiPage() {
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center">
-            <div className="flex justify-center mb-4">
-              <img src="/nf-logo.png" alt="NF Mentoring" className="h-12 sm:h-16 w-auto" />
-            </div>
             <h1 className="text-xl sm:text-2xl font-bold">Dein Weekly KPI-Update</h1>
             <p className="text-gray-600 mt-1 text-sm sm:text-base">
               Hallo {member?.vorname}! Trage deine Zahlen für diese Woche ein.
