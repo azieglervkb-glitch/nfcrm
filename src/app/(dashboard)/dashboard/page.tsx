@@ -83,12 +83,12 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="bg-gradient-to-r from-gray-800 to-gray-900 rounded-2xl p-6 text-white">
+      <div className="bg-[#ae1d2b] rounded-2xl p-6 text-white">
         <div>
           <h1 className="text-2xl font-bold">
             Willkommen, {session?.user?.vorname}!
           </h1>
-          <p className="text-gray-300">
+          <p className="text-white/80">
             Verwalte deine Member und tracke ihre KPIs.
           </p>
         </div>
