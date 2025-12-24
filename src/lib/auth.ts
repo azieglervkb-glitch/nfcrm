@@ -1,14 +1,10 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import { authConfig } from "./auth.config";
 
-// Auth config without Prisma adapter for Edge middleware compatibility
-const authConfig = {
-  session: {
-    strategy: "jwt" as const,
-  },
-  pages: {
-    signIn: "/login",
-  },
+// Full auth config WITH Prisma - for API routes only (not Edge runtime)
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   providers: [
     CredentialsProvider({
       name: "credentials",
@@ -16,8 +12,6 @@ const authConfig = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      // Authorize is only called during sign-in, not in middleware
-      // So we can safely import prisma dynamically there
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
@@ -64,28 +58,4 @@ const authConfig = {
       },
     }),
   ],
-  callbacks: {
-    async jwt({ token, user }: { token: any; user: any }) {
-      if (user) {
-        token.id = user.id;
-        token.role = user.role;
-        token.vorname = user.vorname;
-        token.nachname = user.nachname;
-        token.avatarUrl = user.avatarUrl;
-      }
-      return token;
-    },
-    async session({ session, token }: { session: any; token: any }) {
-      if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
-        session.user.vorname = token.vorname as string;
-        session.user.nachname = token.nachname as string;
-        session.user.avatarUrl = token.avatarUrl as string | null;
-      }
-      return session;
-    },
-  },
-};
-
-export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
+});

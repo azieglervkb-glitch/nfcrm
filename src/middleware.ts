@@ -1,43 +1,47 @@
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
 import { NextResponse } from "next/server";
+
+// Use edge-compatible auth config (no Prisma)
+const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
   const { pathname } = req.nextUrl;
 
-  // Public paths that don't require authentication
-  const publicPaths = [
-    "/login",
-    "/forgot-password",
-    "/reset-password",
-    "/form",
-    "/api/auth",
-    "/api/webhooks",
-    "/api/forms",
-  ];
-
-  const isPublicPath = publicPaths.some(
-    (path) => pathname === path || pathname.startsWith(path + "/")
-  );
-
-  // Allow public paths
-  if (isPublicPath) {
-    // Redirect logged in users away from login page
-    if (isLoggedIn && pathname === "/login") {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    return NextResponse.next();
+  // Redirect logged in users away from login page
+  if (isLoggedIn && pathname === "/login") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
-  // Redirect unauthenticated users to login
+  // Redirect unauthenticated users to login (for protected routes)
   if (!isLoggedIn) {
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("callbackUrl", pathname);
-    return NextResponse.redirect(loginUrl);
+    // Public paths are handled by the authorized callback in auth.config
+    const publicPaths = [
+      "/login",
+      "/forgot-password",
+      "/reset-password",
+      "/form",
+      "/api/auth",
+      "/api/webhooks",
+      "/api/forms",
+      "/api/setup",
+      "/api/cron",
+    ];
+
+    const isPublicPath = publicPaths.some(
+      (path) => pathname === path || pathname.startsWith(path + "/")
+    );
+
+    if (!isPublicPath) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
   }
 
   // Redirect root to dashboard
-  if (pathname === "/") {
+  if (pathname === "/" && isLoggedIn) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
