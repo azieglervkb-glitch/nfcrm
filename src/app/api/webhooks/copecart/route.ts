@@ -78,10 +78,17 @@ async function handleNewOrder(data: any) {
     return;
   }
 
+  // Check if there's an existing lead to convert
+  const existingLead = await prisma.lead.findUnique({
+    where: { email: customer_email },
+  });
+
   // Find or create member
   let member = await prisma.member.findUnique({
     where: { email: customer_email },
   });
+
+  let isNewMember = false;
 
   if (member) {
     // Add product if not already present
@@ -96,17 +103,32 @@ async function handleNewOrder(data: any) {
       });
     }
   } else {
-    // Create new member
+    // Create new member (use lead data if available)
     const [vorname, ...nachnameParts] = (customer_name || "").split(" ");
     member = await prisma.member.create({
       data: {
         email: customer_email,
-        vorname: vorname || "Neues",
-        nachname: nachnameParts.join(" ") || "Mitglied",
+        vorname: existingLead?.vorname || vorname || "Neues",
+        nachname: existingLead?.nachname || nachnameParts.join(" ") || "Mitglied",
+        telefon: existingLead?.telefon || null,
+        whatsappNummer: existingLead?.whatsappNummer || null,
         produkte: [productType],
         status: "AKTIV",
         membershipStart: new Date(),
         copecartCustomerId: customer_id,
+      },
+    });
+    isNewMember = true;
+  }
+
+  // Mark lead as converted if exists
+  if (existingLead && existingLead.status !== "KONVERTIERT") {
+    await prisma.lead.update({
+      where: { id: existingLead.id },
+      data: {
+        status: "KONVERTIERT",
+        convertedToMemberId: member.id,
+        convertedAt: new Date(),
       },
     });
   }
@@ -161,17 +183,27 @@ async function handleNewOrder(data: any) {
   });
 
   // Log automation
+  const actions = [
+    isNewMember ? "CREATE_MEMBER" : "UPDATE_MEMBER",
+    "CREATE_ONBOARDING_TOKEN",
+    "SEND_WELCOME_EMAIL",
+  ];
+
+  if (existingLead) {
+    actions.push("CONVERT_LEAD");
+  }
+
   await prisma.automationLog.create({
     data: {
       memberId: member.id,
       ruleId: "WEBHOOK",
       ruleName: "Copecart Order",
-      actionsTaken: [
-        member.id ? "UPDATE_MEMBER" : "CREATE_MEMBER",
-        "CREATE_ONBOARDING_TOKEN",
-        "SEND_WELCOME_EMAIL",
-      ],
-      details: { productType, customerId: customer_id },
+      actionsTaken: actions,
+      details: {
+        productType,
+        customerId: customer_id,
+        convertedFromLead: existingLead?.id || null,
+      },
     },
   });
 }

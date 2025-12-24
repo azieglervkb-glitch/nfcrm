@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
   Users,
+  UserPlus,
   BarChart3,
   AlertCircle,
   Zap,
@@ -38,11 +39,17 @@ const menuItems = [
     ],
   },
   {
-    category: "MITGLIEDER-MANAGEMENT",
+    category: "KONTAKTE",
     items: [
+      { label: "Leads", href: "/leads", icon: UserPlus },
       { label: "Mitglieder", href: "/members", icon: Users },
-      { label: "KPI-Tracking", href: "/kpis", icon: BarChart3 },
-      { label: "Ausstehende KPIs", href: "/kpis/pending", icon: AlertCircle },
+    ],
+  },
+  {
+    category: "KPI-TRACKING",
+    items: [
+      { label: "Übersicht", href: "/kpis", icon: BarChart3 },
+      { label: "Ausstehend", href: "/kpis/pending", icon: AlertCircle },
     ],
   },
   {

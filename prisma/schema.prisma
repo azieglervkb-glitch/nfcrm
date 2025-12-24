@@ -130,6 +130,63 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+// Lead Status
+enum LeadStatus {
+  NEU
+  KONTAKTIERT
+  QUALIFIZIERT
+  KONVERTIERT  // Wurde zum Member
+  VERLOREN
+}
+
+// Lead Source
+enum LeadSource {
+  ONEPAGE
+  WEBSITE
+  SOCIAL_MEDIA
+  EMPFEHLUNG
+  MANUELL
+}
+
+// Leads (Interessenten, noch kein Kauf)
+model Lead {
+  id String @id @default(cuid())
+
+  // Kontaktdaten
+  email          String  @unique
+  vorname        String
+  nachname       String
+  telefon        String?
+  whatsappNummer String?
+
+  // Lead-Tracking
+  status      LeadStatus @default(NEU)
+  source      LeadSource @default(ONEPAGE)
+  sourceDetail String?   // z.B. "Landingpage XYZ", "Instagram Ad"
+
+  // OnePage Webhook Data
+  onepageLeadId String?  @unique
+  onepageData   Json?    // Raw webhook data
+
+  // Interessen
+  interessiertAn String? // "VPMC", "NFM", etc.
+
+  // Notizen
+  notizen String? @db.Text
+
+  // Konvertierung
+  convertedToMemberId String?   @unique
+  convertedAt         DateTime?
+
+  // Timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([source])
+  @@index([email])
+}
+
 // Mentoring-Mitglieder
 model Member {
   id String @id @default(cuid())
