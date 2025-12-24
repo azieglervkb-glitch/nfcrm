@@ -104,16 +104,16 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar">
       <div className="flex h-full flex-col overflow-y-auto scrollbar-thin">
-        {/* Logo - NF Mentoring */}
-        <div className="flex items-center gap-3 px-6 py-5">
+        {/* Logo - NF Mentoring (wie LearningSuite) */}
+        <div className="flex items-center gap-3 px-5 py-4">
           <img
             src="/nf-logo.svg"
             alt="NF Mentoring"
-            className="h-8 w-auto"
+            className="h-10 w-auto"
           />
-          <div className="flex items-baseline gap-1">
-            <span className="text-lg font-bold text-foreground">NF</span>
-            <span className="text-sm font-light text-foreground tracking-wide">MENTORING</span>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-xl font-bold text-foreground tracking-tight">NF</span>
+            <span className="text-base font-normal text-muted-foreground tracking-wide">MENTORING</span>
           </div>
         </div>
 
