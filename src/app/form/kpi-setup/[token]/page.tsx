@@ -176,7 +176,7 @@ export default function KpiSetupFormPage({
               xmlns="http://www.w3.org/2000/svg"
               className="h-10 w-10 sm:h-12 sm:w-12"
             >
-              <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" fill="#dc2626" />
+              <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" fill="#ae1d2b" />
               <path d="M12 18L20 12L28 18L20 24L12 18Z" fill="white" />
               <path d="M20 24V32" stroke="white" strokeWidth="2" />
             </svg>

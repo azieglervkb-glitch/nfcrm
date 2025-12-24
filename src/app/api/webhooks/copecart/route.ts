@@ -132,7 +132,7 @@ async function handleNewOrder(data: any) {
     subject: "Willkommen beim NF Mentoring!",
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+        <div style="background: linear-gradient(135deg, #ae1d2b 0%, #8a1722 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0;">
           <h1 style="color: white; margin: 0; font-size: 28px;">Willkommen beim NF Mentoring!</h1>
         </div>
         <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
@@ -144,7 +144,7 @@ async function handleNewOrder(data: any) {
             Um loszulegen, fülle bitte das kurze Onboarding-Formular aus:
           </p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${onboardingUrl}" style="background: #dc2626; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+            <a href="${onboardingUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
               Onboarding starten
             </a>
           </div>
@@ -153,7 +153,7 @@ async function handleNewOrder(data: any) {
           </p>
           <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
           <p style="color: #9ca3af; font-size: 14px; text-align: center;">
-            NF Mentoring | <a href="https://nf-mentoring.de" style="color: #dc2626;">nf-mentoring.de</a>
+            NF Mentoring | <a href="https://nf-mentoring.de" style="color: #ae1d2b;">nf-mentoring.de</a>
           </p>
         </div>
       </div>

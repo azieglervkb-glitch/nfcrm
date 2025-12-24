@@ -70,16 +70,16 @@ const EMAIL_STYLES = `
     .content { padding: 32px; }
     .greeting { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; }
     .text { color: #4a4a4a; margin-bottom: 16px; }
-    .button { display: inline-block; background: #dc2626; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0; }
-    .button:hover { background: #b91c1c; }
+    .button { display: inline-block; background: #ae1d2b; color: #ffffff !important; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 24px 0; }
+    .button:hover { background: #8a1722; }
     .stats-box { background: #f8f8f8; border-radius: 12px; padding: 20px; margin: 24px 0; }
     .stats-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e5e5e5; }
     .stats-row:last-child { border-bottom: none; }
     .stats-label { color: #6b6b6b; }
     .stats-value { font-weight: 600; color: #1a1a1a; }
-    .highlight-box { background: linear-gradient(135deg, #fef2f2 0%, #fff5f5 100%); border-left: 4px solid #dc2626; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0; }
+    .highlight-box { background: linear-gradient(135deg, #fdf2f3 0%, #fff5f5 100%); border-left: 4px solid #ae1d2b; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0; }
     .footer { background: #f8f8f8; padding: 24px 32px; text-align: center; color: #6b6b6b; font-size: 14px; }
-    .footer a { color: #dc2626; text-decoration: none; }
+    .footer a { color: #ae1d2b; text-decoration: none; }
     .divider { height: 1px; background: #e5e5e5; margin: 24px 0; }
     .tip { background: #f0fdf4; border-radius: 8px; padding: 16px; margin: 16px 0; }
     .tip-title { color: #166534; font-weight: 600; margin-bottom: 8px; }
@@ -92,7 +92,7 @@ const EMAIL_HEADER = `
   <div class="header">
     <div class="logo">
       <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
-        <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" fill="#dc2626"/>
+        <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" fill="#ae1d2b"/>
         <path d="M12 18L20 12L28 18L20 24L12 18Z" fill="white"/>
         <path d="M20 24V32" stroke="white" stroke-width="2"/>
       </svg>
@@ -215,7 +215,7 @@ export async function sendWeeklyFeedbackEmail(
     ? Math.round((stats.umsatzIst / stats.umsatzSoll) * 100)
     : 0;
 
-  const performanceColor = performancePercent >= 100 ? "#16a34a" : performancePercent >= 80 ? "#ca8a04" : "#dc2626";
+  const performanceColor = performancePercent >= 100 ? "#16a34a" : performancePercent >= 80 ? "#ca8a04" : "#ae1d2b";
 
   const content = `
     <div class="content">
@@ -471,7 +471,7 @@ export async function sendGoalCelebrationEmail(
         ${stats.streak && stats.streak > 1 ? `
           <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e5e5;">
             <span style="font-size: 24px;">🔥</span>
-            <span style="font-weight: 600; color: #dc2626;"> ${stats.streak} Wochen Streak!</span>
+            <span style="font-weight: 600; color: #ae1d2b;"> ${stats.streak} Wochen Streak!</span>
           </div>
         ` : ""}
       </div>
@@ -535,7 +535,7 @@ export async function sendCoachTaskNotification(
   const priorityColors: Record<string, string> = {
     LOW: "#6b7280",
     MEDIUM: "#ca8a04",
-    HIGH: "#dc2626",
+    HIGH: "#ae1d2b",
     URGENT: "#7c2d12",
   };
 
