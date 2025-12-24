@@ -1,13 +1,10 @@
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import { PrismaAdapter } from "@auth/prisma-adapter";
-import bcrypt from "bcryptjs";
-import { prisma } from "./prisma";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
-  adapter: PrismaAdapter(prisma),
+// Auth config without Prisma adapter for Edge middleware compatibility
+const authConfig = {
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
   },
   pages: {
     signIn: "/login",
@@ -19,10 +16,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
+      // Authorize is only called during sign-in, not in middleware
+      // So we can safely import prisma dynamically there
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
+
+        // Dynamic import to avoid Edge runtime issues
+        const { prisma } = await import("./prisma");
+        const bcrypt = await import("bcryptjs");
 
         const user = await prisma.user.findUnique({
           where: {
@@ -62,17 +65,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user }: { token: any; user: any }) {
       if (user) {
         token.id = user.id;
-        token.role = (user as any).role;
-        token.vorname = (user as any).vorname;
-        token.nachname = (user as any).nachname;
-        token.avatarUrl = (user as any).avatarUrl;
+        token.role = user.role;
+        token.vorname = user.vorname;
+        token.nachname = user.nachname;
+        token.avatarUrl = user.avatarUrl;
       }
       return token;
     },
-    async session({ session, token }) {
+    async session({ session, token }: { session: any; token: any }) {
       if (session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
@@ -83,4 +86,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+};
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authConfig);
