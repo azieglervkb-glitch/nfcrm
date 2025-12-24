@@ -55,29 +55,15 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex justify-center mb-8">
-          <div className="flex items-center gap-2">
-            <svg
-              viewBox="0 0 40 40"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-12 w-12"
-            >
-              <path
-                d="M20 5L35 15V25L20 35L5 25V15L20 5Z"
-                fill="#dc2626"
-                stroke="#dc2626"
-                strokeWidth="2"
-              />
-              <path d="M12 18L20 12L28 18L20 24L12 18Z" fill="white" />
-              <path d="M20 24V32" stroke="white" strokeWidth="2" />
-            </svg>
-            <div>
-              <span className="text-2xl font-bold text-foreground">NF</span>
-              <span className="text-2xl font-normal text-muted-foreground ml-1">
-                CRM
-              </span>
-            </div>
+        <div className="flex flex-col items-center mb-8">
+          <img
+            src="/nf-logo.svg"
+            alt="NF Mentoring"
+            className="h-16 w-auto mb-3"
+          />
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold text-foreground">NF</span>
+            <span className="text-xl font-light text-foreground tracking-wide">MENTORING</span>
           </div>
         </div>
 

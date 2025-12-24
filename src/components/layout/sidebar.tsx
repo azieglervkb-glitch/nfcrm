@@ -104,28 +104,16 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar">
       <div className="flex h-full flex-col overflow-y-auto scrollbar-thin">
-        {/* Logo - NF Mentoring exact logo (double swoosh) */}
-        <div className="flex items-center gap-2 px-6 py-5">
-          <svg
-            viewBox="0 0 50 40"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-9 w-11"
-          >
-            {/* Left swoosh - curves up from bottom-left */}
-            <path
-              d="M2 32 C2 32 6 32 8 30 C12 26 18 14 22 10 C26 6 30 6 34 10 C36 12 38 16 38 16 C38 16 36 12 32 10 C28 8 24 10 20 16 C16 22 10 32 6 34 C4 35 2 34 2 32 Z"
-              fill="#dc2626"
-            />
-            {/* Right swoosh - curves down from top-right */}
-            <path
-              d="M48 8 C48 8 44 8 42 10 C38 14 32 26 28 30 C24 34 20 34 16 30 C14 28 12 24 12 24 C12 24 14 28 18 30 C22 32 26 30 30 24 C34 18 40 8 44 6 C46 5 48 6 48 8 Z"
-              fill="#dc2626"
-            />
-          </svg>
-          <div className="flex flex-col leading-none">
-            <span className="text-base font-bold text-foreground">NF</span>
-            <span className="text-[9px] text-muted-foreground tracking-wider">MENTORING</span>
+        {/* Logo - NF Mentoring */}
+        <div className="flex items-center gap-3 px-6 py-5">
+          <img
+            src="/nf-logo.svg"
+            alt="NF Mentoring"
+            className="h-8 w-auto"
+          />
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold text-foreground">NF</span>
+            <span className="text-sm font-light text-foreground tracking-wide">MENTORING</span>
           </div>
         </div>
 

@@ -1,0 +1,6 @@
+<svg viewBox="0 0 120 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Upper swoosh - curves from bottom-left up to top-right, thick stroke tapering -->
+  <path d="M2 50 Q2 50 8 48 Q20 42 35 25 Q50 8 70 5 Q90 2 105 15 Q112 21 115 28 L110 25 Q100 15 85 12 Q70 10 55 20 Q40 32 28 45 Q18 55 8 55 Q4 55 2 52 Z" fill="#b91c1c"/>
+  <!-- Lower swoosh - curves from top-left down to bottom-right -->
+  <path d="M2 20 Q4 15 8 15 Q18 15 28 25 Q40 38 55 50 Q70 60 85 58 Q100 55 110 45 L115 42 Q112 49 105 55 Q90 68 70 65 Q50 62 35 45 Q20 28 8 22 Q2 20 2 20 Z" fill="#b91c1c"/>
+</svg>
