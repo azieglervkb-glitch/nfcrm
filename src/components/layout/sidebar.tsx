@@ -16,7 +16,6 @@ import {
   FileText,
   Settings,
   UserCog,
-  HelpCircle,
   Bot,
   ClipboardList,
 } from "lucide-react";
@@ -163,13 +162,6 @@ export function Sidebar({ user }: SidebarProps) {
           ))}
         </nav>
 
-        {/* Help Button */}
-        <div className="border-t border-sidebar-border p-3">
-          <button className="sidebar-item w-full text-primary hover:bg-primary/5 hover:text-primary">
-            <HelpCircle className="h-5 w-5" />
-            <span>Help-Center öffnen</span>
-          </button>
-        </div>
       </div>
     </aside>
   );
