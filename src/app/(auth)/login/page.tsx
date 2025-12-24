@@ -55,16 +55,12 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-muted/30 px-4">
       <div className="w-full max-w-md">
         {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex justify-center mb-8">
           <img
-            src="/nf-logo.svg"
+            src="/nf-logo.png"
             alt="NF Mentoring"
-            className="h-16 w-auto mb-3"
+            className="h-20 w-auto"
           />
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold text-foreground">NF</span>
-            <span className="text-xl font-light text-foreground tracking-wide">MENTORING</span>
-          </div>
         </div>
 
         <Card>

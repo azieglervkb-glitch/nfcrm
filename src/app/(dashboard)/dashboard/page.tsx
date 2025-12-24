@@ -87,7 +87,7 @@ export default async function DashboardPage() {
         <div className="flex items-center gap-4">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/10 p-2">
             <img
-              src="/nf-logo.svg"
+              src="/nf-logo.png"
               alt="NF Mentoring"
               className="h-8 w-auto"
             />
