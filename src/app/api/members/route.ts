@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createMemberSchema } from "@/lib/validations";
+import { ZodError } from "zod";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -73,7 +74,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const validatedData = createMemberSchema.parse(body);
+
+    // Remove fields that don't exist in database
+    const { notizen, ...dataWithoutNotizen } = body;
+
+    const validatedData = createMemberSchema.parse(dataWithoutNotizen);
 
     // Check if email already exists
     const existing = await prisma.member.findUnique({
@@ -94,8 +99,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(member, { status: 201 });
   } catch (error) {
     console.error("Error creating member:", error);
+
+    if (error instanceof ZodError) {
+      return NextResponse.json(
+        { error: "Validierungsfehler", details: error.issues },
+        { status: 400 }
+      );
+    }
+
+    // Return more detailed error in development
+    const errorMessage = error instanceof Error ? error.message : "Unbekannter Fehler";
     return NextResponse.json(
-      { error: "Fehler beim Erstellen des Mitglieds" },
+      { error: "Fehler beim Erstellen des Mitglieds", details: errorMessage },
       { status: 500 }
     );
   }

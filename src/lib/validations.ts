@@ -35,7 +35,6 @@ export const createMemberSchema = z.object({
   produkte: z.array(z.enum(["VPMC", "NFM", "PREMIUM"])).default([]),
   status: z.enum(["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"]).default("AKTIV"),
   assignedCoachId: z.string().optional().nullable(),
-  notizen: z.string().optional().nullable(),
   // Goals
   hauptzielEinSatz: z.string().optional().nullable(),
   zielMonatsumsatz: z.number().optional().nullable(),

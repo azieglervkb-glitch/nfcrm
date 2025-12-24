@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -49,7 +48,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
     produkte: initialData?.produkte || [],
     status: initialData?.status || "AKTIV",
     assignedCoachId: initialData?.assignedCoachId || "",
-    notizen: initialData?.notizen || "",
     // Goals
     hauptzielEinSatz: initialData?.hauptzielEinSatz || "",
     zielMonatsumsatz: initialData?.zielMonatsumsatz || "",
@@ -106,7 +104,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
         unternehmen: emptyToNull(formData.unternehmen),
         position: emptyToNull(formData.position),
         hauptzielEinSatz: emptyToNull(formData.hauptzielEinSatz),
-        notizen: emptyToNull(formData.notizen),
         zielMonatsumsatz: formData.zielMonatsumsatz ? Number(formData.zielMonatsumsatz) : null,
         aktuellerMonatsumsatz: formData.aktuellerMonatsumsatz ? Number(formData.aktuellerMonatsumsatz) : null,
         umsatzSollWoche: formData.umsatzSollWoche ? Number(formData.umsatzSollWoche) : null,
@@ -453,21 +450,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
               </div>
             </>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notizen</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={formData.notizen}
-            onChange={(e) => setFormData({ ...formData, notizen: e.target.value })}
-            rows={4}
-            placeholder="Interne Notizen zum Mitglied..."
-          />
         </CardContent>
       </Card>
 
