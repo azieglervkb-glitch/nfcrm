@@ -264,6 +264,7 @@ model Member {
   upsellPipeline    UpsellPipeline[]
   notes             MemberNote[]
   formTokens        FormToken[]
+  session           MemberSession?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -598,4 +599,18 @@ model AutomationCooldown {
   @@index([memberId])
   @@index([ruleId])
   @@index([expiresAt])
+}
+
+// Member Portal Sessions
+model MemberSession {
+  id        String   @id @default(cuid())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId  String   @unique
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([token])
+  @@index([memberId])
 }

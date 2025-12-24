@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
 
@@ -10,15 +10,34 @@ function getWeekNumber(date: Date): number {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
 }
 
-export async function GET() {
+function getCurrentWeekStart(): Date {
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + 1);
+  weekStart.setHours(0, 0, 0, 0);
+  return weekStart;
+}
+
+export async function GET(request: NextRequest) {
   try {
-    const session = await getMemberSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Support direct memberId parameter or session-based auth
+    const { searchParams } = new URL(request.url);
+    const directMemberId = searchParams.get("memberId");
+
+    let memberId: string;
+
+    if (directMemberId) {
+      memberId = directMemberId;
+    } else {
+      const session = await getMemberSession();
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      memberId = session.memberId;
     }
 
     const member = await prisma.member.findUnique({
-      where: { id: session.memberId },
+      where: { id: memberId },
       include: {
         kpiWeeks: {
           orderBy: { weekStart: "desc" },
@@ -31,23 +50,12 @@ export async function GET() {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Get current week start (Monday)
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay() + 1);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = getCurrentWeekStart();
 
     const currentWeek = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);
       return entryWeek.getTime() === weekStart.getTime();
     });
-
-    // Get member's targets
-    const targets = {
-      kontakte: member.kontakteSoll || 10,
-      termine: member.termineVereinbartSoll || 5,
-      abschluesse: member.termineAbschlussSoll || 2,
-    };
 
     // History (exclude current week)
     const history = member.kpiWeeks
@@ -56,35 +64,35 @@ export async function GET() {
         return entryWeek.getTime() !== weekStart.getTime();
       })
       .map((entry) => ({
-        id: entry.id,
         weekStart: entry.weekStart.toISOString(),
-        kontakteGenerated: entry.kontakteIst,
-        kontakteTarget: member.kontakteSoll || 0,
-        termineClosed: entry.termineVereinbartIst,
-        termineTarget: member.termineVereinbartSoll || 0,
-        abschluesseCount: entry.termineAbschlussIst,
-        abschluesseTarget: member.termineAbschlussSoll || 0,
-        umsatz: entry.umsatzIst ? Number(entry.umsatzIst) : null,
-        submitted: true,
+        weekNumber: entry.weekNumber,
+        kontakteIst: entry.kontakteIst,
+        termineVereinbartIst: entry.termineVereinbartIst,
+        termineAbschlussIst: entry.termineAbschlussIst,
+        umsatzIst: entry.umsatzIst ? Number(entry.umsatzIst) : null,
+        feelingScore: entry.feelingScore,
       }));
 
     return NextResponse.json({
+      member: {
+        vorname: member.vorname,
+        nachname: member.nachname,
+        kontakteSoll: member.kontakteSoll,
+        termineVereinbartSoll: member.termineVereinbartSoll,
+        termineAbschlussSoll: member.termineAbschlussSoll,
+        umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
+      },
       currentWeek: currentWeek
         ? {
             id: currentWeek.id,
-            weekStart: currentWeek.weekStart.toISOString(),
-            kontakteGenerated: currentWeek.kontakteIst,
-            kontakteTarget: member.kontakteSoll || 0,
-            termineClosed: currentWeek.termineVereinbartIst,
-            termineTarget: member.termineVereinbartSoll || 0,
-            abschluesseCount: currentWeek.termineAbschlussIst,
-            abschluesseTarget: member.termineAbschlussSoll || 0,
-            umsatz: currentWeek.umsatzIst ? Number(currentWeek.umsatzIst) : null,
-            submitted: false,
+            kontakteIst: currentWeek.kontakteIst,
+            termineVereinbartIst: currentWeek.termineVereinbartIst,
+            termineAbschlussIst: currentWeek.termineAbschlussIst,
+            umsatzIst: currentWeek.umsatzIst ? Number(currentWeek.umsatzIst) : null,
+            feelingScore: currentWeek.feelingScore,
           }
         : null,
       history,
-      targets,
     });
   } catch (error) {
     console.error("Failed to fetch KPI data:", error);
@@ -95,22 +103,31 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const session = await getMemberSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const body = await request.json();
+    const {
+      memberId: directMemberId,
+      kontakteIst,
+      termineVereinbartIst,
+      termineAbschlussIst,
+      umsatzIst,
+      feelingScore,
+    } = body;
+
+    let memberId: string;
+
+    if (directMemberId) {
+      memberId = directMemberId;
+    } else {
+      const session = await getMemberSession();
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      memberId = session.memberId;
     }
 
-    const body = await request.json();
-    const { kontakteGenerated, termineClosed, abschluesseCount, umsatz } = body;
-
-    // Get current week start (Monday)
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay() + 1);
-    weekStart.setHours(0, 0, 0, 0);
-
+    const weekStart = getCurrentWeekStart();
     const weekNumber = getWeekNumber(weekStart);
     const year = weekStart.getFullYear();
 
@@ -118,29 +135,33 @@ export async function POST(request: Request) {
     const kpiWeek = await prisma.kpiWeek.upsert({
       where: {
         memberId_weekStart: {
-          memberId: session.memberId,
+          memberId,
           weekStart,
         },
       },
       update: {
-        kontakteIst: kontakteGenerated,
-        termineVereinbartIst: termineClosed,
-        termineAbschlussIst: abschluesseCount,
-        umsatzIst: umsatz,
+        kontakteIst,
+        termineVereinbartIst,
+        termineAbschlussIst,
+        umsatzIst,
+        feelingScore,
+        submittedAt: new Date(),
       },
       create: {
-        memberId: session.memberId,
+        memberId,
         weekStart,
         weekNumber,
         year,
-        kontakteIst: kontakteGenerated,
-        termineVereinbartIst: termineClosed,
-        termineAbschlussIst: abschluesseCount,
-        umsatzIst: umsatz,
+        kontakteIst,
+        termineVereinbartIst,
+        termineAbschlussIst,
+        umsatzIst,
+        feelingScore,
+        submittedAt: new Date(),
       },
     });
 
-    return NextResponse.json(kpiWeek);
+    return NextResponse.json({ success: true, kpiWeek });
   } catch (error) {
     console.error("Failed to save KPI data:", error);
     return NextResponse.json(

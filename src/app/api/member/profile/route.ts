@@ -1,16 +1,27 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getMemberSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Support direct memberId parameter or session-based auth
+    const { searchParams } = new URL(request.url);
+    const directMemberId = searchParams.get("memberId");
+
+    let memberId: string;
+
+    if (directMemberId) {
+      memberId = directMemberId;
+    } else {
+      const session = await getMemberSession();
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      memberId = session.memberId;
     }
 
     const member = await prisma.member.findUnique({
-      where: { id: session.memberId },
+      where: { id: memberId },
       select: {
         id: true,
         vorname: true,
@@ -18,8 +29,16 @@ export async function GET() {
         email: true,
         telefon: true,
         status: true,
-        onboardingDate: true,
         produkte: true,
+        membershipStart: true,
+        onboardingCompleted: true,
+        kpiTrackingActive: true,
+        assignedCoach: {
+          select: {
+            vorname: true,
+            nachname: true,
+          },
+        },
       },
     });
 
@@ -29,13 +48,16 @@ export async function GET() {
 
     return NextResponse.json({
       id: member.id,
-      firstName: member.vorname,
-      lastName: member.nachname,
+      vorname: member.vorname,
+      nachname: member.nachname,
       email: member.email,
-      phone: member.telefon,
+      telefon: member.telefon,
       status: member.status,
-      onboardingDate: member.onboardingDate?.toISOString() || null,
-      program: member.produkte.join(", ") || null,
+      produkte: member.produkte,
+      membershipStart: member.membershipStart.toISOString(),
+      onboardingCompleted: member.onboardingCompleted,
+      kpiTrackingActive: member.kpiTrackingActive,
+      assignedCoach: member.assignedCoach,
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
@@ -46,7 +68,7 @@ export async function GET() {
   }
 }
 
-export async function PUT(request: Request) {
+export async function PUT(request: NextRequest) {
   try {
     const session = await getMemberSession();
     if (!session) {
@@ -85,20 +107,24 @@ export async function PUT(request: Request) {
         email: true,
         telefon: true,
         status: true,
-        onboardingDate: true,
         produkte: true,
+        membershipStart: true,
+        onboardingCompleted: true,
+        kpiTrackingActive: true,
       },
     });
 
     return NextResponse.json({
       id: member.id,
-      firstName: member.vorname,
-      lastName: member.nachname,
+      vorname: member.vorname,
+      nachname: member.nachname,
       email: member.email,
-      phone: member.telefon,
+      telefon: member.telefon,
       status: member.status,
-      onboardingDate: member.onboardingDate?.toISOString() || null,
-      program: member.produkte.join(", ") || null,
+      produkte: member.produkte,
+      membershipStart: member.membershipStart.toISOString(),
+      onboardingCompleted: member.onboardingCompleted,
+      kpiTrackingActive: member.kpiTrackingActive,
     });
   } catch (error) {
     console.error("Failed to update profile:", error);

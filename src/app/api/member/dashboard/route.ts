@@ -1,16 +1,29 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getMemberSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Support direct memberId parameter or session-based auth
+    const { searchParams } = new URL(request.url);
+    const directMemberId = searchParams.get("memberId");
+
+    let memberId: string;
+
+    if (directMemberId) {
+      // Direct access via URL parameter
+      memberId = directMemberId;
+    } else {
+      // Session-based access
+      const session = await getMemberSession();
+      if (!session) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      memberId = session.memberId;
     }
 
     const member = await prisma.member.findUnique({
-      where: { id: session.memberId },
+      where: { id: memberId },
       include: {
         kpiWeeks: {
           orderBy: { weekStart: "desc" },
