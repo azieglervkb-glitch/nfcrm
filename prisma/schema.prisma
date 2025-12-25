@@ -86,6 +86,7 @@ model User {
   createdTasks    Task[]    @relation("CreatedTasks")
   sessions        Session[]
   accounts        Account[]
+  leadActivities  LeadActivity[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -178,6 +179,9 @@ model Lead {
   convertedToMemberId String?   @unique
   convertedAt         DateTime?
 
+  // Relations
+  activities LeadActivity[]
+
   // Timestamps
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -185,6 +189,54 @@ model Lead {
   @@index([status])
   @@index([source])
   @@index([email])
+}
+
+// Lead-Aktivitäten (Kontakt-Historie)
+model LeadActivity {
+  id     String @id @default(cuid())
+  lead   Lead   @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  leadId String
+
+  // Aktivitätstyp
+  type    LeadActivityType
+  channel LeadActivityChannel?
+
+  // Details
+  subject     String?  // Betreff oder Zusammenfassung
+  notes       String?  @db.Text // Detaillierte Notizen
+  outcome     String?  // Ergebnis der Aktivität
+  nextSteps   String?  // Nächste Schritte
+
+  // Termin-bezogen
+  scheduledAt DateTime? // Geplanter Termin
+  completedAt DateTime? // Durchgeführt am
+
+  // Wer hat die Aktivität erstellt
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([leadId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum LeadActivityType {
+  ANRUF          // Telefonat
+  EMAIL          // E-Mail gesendet/erhalten
+  WHATSAPP       // WhatsApp Nachricht
+  MEETING        // Persönliches Treffen
+  VIDEO_CALL     // Video-Call (Zoom etc.)
+  NOTIZ          // Interne Notiz
+  STATUS_CHANGE  // Statusänderung
+  FOLLOW_UP      // Geplantes Follow-up
+}
+
+enum LeadActivityChannel {
+  INBOUND   // Eingehend (Lead hat sich gemeldet)
+  OUTBOUND  // Ausgehend (Wir haben kontaktiert)
 }
 
 // Mentoring-Mitglieder
