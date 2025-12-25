@@ -749,7 +749,7 @@ export default function MemberPortalPage() {
                 <CardDescription>Analysiere deine vergangene Performance</CardDescription>
               </CardHeader>
               <CardContent>
-                <Link href={`/member/${memberId}/kpi`}>
+                <Link href={`/member/${memberId}/kpi/verlauf`}>
                   <Button variant="outline" className="w-full">
                     Verlauf ansehen
                     <ArrowRight className="h-4 w-4 ml-2" />
