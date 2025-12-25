@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { Bell, Settings, LogOut, User, Menu } from "lucide-react";
+import { Settings, LogOut, User, Menu } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -53,14 +53,6 @@ export function Header({ user, breadcrumbs, onMenuClick }: HeaderProps) {
 
         {/* Right side - Actions */}
         <div className="flex items-center gap-2">
-          {/* Notifications */}
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <span className="absolute right-1.5 top-1.5 h-4 w-4 rounded-full bg-primary text-[10px] font-semibold text-primary-foreground flex items-center justify-center">
-              3
-            </span>
-          </Button>
-
           {/* Settings */}
           <Button variant="ghost" size="icon" asChild>
             <Link href="/settings">
