@@ -555,13 +555,13 @@ export default function MemberKpiPage() {
           </form>
 
           {/* History */}
-          {data?.history && data.history.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Verlauf</CardTitle>
-                <CardDescription>Deine letzten Wochen</CardDescription>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Dein KPI-Verlauf</CardTitle>
+              <CardDescription>Deine vergangenen Wochen im Überblick</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {data?.history && data.history.length > 0 ? (
                 <div className="space-y-4">
                   {data.history.map((week, index) => (
                     <div
@@ -593,9 +593,18 @@ export default function MemberKpiPage() {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-600 font-medium">Noch kein Verlauf vorhanden</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    Du hast diese Woche das erste Mal getrackt.<br />
+                    Nächste Woche siehst du hier deinen Verlauf.
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
