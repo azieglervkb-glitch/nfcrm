@@ -628,7 +628,7 @@ export default function TemplatesPage() {
                       <div>
                         <p className="font-medium">{template.name}</p>
                         <p className="text-sm text-gray-500">
-                          {template.variables.length} Variablen
+                          {(template.variables || []).length} Variablen
                         </p>
                       </div>
                       <Badge variant={template.isActive ? "default" : "secondary"}>
@@ -698,7 +698,7 @@ export default function TemplatesPage() {
                 <div className="space-y-2">
                   <Label>Verfügbare Variablen</Label>
                   <div className="flex flex-wrap gap-2">
-                    {selectedTemplate.variables.map((v) => (
+                    {(selectedTemplate.variables || []).map((v) => (
                       <Badge key={v} variant="outline" className="font-mono text-xs">
                         {"{{" + v + "}}"}
                       </Badge>
