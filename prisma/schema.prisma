@@ -370,6 +370,7 @@ model KpiWeek {
 
   // Kommunikation
   whatsappFeedbackSent Boolean   @default(false)
+  whatsappScheduledFor DateTime? // When to send WhatsApp feedback
   whatsappSentAt       DateTime?
   emailReminderSent    Boolean   @default(false)
 
@@ -538,7 +539,9 @@ model SystemSettings {
 
   // AI Feedback Settings
   aiFeedbackEnabled      Boolean @default(true)
-  aiFeedbackDelay        Int     @default(0) // Minuten nach KPI-Einreichung
+  aiFeedbackDelay        Int     @default(0) // Minuten nach KPI-Einreichung (deprecated, use min/max)
+  aiFeedbackDelayMin     Int     @default(60) // Minimum delay in minutes
+  aiFeedbackDelayMax     Int     @default(120) // Maximum delay in minutes
   aiFeedbackChannels     String[] @default(["WHATSAPP"])
 
   // Scheduled Automations

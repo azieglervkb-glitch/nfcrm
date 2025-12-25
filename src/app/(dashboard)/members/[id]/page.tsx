@@ -23,6 +23,7 @@ import {
   AlertTriangle,
   User,
 } from "lucide-react";
+import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
 
 async function getMember(id: string) {
@@ -35,6 +36,31 @@ async function getMember(id: string) {
       kpiWeeks: {
         orderBy: { weekStart: "desc" },
         take: 12,
+        select: {
+          id: true,
+          weekStart: true,
+          weekNumber: true,
+          year: true,
+          umsatzIst: true,
+          kontakteIst: true,
+          entscheiderIst: true,
+          termineVereinbartIst: true,
+          termineStattgefundenIst: true,
+          termineAbschlussIst: true,
+          termineNoshowIst: true,
+          einheitenIst: true,
+          empfehlungenIst: true,
+          feelingScore: true,
+          heldentat: true,
+          blockiert: true,
+          herausforderung: true,
+          aiFeedbackText: true,
+          aiFeedbackGeneratedAt: true,
+          whatsappFeedbackSent: true,
+          whatsappScheduledFor: true,
+          whatsappSentAt: true,
+          submittedAt: true,
+        },
       },
       tasks: {
         where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
@@ -327,47 +353,28 @@ export default async function MemberDetailPage({
               <CardTitle className="text-base">KPI-Verlauf</CardTitle>
             </CardHeader>
             <CardContent>
-              {member.kpiWeeks.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Noch keine KPI-Daten vorhanden
-                </p>
-              ) : (
-                <div className="space-y-3">
-                  {member.kpiWeeks.map((kpi) => (
-                    <div
-                      key={kpi.id}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
-                    >
-                      <div>
-                        <p className="font-medium">
-                          KW {kpi.weekNumber}/{kpi.year}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDate(kpi.weekStart)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-6 text-right">
-                        <div>
-                          <p className="text-sm text-muted-foreground">Umsatz</p>
-                          <p className="font-medium">
-                            {Number(kpi.umsatzIst || 0).toLocaleString("de-DE", {
-                              style: "currency",
-                              currency: "EUR",
-                              minimumFractionDigits: 0,
-                            })}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Feeling</p>
-                          {kpi.feelingScore && (
-                            <FeelingEmoji score={kpi.feelingScore} size="sm" />
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <KpiWeeksList
+                kpiWeeks={member.kpiWeeks.map((kpi) => ({
+                  ...kpi,
+                  umsatzIst: kpi.umsatzIst ? Number(kpi.umsatzIst) : null,
+                }))}
+                memberTracking={{
+                  trackKontakte: member.trackKontakte,
+                  trackTermine: member.trackTermine,
+                  trackEinheiten: member.trackEinheiten,
+                  trackEmpfehlungen: member.trackEmpfehlungen,
+                  trackEntscheider: member.trackEntscheider,
+                  trackAbschluesse: member.trackAbschluesse,
+                  umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
+                  kontakteSoll: member.kontakteSoll,
+                  entscheiderSoll: member.entscheiderSoll,
+                  termineVereinbartSoll: member.termineVereinbartSoll,
+                  termineStattgefundenSoll: member.termineStattgefundenSoll,
+                  termineAbschlussSoll: member.termineAbschlussSoll,
+                  einheitenSoll: member.einheitenSoll,
+                  empfehlungenSoll: member.empfehlungenSoll,
+                }}
+              />
             </CardContent>
           </Card>
         </TabsContent>

@@ -23,6 +23,8 @@ interface SystemSettings {
   kpiReminderChannels: string[];
   aiFeedbackEnabled: boolean;
   aiFeedbackDelay: number;
+  aiFeedbackDelayMin: number;
+  aiFeedbackDelayMax: number;
   aiFeedbackChannels: string[];
   automationsEnabled: boolean;
   automationsDay: number;
@@ -330,15 +332,32 @@ export function SettingsForm() {
 
             <div className="space-y-2">
               <Label>Verzögerung (Minuten)</Label>
-              <Input
-                type="number"
-                min="0"
-                max="60"
-                value={settings.aiFeedbackDelay}
-                onChange={(e) => updateSetting("aiFeedbackDelay", parseInt(e.target.value) || 0)}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Minimum</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="1440"
+                    value={settings.aiFeedbackDelayMin}
+                    onChange={(e) => updateSetting("aiFeedbackDelayMin", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Maximum</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    max="1440"
+                    value={settings.aiFeedbackDelayMax}
+                    onChange={(e) => updateSetting("aiFeedbackDelayMax", parseInt(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
-                0 = sofort nach KPI-Einreichung
+                Zufälliger Versand zwischen min. und max. Minuten nach KPI-Einreichung.
+                <br />
+                Beispiel: 60-120 = zufällig zwischen 1-2 Stunden
               </p>
             </div>
 

@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { weeklyKpiFormSchema } from "@/lib/validations";
 import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
-import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { runKpiAutomations } from "@/lib/automation/engine";
 
 export async function GET(
@@ -210,7 +209,19 @@ async function generateAiFeedback(
     // Generate feedback
     const { text, style } = await generateKpiFeedback(member, kpiWeek);
 
-    // Save feedback
+    // Get delay settings
+    const settings = await prisma.systemSettings.findFirst({
+      where: { id: "default" },
+    });
+
+    const delayMin = settings?.aiFeedbackDelayMin ?? 60;
+    const delayMax = settings?.aiFeedbackDelayMax ?? 120;
+
+    // Calculate random delay between min and max
+    const delayMinutes = delayMin + Math.random() * (delayMax - delayMin);
+    const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
+
+    // Save feedback with scheduled send time
     await prisma.kpiWeek.update({
       where: { id: kpiWeekId },
       data: {
@@ -218,42 +229,11 @@ async function generateAiFeedback(
         aiFeedbackText: text,
         aiFeedbackStyle: style,
         aiFeedbackGeneratedAt: new Date(),
+        whatsappScheduledFor: member.whatsappNummer ? scheduledFor : null,
       },
     });
 
-    // Send via WhatsApp if not in quiet hours and member has WhatsApp number
-    const quietHours = await isInQuietHours();
-    if (member.whatsappNummer && !quietHours) {
-      const sent = await sendWhatsApp({
-        phone: member.whatsappNummer,
-        message: text,
-        memberId: member.id,
-        type: "FEEDBACK",
-      });
-
-      if (sent) {
-        await prisma.kpiWeek.update({
-          where: { id: kpiWeekId },
-          data: {
-            whatsappFeedbackSent: true,
-            whatsappSentAt: new Date(),
-          },
-        });
-
-        // Log communication
-        await prisma.communicationLog.create({
-          data: {
-            memberId: member.id,
-            channel: "WHATSAPP",
-            type: "FEEDBACK",
-            content: text,
-            recipient: member.whatsappNummer,
-            sent: true,
-            sentAt: new Date(),
-          },
-        });
-      }
-    }
+    console.log(`AI feedback generated for KPI ${kpiWeekId}, scheduled for ${scheduledFor.toISOString()} (delay: ${Math.round(delayMinutes)} min)`);
   } catch (error) {
     console.error("Error generating AI feedback:", error);
   }

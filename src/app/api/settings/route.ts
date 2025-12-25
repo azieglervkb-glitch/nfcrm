@@ -20,7 +20,9 @@ const systemSettingsSchema = z.object({
 
   // AI Feedback Settings
   aiFeedbackEnabled: z.boolean().optional(),
-  aiFeedbackDelay: z.number().min(0).optional(),
+  aiFeedbackDelay: z.number().min(0).optional(), // deprecated
+  aiFeedbackDelayMin: z.number().min(0).max(1440).optional(),
+  aiFeedbackDelayMax: z.number().min(0).max(1440).optional(),
   aiFeedbackChannels: z.array(z.enum(["EMAIL", "WHATSAPP"])).optional(),
 
   // Scheduled Automations
