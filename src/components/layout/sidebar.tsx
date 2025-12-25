@@ -70,7 +70,7 @@ const menuItems = [
     category: "KOMMUNIKATION",
     items: [
       { label: "Nachrichten-Log", href: "/communications", icon: MessageSquare },
-      { label: "Templates", href: "/communications/templates", icon: FileText },
+      { label: "Templates", href: "/templates", icon: FileText },
     ],
   },
   {
