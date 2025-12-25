@@ -18,11 +18,21 @@ import {
   CheckCircle,
   Clock,
   Plus,
+  Construction,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 export default function MemberGoalsPage() {
   const params = useParams();
   const memberId = params.memberId as string;
+  const { toast } = useToast();
+
+  const showComingSoon = () => {
+    toast({
+      title: "Kommt bald!",
+      description: "Die Zielverwaltung wird bald verfügbar sein.",
+    });
+  };
 
   const navItems = [
     { href: `/member/${memberId}`, icon: Home, label: "Dashboard" },
@@ -114,7 +124,7 @@ export default function MemberGoalsPage() {
               <h1 className="text-2xl font-bold text-gray-900">Meine Ziele</h1>
               <p className="text-gray-600">Verfolge deine S.M.A.R.T. Ziele</p>
             </div>
-            <Button className="bg-red-600 hover:bg-red-700">
+            <Button className="bg-red-600 hover:bg-red-700" onClick={showComingSoon}>
               <Plus className="h-4 w-4 mr-2" />
               Neues Ziel
             </Button>
@@ -197,7 +207,7 @@ export default function MemberGoalsPage() {
               <CardContent className="py-12 text-center">
                 <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
                 <p className="text-gray-600 mb-4">Noch keine Ziele definiert</p>
-                <Button className="bg-red-600 hover:bg-red-700">
+                <Button className="bg-red-600 hover:bg-red-700" onClick={showComingSoon}>
                   Erstes Ziel erstellen
                 </Button>
               </CardContent>
