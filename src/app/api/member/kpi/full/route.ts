@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
+import { runKpiAutomations } from "@/lib/automation/engine";
 
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -161,31 +163,26 @@ export async function POST(request: NextRequest) {
     const weekNumber = getWeekNumber(weekStart);
     const year = weekStart.getFullYear();
 
-    // Upsert KPI entry with all fields
-    const kpiWeek = await prisma.kpiWeek.upsert({
+    // Check if already submitted this week - no edits allowed
+    const existingKpi = await prisma.kpiWeek.findUnique({
       where: {
         memberId_weekStart: {
           memberId,
           weekStart,
         },
       },
-      update: {
-        umsatzIst,
-        kontakteIst,
-        entscheiderIst,
-        termineVereinbartIst,
-        termineStattgefundenIst,
-        termineAbschlussIst,
-        termineNoshowIst,
-        einheitenIst,
-        empfehlungenIst,
-        feelingScore,
-        heldentat,
-        blockiert,
-        herausforderung,
-        submittedAt: new Date(),
-      },
-      create: {
+    });
+
+    if (existingKpi) {
+      return NextResponse.json(
+        { error: "already_submitted", message: "KPIs wurden bereits eingereicht" },
+        { status: 400 }
+      );
+    }
+
+    // Create KPI entry (no updates allowed)
+    const kpiWeek = await prisma.kpiWeek.create({
+      data: {
         memberId,
         weekStart,
         weekNumber,
@@ -207,6 +204,41 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Check for data anomalies
+    const anomalyCheck = hasDataAnomaly(kpiWeek);
+
+    if (anomalyCheck.hasAnomaly) {
+      // Block AI feedback and flag for review
+      await prisma.kpiWeek.update({
+        where: { id: kpiWeek.id },
+        data: {
+          aiFeedbackBlocked: true,
+          aiFeedbackBlockReason: anomalyCheck.reason,
+        },
+      });
+
+      await prisma.member.update({
+        where: { id: memberId },
+        data: { reviewFlag: true },
+      });
+
+      await prisma.automationLog.create({
+        data: {
+          memberId,
+          ruleId: "Q2",
+          ruleName: "Daten-Anomalie",
+          actionsTaken: ["BLOCK_AI_FEEDBACK", "SET_FLAG: reviewFlag"],
+          details: { reason: anomalyCheck.reason },
+        },
+      });
+    } else {
+      // Generate AI feedback (async, don't wait)
+      generateAiFeedbackAsync(kpiWeek.id, member, kpiWeek).catch(console.error);
+    }
+
+    // Run automation rules (async, don't wait)
+    runKpiAutomations(memberId, kpiWeek.id).catch(console.error);
+
     return NextResponse.json({ success: true, kpiWeek });
   } catch (error) {
     console.error("Failed to save KPI data:", error);
@@ -214,5 +246,44 @@ export async function POST(request: NextRequest) {
       { error: "Failed to save KPI data" },
       { status: 500 }
     );
+  }
+}
+
+async function generateAiFeedbackAsync(
+  kpiWeekId: string,
+  member: any,
+  kpiWeek: any
+) {
+  try {
+    // Generate feedback
+    const { text, style } = await generateKpiFeedback(member, kpiWeek);
+
+    // Get delay settings
+    const settings = await prisma.systemSettings.findFirst({
+      where: { id: "default" },
+    });
+
+    const delayMin = settings?.aiFeedbackDelayMin ?? 60;
+    const delayMax = settings?.aiFeedbackDelayMax ?? 120;
+
+    // Calculate random delay between min and max
+    const delayMinutes = delayMin + Math.random() * (delayMax - delayMin);
+    const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
+
+    // Save feedback with scheduled send time
+    await prisma.kpiWeek.update({
+      where: { id: kpiWeekId },
+      data: {
+        aiFeedbackGenerated: true,
+        aiFeedbackText: text,
+        aiFeedbackStyle: style,
+        aiFeedbackGeneratedAt: new Date(),
+        whatsappScheduledFor: member.whatsappNummer ? scheduledFor : null,
+      },
+    });
+
+    console.log(`AI feedback generated for KPI ${kpiWeekId}, scheduled for ${scheduledFor.toISOString()} (delay: ${Math.round(delayMinutes)} min)`);
+  } catch (error) {
+    console.error("Error generating AI feedback:", error);
   }
 }

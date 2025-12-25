@@ -81,6 +81,7 @@ export default function MemberKpiPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [feelingScore, setFeelingScore] = useState(5);
 
   const [formValues, setFormValues] = useState({
@@ -110,22 +111,9 @@ export default function MemberKpiPage() {
       if (response.ok) {
         const result = await response.json();
         setData(result);
-        if (result.currentWeek) {
-          setFormValues({
-            umsatzIst: result.currentWeek.umsatzIst?.toString() || "",
-            kontakteIst: result.currentWeek.kontakteIst?.toString() || "",
-            entscheiderIst: result.currentWeek.entscheiderIst?.toString() || "",
-            termineVereinbartIst: result.currentWeek.termineVereinbartIst?.toString() || "",
-            termineStattgefundenIst: result.currentWeek.termineStattgefundenIst?.toString() || "",
-            termineAbschlussIst: result.currentWeek.termineAbschlussIst?.toString() || "",
-            termineNoshowIst: result.currentWeek.termineNoshowIst?.toString() || "",
-            einheitenIst: result.currentWeek.einheitenIst?.toString() || "",
-            empfehlungenIst: result.currentWeek.empfehlungenIst?.toString() || "",
-            heldentat: result.currentWeek.heldentat || "",
-            blockiert: result.currentWeek.blockiert || "",
-            herausforderung: result.currentWeek.herausforderung || "",
-          });
-          setFeelingScore(result.currentWeek.feelingScore || 5);
+        // Check if already submitted this week
+        if (result.currentWeek?.id) {
+          setAlreadySubmitted(true);
         }
       }
     } catch (error) {
@@ -196,7 +184,7 @@ export default function MemberKpiPage() {
     );
   }
 
-  if (success) {
+  if (success || alreadySubmitted) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-lg shadow-lg border-0">
@@ -204,10 +192,21 @@ export default function MemberKpiPage() {
             <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <CheckCircle className="h-10 w-10 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Vielen Dank!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              {alreadySubmitted ? "Bereits eingereicht!" : "Vielen Dank!"}
+            </h2>
             <p className="text-gray-600 mb-10 text-base leading-relaxed">
-              Deine KPIs wurden erfolgreich gespeichert.<br />
-              Du erhältst in Kürze dein persönliches Feedback.
+              {alreadySubmitted ? (
+                <>
+                  Du hast deine KPIs für diese Woche bereits eingereicht.<br />
+                  Nächste Woche kannst du wieder tracken.
+                </>
+              ) : (
+                <>
+                  Deine KPIs wurden erfolgreich gespeichert.<br />
+                  Du erhältst in Kürze dein persönliches Feedback.
+                </>
+              )}
             </p>
             <div className="space-y-4 max-w-sm mx-auto">
               <Link href={`/member/${memberId}`} className="block">
@@ -215,13 +214,6 @@ export default function MemberKpiPage() {
                   Zurück zum Dashboard
                 </Button>
               </Link>
-              <Button
-                variant="outline"
-                className="w-full h-12 text-base font-medium"
-                onClick={() => setSuccess(false)}
-              >
-                Weitere Änderungen vornehmen
-              </Button>
             </div>
           </CardContent>
         </Card>
