@@ -199,23 +199,25 @@ export default function MemberKpiPage() {
   if (success) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="pt-6 text-center">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Vielen Dank!</h2>
-            <p className="text-gray-600 mb-6">
-              Deine KPIs wurden erfolgreich gespeichert. Du erhältst in Kürze
-              dein persönliches Feedback.
+        <Card className="w-full max-w-lg shadow-lg border-0">
+          <CardContent className="pt-12 pb-10 px-8 text-center">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="h-10 w-10 text-green-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">Vielen Dank!</h2>
+            <p className="text-gray-600 mb-10 text-base leading-relaxed">
+              Deine KPIs wurden erfolgreich gespeichert.<br />
+              Du erhältst in Kürze dein persönliches Feedback.
             </p>
-            <div className="space-y-2">
-              <Link href={`/member/${memberId}`}>
-                <Button className="w-full bg-red-600 hover:bg-red-700">
+            <div className="space-y-4 max-w-sm mx-auto">
+              <Link href={`/member/${memberId}`} className="block">
+                <Button className="w-full h-12 text-base font-semibold bg-red-600 hover:bg-red-700">
                   Zurück zum Dashboard
                 </Button>
               </Link>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full h-12 text-base font-medium"
                 onClick={() => setSuccess(false)}
               >
                 Weitere Änderungen vornehmen
