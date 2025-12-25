@@ -502,8 +502,8 @@ export default function TemplatesPage() {
           <style>
             body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background-color: #f5f5f5; }
             .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
-            .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 32px; text-align: center; }
-            .logo-text { color: #ffffff; font-size: 24px; font-weight: bold; }
+            .header { background: #ffffff; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e5e5; }
+            .header img { max-height: 50px; width: auto; }
             .content { padding: 32px; }
             .greeting { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; }
             .text { color: #4a4a4a; margin-bottom: 16px; }
@@ -525,7 +525,7 @@ export default function TemplatesPage() {
         <body>
           <div class="container">
             <div class="header">
-              <span class="logo-text">NF Mentoring</span>
+              <img src="/nf-logo.png" alt="NF Mentoring" />
             </div>
             ${preview}
             <div class="footer">

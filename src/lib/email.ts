@@ -63,10 +63,8 @@ const EMAIL_STYLES = `
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1a1a1a; margin: 0; padding: 0; background-color: #f5f5f5; }
     .container { max-width: 600px; margin: 0 auto; background: #ffffff; }
-    .header { background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%); padding: 32px; text-align: center; }
-    .logo { display: inline-block; }
-    .logo-icon { width: 48px; height: 48px; }
-    .logo-text { color: #ffffff; font-size: 24px; font-weight: bold; margin-left: 12px; vertical-align: middle; }
+    .header { background: #ffffff; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e5e5; }
+    .header img { max-height: 50px; width: auto; }
     .content { padding: 32px; }
     .greeting { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 16px; }
     .text { color: #4a4a4a; margin-bottom: 16px; }
@@ -90,14 +88,7 @@ const EMAIL_STYLES = `
 
 const EMAIL_HEADER = `
   <div class="header">
-    <div class="logo">
-      <svg class="logo-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" style="vertical-align: middle;">
-        <path d="M20 5L35 15V25L20 35L5 25V15L20 5Z" fill="#ae1d2b"/>
-        <path d="M12 18L20 12L28 18L20 24L12 18Z" fill="white"/>
-        <path d="M20 24V32" stroke="white" stroke-width="2"/>
-      </svg>
-      <span class="logo-text">NF Mentoring</span>
-    </div>
+    <img src="{{logoUrl}}" alt="NF Mentoring" />
   </div>
 `;
 
@@ -177,7 +168,7 @@ export async function sendKpiReminderEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `📊 Deine KPIs für KW${weekNumber} fehlen noch`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000" }),
+    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 
   if (sent) {
@@ -259,7 +250,7 @@ export async function sendWeeklyFeedbackEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `${stats.goalAchieved ? "🎉 Ziel erreicht!" : "📊"} Dein Feedback für KW${weekNumber}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000" }),
+    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 
   if (sent) {
@@ -333,7 +324,7 @@ export async function sendWelcomeEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: "🚀 Willkommen im NF Mentoring!",
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000" }),
+    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 
   if (sent) {
@@ -411,7 +402,7 @@ export async function sendChurnWarningEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `${member.vorname}, wir vermissen dich!`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000" }),
+    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 
   if (sent) {
@@ -498,7 +489,7 @@ export async function sendGoalCelebrationEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `🎉 Ziel erreicht! ${stats.umsatzIst.toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0 })} in KW${weekNumber}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000" }),
+    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 
   if (sent) {
@@ -584,6 +575,6 @@ export async function sendCoachTaskNotification(
   return sendEmail({
     to: coach.email,
     subject: `${task.priority === "URGENT" ? "🚨" : "📋"} Neue Aufgabe: ${task.title}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000" }),
+    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 }
