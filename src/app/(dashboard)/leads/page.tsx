@@ -533,28 +533,29 @@ export default function LeadsPage() {
 
       {/* Lead Detail Sheet */}
       <Sheet open={!!selectedLead} onOpenChange={() => setSelectedLead(null)}>
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto p-0">
           {selectedLead && (
             <div className="h-full flex flex-col">
-              <SheetHeader className="space-y-4 pb-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <SheetTitle className="text-xl">
-                      {selectedLead.vorname} {selectedLead.nachname}
-                    </SheetTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Lead seit {new Date(selectedLead.createdAt).toLocaleDateString("de-DE")}
-                    </p>
-                  </div>
-                  <Badge className={`${getStatusInfo(selectedLead.status).color} shrink-0`}>
+              {/* Header with padding for close button */}
+              <div className="p-6 pb-4 pr-12">
+                <SheetHeader className="space-y-1 text-left">
+                  <SheetTitle className="text-xl font-bold">
+                    {selectedLead.vorname} {selectedLead.nachname}
+                  </SheetTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Lead seit {new Date(selectedLead.createdAt).toLocaleDateString("de-DE")}
+                  </p>
+                </SheetHeader>
+                <div className="mt-3">
+                  <Badge className={`${getStatusInfo(selectedLead.status).color}`}>
                     {getStatusInfo(selectedLead.status).label}
                   </Badge>
                 </div>
-              </SheetHeader>
+              </div>
 
               <Separator />
 
-              <div className="flex-1 py-6 space-y-6">
+              <div className="flex-1 p-6 space-y-6 overflow-y-auto">
                 {/* Contact Info */}
                 <div className="space-y-3">
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
@@ -563,17 +564,17 @@ export default function LeadsPage() {
                   <div className="space-y-2">
                     <a
                       href={`mailto:${selectedLead.email}`}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
+                      className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
                     >
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm">{selectedLead.email}</span>
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm break-all">{selectedLead.email}</span>
                     </a>
                     {selectedLead.telefon && (
                       <a
                         href={`tel:${selectedLead.telefon}`}
-                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted transition-colors"
+                        className="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-muted transition-colors"
                       >
-                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="text-sm">{selectedLead.telefon}</span>
                       </a>
                     )}
@@ -589,7 +590,7 @@ export default function LeadsPage() {
                     value={selectedLead.status}
                     onValueChange={(value) => updateLeadStatus(selectedLead.id, value)}
                   >
-                    <SelectTrigger className="w-full">
+                    <SelectTrigger className="w-[200px]">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
