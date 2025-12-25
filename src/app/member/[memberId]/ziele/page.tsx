@@ -11,6 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   BarChart3,
   Target,
@@ -20,7 +29,10 @@ import {
   Loader2,
   Trophy,
   Calendar,
+  Pencil,
+  Save,
 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface MemberGoals {
   vorname: string;
@@ -42,9 +54,24 @@ interface MemberGoals {
 export default function MemberGoalsPage() {
   const params = useParams();
   const memberId = params.memberId as string;
+  const { toast } = useToast();
 
   const [memberGoals, setMemberGoals] = useState<MemberGoals | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+
+  // Edit form state
+  const [editForm, setEditForm] = useState({
+    hauptzielEinSatz: "",
+    umsatzSollWoche: "",
+    umsatzSollMonat: "",
+    kontakteSoll: "",
+    termineVereinbartSoll: "",
+    termineAbschlussSoll: "",
+    einheitenSoll: "",
+    empfehlungenSoll: "",
+  });
 
   useEffect(() => {
     if (memberId) {
@@ -58,11 +85,62 @@ export default function MemberGoalsPage() {
       if (response.ok) {
         const data = await response.json();
         setMemberGoals(data);
+        // Initialize edit form with current values
+        setEditForm({
+          hauptzielEinSatz: data.hauptzielEinSatz || "",
+          umsatzSollWoche: data.umsatzSollWoche?.toString() || "",
+          umsatzSollMonat: data.umsatzSollMonat?.toString() || "",
+          kontakteSoll: data.kontakteSoll?.toString() || "",
+          termineVereinbartSoll: data.termineVereinbartSoll?.toString() || "",
+          termineAbschlussSoll: data.termineAbschlussSoll?.toString() || "",
+          einheitenSoll: data.einheitenSoll?.toString() || "",
+          empfehlungenSoll: data.empfehlungenSoll?.toString() || "",
+        });
       }
     } catch (error) {
       console.error("Failed to fetch goals:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveGoals = async () => {
+    setSaving(true);
+    try {
+      const response = await fetch(`/api/member/goals`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          memberId,
+          hauptzielEinSatz: editForm.hauptzielEinSatz || null,
+          umsatzSollWoche: editForm.umsatzSollWoche ? parseFloat(editForm.umsatzSollWoche) : null,
+          umsatzSollMonat: editForm.umsatzSollMonat ? parseFloat(editForm.umsatzSollMonat) : null,
+          kontakteSoll: editForm.kontakteSoll ? parseInt(editForm.kontakteSoll) : null,
+          termineVereinbartSoll: editForm.termineVereinbartSoll ? parseInt(editForm.termineVereinbartSoll) : null,
+          termineAbschlussSoll: editForm.termineAbschlussSoll ? parseInt(editForm.termineAbschlussSoll) : null,
+          einheitenSoll: editForm.einheitenSoll ? parseInt(editForm.einheitenSoll) : null,
+          empfehlungenSoll: editForm.empfehlungenSoll ? parseInt(editForm.empfehlungenSoll) : null,
+        }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Ziele gespeichert!",
+          description: "Deine Ziele wurden erfolgreich aktualisiert.",
+        });
+        setEditDialogOpen(false);
+        fetchMemberGoals(); // Refresh data
+      } else {
+        throw new Error("Failed to save");
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Beim Speichern ist ein Fehler aufgetreten.",
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -140,9 +218,18 @@ export default function MemberGoalsPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Meine Ziele</h1>
-            <p className="text-gray-600">Deine definierten Ziele und Wochenziele</p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">Meine Ziele</h1>
+              <p className="text-gray-600">Deine definierten Ziele und Wochenziele</p>
+            </div>
+            <Button
+              className="bg-red-600 hover:bg-red-700"
+              onClick={() => setEditDialogOpen(true)}
+            >
+              <Pencil className="h-4 w-4 mr-2" />
+              Ziele anpassen
+            </Button>
           </div>
 
           {/* Hauptziel */}
@@ -265,21 +352,145 @@ export default function MemberGoalsPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* CTA */}
-          <Card className="bg-gray-50 border-dashed">
-            <CardContent className="py-8 text-center">
-              <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="font-semibold text-gray-900 mb-2">
-                Ziele anpassen?
-              </h3>
-              <p className="text-gray-600 mb-4 text-sm">
-                Wenn du deine Ziele ändern möchtest, wende dich an deinen Coach.
-              </p>
-            </CardContent>
-          </Card>
         </div>
       </main>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Ziele anpassen</DialogTitle>
+            <DialogDescription>
+              Passe deine Ziele an deine aktuelle Situation an.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            {/* Hauptziel */}
+            <div className="space-y-2">
+              <Label htmlFor="hauptzielEinSatz">Mein Hauptziel</Label>
+              <Input
+                id="hauptzielEinSatz"
+                placeholder="z.B. 30.000€ Monatsumsatz bis Ende des Jahres"
+                value={editForm.hauptzielEinSatz}
+                onChange={(e) => setEditForm({ ...editForm, hauptzielEinSatz: e.target.value })}
+              />
+            </div>
+
+            {/* Umsatzziele */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-gray-700">Umsatzziele</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="umsatzSollWoche">Wochenziel (€)</Label>
+                  <Input
+                    id="umsatzSollWoche"
+                    type="number"
+                    placeholder="z.B. 5000"
+                    value={editForm.umsatzSollWoche}
+                    onChange={(e) => setEditForm({ ...editForm, umsatzSollWoche: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="umsatzSollMonat">Monatsziel (€)</Label>
+                  <Input
+                    id="umsatzSollMonat"
+                    type="number"
+                    placeholder="z.B. 20000"
+                    value={editForm.umsatzSollMonat}
+                    onChange={(e) => setEditForm({ ...editForm, umsatzSollMonat: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Aktivitätsziele */}
+            <div className="space-y-4">
+              <h3 className="font-semibold text-sm text-gray-700">Wöchentliche Aktivitätsziele</h3>
+              <div className="grid grid-cols-2 gap-4">
+                {memberGoals?.trackKontakte && (
+                  <div className="space-y-2">
+                    <Label htmlFor="kontakteSoll">Kontakte</Label>
+                    <Input
+                      id="kontakteSoll"
+                      type="number"
+                      placeholder="z.B. 20"
+                      value={editForm.kontakteSoll}
+                      onChange={(e) => setEditForm({ ...editForm, kontakteSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {memberGoals?.trackTermine && (
+                  <div className="space-y-2">
+                    <Label htmlFor="termineVereinbartSoll">Termine</Label>
+                    <Input
+                      id="termineVereinbartSoll"
+                      type="number"
+                      placeholder="z.B. 10"
+                      value={editForm.termineVereinbartSoll}
+                      onChange={(e) => setEditForm({ ...editForm, termineVereinbartSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {memberGoals?.trackAbschluesse && (
+                  <div className="space-y-2">
+                    <Label htmlFor="termineAbschlussSoll">Abschlüsse</Label>
+                    <Input
+                      id="termineAbschlussSoll"
+                      type="number"
+                      placeholder="z.B. 5"
+                      value={editForm.termineAbschlussSoll}
+                      onChange={(e) => setEditForm({ ...editForm, termineAbschlussSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {memberGoals?.trackEinheiten && (
+                  <div className="space-y-2">
+                    <Label htmlFor="einheitenSoll">Einheiten</Label>
+                    <Input
+                      id="einheitenSoll"
+                      type="number"
+                      placeholder="z.B. 10"
+                      value={editForm.einheitenSoll}
+                      onChange={(e) => setEditForm({ ...editForm, einheitenSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {memberGoals?.trackEmpfehlungen && (
+                  <div className="space-y-2">
+                    <Label htmlFor="empfehlungenSoll">Empfehlungen</Label>
+                    <Input
+                      id="empfehlungenSoll"
+                      type="number"
+                      placeholder="z.B. 3"
+                      value={editForm.empfehlungenSoll}
+                      onChange={(e) => setEditForm({ ...editForm, empfehlungenSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button
+              className="w-full bg-red-600 hover:bg-red-700"
+              onClick={handleSaveGoals}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Speichern...
+                </>
+              ) : (
+                <>
+                  <Save className="h-4 w-4 mr-2" />
+                  Ziele speichern
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

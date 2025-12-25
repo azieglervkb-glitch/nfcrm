@@ -58,3 +58,55 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json();
+    const {
+      memberId,
+      hauptzielEinSatz,
+      umsatzSollWoche,
+      umsatzSollMonat,
+      kontakteSoll,
+      termineVereinbartSoll,
+      termineAbschlussSoll,
+      einheitenSoll,
+      empfehlungenSoll,
+    } = body;
+
+    if (!memberId) {
+      return NextResponse.json({ error: "Member ID required" }, { status: 400 });
+    }
+
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+    });
+
+    if (!member) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
+    }
+
+    // Update member goals
+    const updated = await prisma.member.update({
+      where: { id: memberId },
+      data: {
+        hauptzielEinSatz,
+        umsatzSollWoche,
+        umsatzSollMonat,
+        kontakteSoll,
+        termineVereinbartSoll,
+        termineAbschlussSoll,
+        einheitenSoll,
+        empfehlungenSoll,
+      },
+    });
+
+    return NextResponse.json({ success: true, member: updated });
+  } catch (error) {
+    console.error("Failed to update member goals:", error);
+    return NextResponse.json(
+      { error: "Failed to update member goals" },
+      { status: 500 }
+    );
+  }
+}
