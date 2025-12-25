@@ -1,43 +1,59 @@
-import { NextResponse } from "next/server";
-import { getMemberSession } from "@/lib/member-auth";
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// Goals feature is not yet implemented in the database schema
-// This is a stub that returns empty results
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await getMemberSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { searchParams } = new URL(request.url);
+    const memberId = searchParams.get("memberId");
+
+    if (!memberId) {
+      return NextResponse.json({ error: "Member ID required" }, { status: 400 });
     }
 
-    // Return empty array - goals feature coming soon
-    return NextResponse.json([]);
-  } catch (error) {
-    console.error("Failed to fetch goals:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch goals" },
-      { status: 500 }
-    );
-  }
-}
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        vorname: true,
+        hauptzielEinSatz: true,
+        umsatzSollWoche: true,
+        umsatzSollMonat: true,
+        kontakteSoll: true,
+        termineVereinbartSoll: true,
+        termineAbschlussSoll: true,
+        einheitenSoll: true,
+        empfehlungenSoll: true,
+        trackKontakte: true,
+        trackTermine: true,
+        trackAbschluesse: true,
+        trackEinheiten: true,
+        trackEmpfehlungen: true,
+      },
+    });
 
-export async function POST(request: Request) {
-  try {
-    const session = await getMemberSession();
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!member) {
+      return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Goals feature not yet implemented
-    return NextResponse.json(
-      { message: "Goals feature coming soon" },
-      { status: 501 }
-    );
+    return NextResponse.json({
+      vorname: member.vorname,
+      hauptzielEinSatz: member.hauptzielEinSatz,
+      umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
+      umsatzSollMonat: member.umsatzSollMonat ? Number(member.umsatzSollMonat) : null,
+      kontakteSoll: member.kontakteSoll,
+      termineVereinbartSoll: member.termineVereinbartSoll,
+      termineAbschlussSoll: member.termineAbschlussSoll,
+      einheitenSoll: member.einheitenSoll,
+      empfehlungenSoll: member.empfehlungenSoll,
+      trackKontakte: member.trackKontakte,
+      trackTermine: member.trackTermine,
+      trackAbschluesse: member.trackAbschluesse,
+      trackEinheiten: member.trackEinheiten,
+      trackEmpfehlungen: member.trackEmpfehlungen,
+    });
   } catch (error) {
-    console.error("Failed to create goal:", error);
+    console.error("Failed to fetch member goals:", error);
     return NextResponse.json(
-      { error: "Failed to create goal" },
+      { error: "Failed to fetch member goals" },
       { status: 500 }
     );
   }

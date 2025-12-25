@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -15,22 +16,62 @@ import {
   Target,
   User,
   Home,
-  CheckCircle,
-  Clock,
-  Plus,
-  Construction,
+  TrendingUp,
+  Loader2,
+  Trophy,
+  Calendar,
 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+
+interface MemberGoals {
+  vorname: string;
+  hauptzielEinSatz: string | null;
+  umsatzSollWoche: number | null;
+  umsatzSollMonat: number | null;
+  kontakteSoll: number | null;
+  termineVereinbartSoll: number | null;
+  termineAbschlussSoll: number | null;
+  einheitenSoll: number | null;
+  empfehlungenSoll: number | null;
+  trackKontakte: boolean;
+  trackTermine: boolean;
+  trackAbschluesse: boolean;
+  trackEinheiten: boolean;
+  trackEmpfehlungen: boolean;
+}
 
 export default function MemberGoalsPage() {
   const params = useParams();
   const memberId = params.memberId as string;
-  const { toast } = useToast();
 
-  const showComingSoon = () => {
-    toast({
-      title: "Kommt bald!",
-      description: "Die Zielverwaltung wird bald verfügbar sein.",
+  const [memberGoals, setMemberGoals] = useState<MemberGoals | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (memberId) {
+      fetchMemberGoals();
+    }
+  }, [memberId]);
+
+  const fetchMemberGoals = async () => {
+    try {
+      const response = await fetch(`/api/member/goals?memberId=${memberId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMemberGoals(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch goals:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const formatCurrency = (value: number | null) => {
+    if (!value) return "-";
+    return Number(value).toLocaleString("de-DE", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 0,
     });
   };
 
@@ -41,33 +82,13 @@ export default function MemberGoalsPage() {
     { href: `/member/${memberId}/profil`, icon: User, label: "Profil" },
   ];
 
-  // Placeholder goals - will be implemented with actual data later
-  const goals = [
-    {
-      id: 1,
-      title: "Umsatz verdoppeln",
-      description: "Von 5.000€ auf 10.000€ monatlich",
-      deadline: "31.03.2025",
-      progress: 60,
-      status: "in_progress",
-    },
-    {
-      id: 2,
-      title: "20 Neukunden gewinnen",
-      description: "Durch aktive Akquise und Empfehlungen",
-      deadline: "30.06.2025",
-      progress: 25,
-      status: "in_progress",
-    },
-    {
-      id: 3,
-      title: "Erstgespräch-Quote verbessern",
-      description: "Von 30% auf 50% Abschlussquote",
-      deadline: "28.02.2025",
-      progress: 100,
-      status: "completed",
-    },
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -119,100 +140,144 @@ export default function MemberGoalsPage() {
       {/* Content */}
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Meine Ziele</h1>
-              <p className="text-gray-600">Verfolge deine S.M.A.R.T. Ziele</p>
-            </div>
-            <Button className="bg-red-600 hover:bg-red-700" onClick={showComingSoon}>
-              <Plus className="h-4 w-4 mr-2" />
-              Neues Ziel
-            </Button>
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Meine Ziele</h1>
+            <p className="text-gray-600">Deine definierten Ziele und Wochenziele</p>
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-gray-900">
-                  {goals.filter((g) => g.status === "completed").length}
-                </p>
-                <p className="text-sm text-gray-600">Erreicht</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-orange-600">
-                  {goals.filter((g) => g.status === "in_progress").length}
-                </p>
-                <p className="text-sm text-gray-600">In Arbeit</p>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <p className="text-3xl font-bold text-gray-900">{goals.length}</p>
-                <p className="text-sm text-gray-600">Gesamt</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Goals List */}
-          <div className="space-y-4">
-            {goals.map((goal) => (
-              <Card key={goal.id} className="hover:shadow-md transition-shadow">
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      {goal.status === "completed" ? (
-                        <div className="p-2 bg-green-100 rounded-full">
-                          <CheckCircle className="h-5 w-5 text-green-600" />
-                        </div>
-                      ) : (
-                        <div className="p-2 bg-orange-100 rounded-full">
-                          <Clock className="h-5 w-5 text-orange-600" />
-                        </div>
-                      )}
-                      <div>
-                        <CardTitle className="text-lg">{goal.title}</CardTitle>
-                        <CardDescription>{goal.description}</CardDescription>
-                      </div>
-                    </div>
-                    <span className="text-sm text-gray-500">
-                      Deadline: {goal.deadline}
-                    </span>
+          {/* Hauptziel */}
+          {memberGoals?.hauptzielEinSatz && (
+            <Card className="bg-gradient-to-br from-red-600 to-red-700 text-white">
+              <CardHeader>
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-white/20 rounded-full">
+                    <Trophy className="h-6 w-6" />
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Fortschritt</span>
-                      <span className="font-medium">{goal.progress}%</span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          goal.progress >= 100 ? "bg-green-500" : "bg-red-500"
-                        }`}
-                        style={{ width: `${Math.min(goal.progress, 100)}%` }}
-                      />
-                    </div>
+                  <div>
+                    <CardTitle className="text-white text-lg">Mein Hauptziel</CardTitle>
+                    <CardDescription className="text-red-100">
+                      Das hast du dir vorgenommen
+                    </CardDescription>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {goals.length === 0 && (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-600 mb-4">Noch keine Ziele definiert</p>
-                <Button className="bg-red-600 hover:bg-red-700" onClick={showComingSoon}>
-                  Erstes Ziel erstellen
-                </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-xl font-semibold">"{memberGoals.hauptzielEinSatz}"</p>
               </CardContent>
             </Card>
           )}
+
+          {/* Umsatzziele */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-full">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Umsatzziele</CardTitle>
+                  <CardDescription>Deine finanziellen Ziele</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-4 bg-gray-50 rounded-lg text-center">
+                  <p className="text-sm text-gray-500 mb-1">Wochenziel</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(memberGoals?.umsatzSollWoche || null)}
+                  </p>
+                </div>
+                <div className="p-4 bg-gray-50 rounded-lg text-center">
+                  <p className="text-sm text-gray-500 mb-1">Monatsziel</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    {formatCurrency(memberGoals?.umsatzSollMonat || null)}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Aktivitätsziele */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-full">
+                  <Calendar className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg">Wöchentliche Aktivitätsziele</CardTitle>
+                  <CardDescription>Deine KPI-Ziele pro Woche</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {memberGoals?.trackKontakte && memberGoals.kontakteSoll && (
+                  <div className="p-4 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Kontakte</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {memberGoals.kontakteSoll}
+                    </p>
+                  </div>
+                )}
+                {memberGoals?.trackTermine && memberGoals.termineVereinbartSoll && (
+                  <div className="p-4 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Termine</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {memberGoals.termineVereinbartSoll}
+                    </p>
+                  </div>
+                )}
+                {memberGoals?.trackAbschluesse && memberGoals.termineAbschlussSoll && (
+                  <div className="p-4 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Abschlüsse</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {memberGoals.termineAbschlussSoll}
+                    </p>
+                  </div>
+                )}
+                {memberGoals?.trackEinheiten && memberGoals.einheitenSoll && (
+                  <div className="p-4 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Einheiten</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {memberGoals.einheitenSoll}
+                    </p>
+                  </div>
+                )}
+                {memberGoals?.trackEmpfehlungen && memberGoals.empfehlungenSoll && (
+                  <div className="p-4 bg-gray-50 rounded-lg text-center">
+                    <p className="text-sm text-gray-500 mb-1">Empfehlungen</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {memberGoals.empfehlungenSoll}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {!memberGoals?.kontakteSoll &&
+               !memberGoals?.termineVereinbartSoll &&
+               !memberGoals?.termineAbschlussSoll &&
+               !memberGoals?.einheitenSoll &&
+               !memberGoals?.empfehlungenSoll && (
+                <p className="text-center text-gray-500 py-4">
+                  Keine Aktivitätsziele definiert
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* CTA */}
+          <Card className="bg-gray-50 border-dashed">
+            <CardContent className="py-8 text-center">
+              <Target className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+              <h3 className="font-semibold text-gray-900 mb-2">
+                Ziele anpassen?
+              </h3>
+              <p className="text-gray-600 mb-4 text-sm">
+                Wenn du deine Ziele ändern möchtest, wende dich an deinen Coach.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </main>
     </div>
