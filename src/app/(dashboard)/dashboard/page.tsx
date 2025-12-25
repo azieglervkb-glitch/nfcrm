@@ -228,8 +228,8 @@ export default async function DashboardPage() {
                   key={log.id}
                   className="flex items-center gap-3 p-3 rounded-lg bg-muted/50"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-semibold">
-                    {log.ruleId}
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary shrink-0">
+                    <Zap className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{log.ruleName}</p>
