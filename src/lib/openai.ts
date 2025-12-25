@@ -105,7 +105,7 @@ Gewählte Stilvariante für diese Nachricht: ${style}`;
   const userPrompt = buildUserPrompt(member, kpiWeek);
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4-turbo-preview",
+    model: "gpt-4o",
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },

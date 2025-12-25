@@ -22,6 +22,7 @@ import {
   Target,
   AlertTriangle,
   User,
+  ExternalLink,
 } from "lucide-react";
 import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
@@ -135,6 +136,12 @@ export default async function MemberDetailPage({
               </div>
             </div>
             <div className="flex gap-2">
+              <Button variant="secondary" size="sm" asChild>
+                <Link href={`/member/${member.id}`} target="_blank">
+                  <ExternalLink className="mr-2 h-4 w-4" />
+                  Als Member anmelden
+                </Link>
+              </Button>
               <Button variant="secondary" size="sm" asChild>
                 <Link href={`/members/${member.id}/edit`}>
                   <Edit className="mr-2 h-4 w-4" />
