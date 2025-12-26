@@ -7,8 +7,11 @@ WORKDIR /app
 # Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
-# Copy package files
+# Copy package files AND prisma schema (needed for postinstall)
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
+
+# Install dependencies (this will run prisma generate in postinstall)
 RUN npm ci
 
 # Rebuild the source code only when needed
@@ -21,14 +24,7 @@ RUN apk add --no-cache openssl
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Set environment variables for build
-ARG DATABASE_URL
-ARG AUTH_SECRET
-ENV DATABASE_URL=${DATABASE_URL}
-ENV AUTH_SECRET=${AUTH_SECRET}
-
-# Generate Prisma Client and build
-RUN npx prisma generate
+# Build the application
 RUN npm run build
 
 # Production image
