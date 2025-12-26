@@ -1,12 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { SectionHeader, StatusBadge, getTaskPriorityType } from "@/components/common";
+import { SectionHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, Clock, CheckCircle2, Circle } from "lucide-react";
-import Link from "next/link";
-import { formatRelativeTime, formatDate } from "@/lib/date-utils";
+import { TaskCard } from "@/components/tasks/task-card";
 
 async function getTasks() {
   const session = await auth();
@@ -38,72 +36,6 @@ async function getTasks() {
 
 export default async function TasksPage() {
   const { openTasks, inProgressTasks, currentUserId } = await getTasks();
-
-  const TaskCard = ({
-    task,
-  }: {
-    task: Awaited<ReturnType<typeof getTasks>>["openTasks"][0];
-  }) => (
-    <div className="p-4 bg-card border border-border rounded-lg hover:shadow-sm transition-shadow">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <StatusBadge
-              status={getTaskPriorityType(task.priority)}
-              label={task.priority}
-            />
-            {task.ruleId && (
-              <span className="text-xs font-medium px-2 py-0.5 rounded bg-primary/10 text-primary">
-                {task.ruleId}
-              </span>
-            )}
-          </div>
-          <h3 className="font-medium truncate">{task.title}</h3>
-          {task.description && (
-            <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-              {task.description}
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between mt-3 pt-3 border-t">
-        {task.member ? (
-          <Link
-            href={`/members/${task.member.id}`}
-            className="flex items-center gap-2 text-sm hover:underline"
-          >
-            <Avatar className="h-6 w-6">
-              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                {task.member.vorname.charAt(0)}
-                {task.member.nachname.charAt(0)}
-              </AvatarFallback>
-            </Avatar>
-            <span>
-              {task.member.vorname} {task.member.nachname}
-            </span>
-          </Link>
-        ) : (
-          <span className="text-sm text-muted-foreground">Kein Mitglied</span>
-        )}
-
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          {task.dueDate && (
-            <span className="flex items-center gap-1">
-              <Clock className="h-3 w-3" />
-              {formatDate(task.dueDate, "dd.MM.")}
-            </span>
-          )}
-          {task.assignedTo && (
-            <span>
-              {task.assignedTo.vorname.charAt(0)}
-              {task.assignedTo.nachname.charAt(0)}
-            </span>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   return (
     <div className="space-y-6">
