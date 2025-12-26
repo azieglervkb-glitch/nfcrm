@@ -651,7 +651,7 @@ export async function runKpiAutomations(
     include: {
       kpiWeeks: {
         orderBy: { weekStart: "desc" },
-        take: 4,
+        take: 12, // Need more for upsell check
       },
     },
   });
@@ -663,13 +663,21 @@ export async function runKpiAutomations(
 
   // Run all applicable rules
   await Promise.allSettled([
+    // Risk & Retention
     checkLowFeelingStreak(member),
     checkLeistungsabfall(member),
+    // Performance & Upside
     checkUpsellSignal(member, kpiWeek),
+    checkFunnelLeak(member, kpiWeek), // P2-FUNNEL
     checkMomentumStreak(member),
+    // Quality & Hygiene
     checkHighNoShow(member, kpiWeek),
+    checkMissingTrackedField(member, kpiWeek), // Q3
+    // Coaching-Flow
     checkHeldentat(member, kpiWeek),
     checkBlockade(member, kpiWeek),
+    checkSmartNudge(member), // C3
+    // Celebrations & Upsell
     checkGoalCelebration(member, kpiWeek),
     checkHappyHighPerformer(member, kpiWeek),
   ]);
