@@ -56,6 +56,8 @@ import {
   Plus,
   ArrowUpRight,
   ArrowDownLeft,
+  LayoutGrid,
+  List,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -64,6 +66,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
+import { LeadKanbanBoard } from "@/components/leads/lead-kanban-board";
 
 interface Lead {
   id: string;
@@ -136,6 +139,7 @@ export default function LeadsPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [viewMode, setViewMode] = useState<"kanban" | "table">("kanban");
   const [newLead, setNewLead] = useState({
     vorname: "",
     nachname: "",
@@ -340,6 +344,12 @@ export default function LeadsPage() {
     qualifiziert: leads.filter((l) => l.status === "QUALIFIZIERT").length,
   };
 
+  // Handler for Kanban status change via drag & drop
+  async function handleKanbanStatusChange(leadId: string, newStatus: string, oldStatus: string) {
+    if (oldStatus === newStatus) return;
+    await updateLeadStatus(leadId, newStatus);
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -350,10 +360,33 @@ export default function LeadsPage() {
             Verwalte Interessenten die noch nicht gekauft haben
           </p>
         </div>
-        <Button onClick={() => setShowAddDialog(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Lead hinzufügen
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center bg-muted rounded-lg p-1">
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              className={`h-8 px-3 ${viewMode === "kanban" ? "" : "hover:bg-transparent"}`}
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="h-4 w-4 mr-1.5" />
+              Kanban
+            </Button>
+            <Button
+              variant={viewMode === "table" ? "default" : "ghost"}
+              size="sm"
+              className={`h-8 px-3 ${viewMode === "table" ? "" : "hover:bg-transparent"}`}
+              onClick={() => setViewMode("table")}
+            >
+              <List className="h-4 w-4 mr-1.5" />
+              Tabelle
+            </Button>
+          </div>
+          <Button onClick={() => setShowAddDialog(true)}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Lead hinzufügen
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -384,152 +417,161 @@ export default function LeadsPage() {
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="pt-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Lead suchen..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Status Filter" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Alle Status</SelectItem>
-                {STATUS_OPTIONS.map((status) => (
-                  <SelectItem key={status.value} value={status.value}>
-                    {status.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search & Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Lead suchen..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        {viewMode === "table" && (
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Status Filter" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Alle Status</SelectItem>
+              {STATUS_OPTIONS.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </div>
 
-      {/* Leads Table */}
-      <Card>
-        <CardContent className="pt-4">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredLeads.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              Keine Leads gefunden
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Kontakt</TableHead>
-                  <TableHead>Quelle</TableHead>
-                  <TableHead>Interessiert an</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Erstellt</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.map((lead) => {
-                  const statusInfo = getStatusInfo(lead.status);
-                  return (
-                    <TableRow
-                      key={lead.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => openLeadDetail(lead)}
-                    >
-                      <TableCell className="font-medium">
-                        {lead.vorname} {lead.nachname}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1 text-sm">
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3 text-muted-foreground" />
-                            {lead.email}
-                          </div>
-                          {lead.telefon && (
+      {/* Content Area */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : viewMode === "kanban" ? (
+        /* Kanban Board View */
+        <LeadKanbanBoard
+          leads={leads}
+          onLeadClick={openLeadDetail}
+          onStatusChange={handleKanbanStatusChange}
+          searchQuery={searchQuery}
+        />
+      ) : (
+        /* Table View */
+        <Card>
+          <CardContent className="pt-4">
+            {filteredLeads.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Keine Leads gefunden
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Kontakt</TableHead>
+                    <TableHead>Quelle</TableHead>
+                    <TableHead>Interessiert an</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Erstellt</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.map((lead) => {
+                    const statusInfo = getStatusInfo(lead.status);
+                    return (
+                      <TableRow
+                        key={lead.id}
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => openLeadDetail(lead)}
+                      >
+                        <TableCell className="font-medium">
+                          {lead.vorname} {lead.nachname}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1 text-sm">
                             <div className="flex items-center gap-1">
-                              <Phone className="h-3 w-3 text-muted-foreground" />
-                              {lead.telefon}
+                              <Mail className="h-3 w-3 text-muted-foreground" />
+                              {lead.email}
                             </div>
+                            {lead.telefon && (
+                              <div className="flex items-center gap-1">
+                                <Phone className="h-3 w-3 text-muted-foreground" />
+                                {lead.telefon}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-sm">
+                            {SOURCE_MAP[lead.source] || lead.source}
+                          </span>
+                          {lead.sourceDetail && (
+                            <p className="text-xs text-muted-foreground">
+                              {lead.sourceDetail}
+                            </p>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm">
-                          {SOURCE_MAP[lead.source] || lead.source}
-                        </span>
-                        {lead.sourceDetail && (
-                          <p className="text-xs text-muted-foreground">
-                            {lead.sourceDetail}
-                          </p>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {lead.interessiertAn && (
-                          <Badge variant="outline">{lead.interessiertAn}</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <Select
-                          value={lead.status}
-                          onValueChange={(value) => updateLeadStatus(lead.id, value)}
-                        >
-                          <SelectTrigger className={`w-[140px] h-8 border ${statusInfo.color}`}>
-                            <SelectValue>{statusInfo.label}</SelectValue>
-                          </SelectTrigger>
-                          <SelectContent>
-                            {STATUS_OPTIONS.map((status) => (
-                              <SelectItem key={status.value} value={status.value}>
-                                <div className="flex items-center gap-2">
-                                  <div
-                                    className={`w-2 h-2 rounded-full ${status.color.split(" ")[0]}`}
-                                  />
-                                  {status.label}
-                                </div>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {new Date(lead.createdAt).toLocaleDateString("de-DE")}
-                      </TableCell>
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => deleteLead(lead.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Löschen
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+                        </TableCell>
+                        <TableCell>
+                          {lead.interessiertAn && (
+                            <Badge variant="outline">{lead.interessiertAn}</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Select
+                            value={lead.status}
+                            onValueChange={(value) => updateLeadStatus(lead.id, value)}
+                          >
+                            <SelectTrigger className={`w-[140px] h-8 border ${statusInfo.color}`}>
+                              <SelectValue>{statusInfo.label}</SelectValue>
+                            </SelectTrigger>
+                            <SelectContent>
+                              {STATUS_OPTIONS.map((status) => (
+                                <SelectItem key={status.value} value={status.value}>
+                                  <div className="flex items-center gap-2">
+                                    <div
+                                      className={`w-2 h-2 rounded-full ${status.color.split(" ")[0]}`}
+                                    />
+                                    {status.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(lead.createdAt).toLocaleDateString("de-DE")}
+                        </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => deleteLead(lead.id)}
+                                className="text-destructive"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Löschen
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Lead Detail Sheet */}
       <Sheet open={!!selectedLead} onOpenChange={() => setSelectedLead(null)}>
