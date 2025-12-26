@@ -255,6 +255,19 @@ async function generateAiFeedbackAsync(
   kpiWeek: any
 ) {
   try {
+    // Check if API key is configured
+    if (!process.env.OPENAI_API_KEY) {
+      await prisma.kpiWeek.update({
+        where: { id: kpiWeekId },
+        data: {
+          aiFeedbackBlocked: true,
+          aiFeedbackBlockReason: "OpenAI API Key nicht konfiguriert",
+        },
+      });
+      console.error("OpenAI API Key not configured");
+      return;
+    }
+
     // Generate feedback
     const { text, style } = await generateKpiFeedback(member, kpiWeek);
 
@@ -283,7 +296,17 @@ async function generateAiFeedbackAsync(
     });
 
     console.log(`AI feedback generated for KPI ${kpiWeekId}, scheduled for ${scheduledFor.toISOString()} (delay: ${Math.round(delayMinutes)} min)`);
-  } catch (error) {
+  } catch (error: any) {
+    // Store the error so it's visible in the UI
+    const errorMessage = error?.message || "Unbekannter Fehler bei KI-Feedback-Generierung";
     console.error("Error generating AI feedback:", error);
+
+    await prisma.kpiWeek.update({
+      where: { id: kpiWeekId },
+      data: {
+        aiFeedbackBlocked: true,
+        aiFeedbackBlockReason: `OpenAI Fehler: ${errorMessage.substring(0, 200)}`,
+      },
+    });
   }
 }

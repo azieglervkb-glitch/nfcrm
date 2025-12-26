@@ -77,16 +77,26 @@ export async function checkLowFeelingStreak(
   const ruleId = "R1";
   const ruleName = "Low-Feeling-Streak";
 
-  if (await isCooldownActive(member.id, ruleId)) return;
+  if (await isCooldownActive(member.id, ruleId)) {
+    console.log(`[R1] Cooldown active for ${member.vorname}`);
+    return;
+  }
 
   const recentKpis = member.kpiWeeks.slice(0, 3);
-  if (recentKpis.length < 3) return;
+  console.log(`[R1] Checking ${member.vorname}: ${recentKpis.length} KPIs available (need 3)`);
+
+  if (recentKpis.length < 3) {
+    console.log(`[R1] Skipped: Not enough KPIs (${recentKpis.length}/3)`);
+    return;
+  }
 
   const allLowFeeling = recentKpis.every(
     (kpi) => kpi.feelingScore !== null && kpi.feelingScore < 5
   );
+  console.log(`[R1] Feelings: ${recentKpis.map(k => k.feelingScore).join(', ')} - All low: ${allLowFeeling}`);
 
   if (allLowFeeling) {
+    console.log(`[R1] TRIGGERED for ${member.vorname}: Creating task`);
     const actions: string[] = [];
 
     // Set review flag
@@ -487,14 +497,17 @@ export async function checkBlockade(
   const ruleId = "C2";
   const ruleName = "Blockade aktiv";
 
-  if (await isCooldownActive(member.id, ruleId)) return;
+  if (await isCooldownActive(member.id, ruleId)) {
+    console.log(`[C2] Cooldown active for ${member.vorname}`);
+    return;
+  }
 
-  if (
-    kpiWeek.blockiert &&
-    kpiWeek.blockiert.trim().length > 0 &&
-    kpiWeek.feelingScore !== null &&
-    kpiWeek.feelingScore <= 5
-  ) {
+  const hasBlockade = kpiWeek.blockiert && kpiWeek.blockiert.trim().length > 0;
+  const lowFeeling = kpiWeek.feelingScore !== null && kpiWeek.feelingScore <= 5;
+  console.log(`[C2] Checking ${member.vorname}: Blockade=${hasBlockade}, Feeling=${kpiWeek.feelingScore} (<=5: ${lowFeeling})`);
+
+  if (hasBlockade && lowFeeling) {
+    console.log(`[C2] TRIGGERED for ${member.vorname}: Creating task`);
     const actions: string[] = [];
 
     // Block AI feedback
@@ -521,7 +534,7 @@ export async function checkBlockade(
     actions.push("CREATE_TASK: Persönlicher Check-in (HIGH)");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
-      blockade: kpiWeek.blockiert.substring(0, 100),
+      blockade: kpiWeek.blockiert?.substring(0, 100),
       feeling: kpiWeek.feelingScore,
     });
 
@@ -656,10 +669,20 @@ export async function runKpiAutomations(
     },
   });
 
-  if (!member || member.status !== "AKTIV") return;
+  if (!member || member.status !== "AKTIV") {
+    console.log(`[Automation] Skipped: Member ${memberId} not found or not active`);
+    return;
+  }
 
   const kpiWeek = member.kpiWeeks.find((k) => k.id === kpiWeekId);
-  if (!kpiWeek) return;
+  if (!kpiWeek) {
+    console.log(`[Automation] Skipped: KpiWeek ${kpiWeekId} not found for member ${memberId}`);
+    return;
+  }
+
+  // Log automation context for debugging
+  console.log(`[Automation] Running rules for ${member.vorname} ${member.nachname} (${member.id})`);
+  console.log(`[Automation] KPI count: ${member.kpiWeeks.length}, Feeling: ${kpiWeek.feelingScore}`);
 
   // Run all applicable rules
   await Promise.allSettled([
@@ -681,6 +704,8 @@ export async function runKpiAutomations(
     checkGoalCelebration(member, kpiWeek),
     checkHappyHighPerformer(member, kpiWeek),
   ]);
+
+  console.log(`[Automation] Completed rules for ${member.vorname} ${member.nachname}`);
 }
 
 // Scheduled job function for weekly checks
