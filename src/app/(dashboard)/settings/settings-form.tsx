@@ -521,12 +521,12 @@ export function SettingsForm() {
               <Input
                 type="number"
                 min="4"
-                max="24"
+                max="52"
                 value={settings.upsellConsecutiveWeeks}
                 onChange={(e) => updateSetting("upsellConsecutiveWeeks", parseInt(e.target.value) || 12)}
               />
               <p className="text-xs text-muted-foreground">
-                Wie viele Wochen in Folge? (z.B. 12 Wochen = 3 Monate)
+                Wie viele Wochen in Folge? (z.B. 12 = 3 Monate, 24 = 6 Monate)
                 <br />
                 Jeder 4-Wochen-Block muss die Monatsumsatz-Schwelle erreichen.
               </p>

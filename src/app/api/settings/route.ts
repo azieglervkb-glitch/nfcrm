@@ -36,7 +36,7 @@ const systemSettingsSchema = z.object({
 
   // Upsell Triggers
   upsellRevenueThreshold: z.number().min(0).optional(),
-  upsellConsecutiveWeeks: z.number().min(1).max(12).optional(),
+  upsellConsecutiveWeeks: z.number().min(4).max(52).optional(), // Min 4 (1 month), max 52 (1 year)
 
   // Notifications
   coachEmailNotifications: z.boolean().optional(),
