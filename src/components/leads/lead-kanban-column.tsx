@@ -1,10 +1,6 @@
 "use client";
 
 import { useDroppable } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
 import { LeadKanbanCard } from "./lead-kanban-card";
 
 interface Lead {
@@ -50,8 +46,6 @@ export function LeadKanbanColumn({
     },
   });
 
-  const leadIds = leads.map((lead) => lead.id);
-
   return (
     <div className="flex flex-col min-w-[280px] max-w-[320px] flex-1">
       {/* Column Header */}
@@ -84,27 +78,25 @@ export function LeadKanbanColumn({
           ${isOver ? "bg-primary/5 border-primary/30 shadow-inner" : "border-border"}
         `}
       >
-        <SortableContext items={leadIds} strategy={verticalListSortingStrategy}>
-          {leads.length === 0 ? (
-            <div
-              className={`
-                flex items-center justify-center h-24 border-2 border-dashed rounded-lg
-                text-muted-foreground text-sm transition-colors
-                ${isOver ? "border-primary/40 bg-primary/5" : "border-muted"}
-              `}
-            >
-              {isOver ? "Hier ablegen" : "Keine Leads"}
-            </div>
-          ) : (
-            leads.map((lead) => (
-              <LeadKanbanCard
-                key={lead.id}
-                lead={lead}
-                onClick={() => onLeadClick(lead)}
-              />
-            ))
-          )}
-        </SortableContext>
+        {leads.length === 0 ? (
+          <div
+            className={`
+              flex items-center justify-center h-24 border-2 border-dashed rounded-lg
+              text-muted-foreground text-sm transition-colors
+              ${isOver ? "border-primary/40 bg-primary/5" : "border-muted"}
+            `}
+          >
+            {isOver ? "Hier ablegen" : "Keine Leads"}
+          </div>
+        ) : (
+          leads.map((lead) => (
+            <LeadKanbanCard
+              key={lead.id}
+              lead={lead}
+              onClick={() => onLeadClick(lead)}
+            />
+          ))
+        )}
       </div>
     </div>
   );

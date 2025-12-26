@@ -1,6 +1,6 @@
 "use client";
 
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,9 +40,8 @@ export function LeadKanbanCard({ lead, onClick }: LeadKanbanCardProps) {
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({
+  } = useDraggable({
     id: lead.id,
     data: {
       type: "lead",
@@ -51,8 +50,7 @@ export function LeadKanbanCard({ lead, onClick }: LeadKanbanCardProps) {
   });
 
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
+    transform: CSS.Translate.toString(transform),
   };
 
   const daysSinceCreated = Math.floor(
