@@ -170,7 +170,7 @@ export async function checkLeistungsabfall(
   }
 }
 
-// P1: Upsell-Signal
+// P1: Upsell-Signal (based on consecutive months hitting revenue threshold)
 export async function checkUpsellSignal(
   member: Member,
   kpiWeek: KpiWeek
@@ -180,18 +180,72 @@ export async function checkUpsellSignal(
 
   if (await isCooldownActive(member.id, ruleId)) return;
 
-  const umsatzPerf =
-    member.umsatzSollWoche && kpiWeek.umsatzIst
-      ? Number(kpiWeek.umsatzIst) / Number(member.umsatzSollWoche)
-      : 0;
+  // Get upsell settings
+  const settings = await prisma.systemSettings.findFirst({
+    where: { id: "default" },
+  });
 
-  const terminePerf =
-    member.termineAbschlussSoll && kpiWeek.termineAbschlussIst
-      ? kpiWeek.termineAbschlussIst / member.termineAbschlussSoll
-      : 0;
+  const consecutiveWeeks = settings?.upsellConsecutiveWeeks ?? 12;
+  const monthlyThreshold = settings?.upsellRevenueThreshold
+    ? Number(settings.upsellRevenueThreshold)
+    : 20000;
 
-  if (umsatzPerf >= 1.3 || terminePerf >= 1.5) {
+  // Need at least 4 weeks for one "month"
+  if (consecutiveWeeks < 4) return;
+
+  // Get recent KPIs
+  const recentKpis = await prisma.kpiWeek.findMany({
+    where: { memberId: member.id },
+    orderBy: { weekStart: "desc" },
+    take: consecutiveWeeks,
+  });
+
+  // Not enough data yet
+  if (recentKpis.length < consecutiveWeeks) return;
+
+  // Check if weeks are consecutive (no gaps)
+  const sortedKpis = [...recentKpis].sort(
+    (a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime()
+  );
+
+  let isConsecutive = true;
+  for (let i = 1; i < sortedKpis.length; i++) {
+    const prevDate = new Date(sortedKpis[i - 1].weekStart);
+    const currDate = new Date(sortedKpis[i].weekStart);
+    const daysDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+    // Should be exactly 7 days apart (allow 1 day tolerance)
+    if (daysDiff < 6 || daysDiff > 8) {
+      isConsecutive = false;
+      break;
+    }
+  }
+
+  if (!isConsecutive) return;
+
+  // Group into "months" (4 weeks each)
+  const numMonths = Math.floor(consecutiveWeeks / 4);
+  const monthlyRevenues: number[] = [];
+
+  for (let i = 0; i < numMonths; i++) {
+    const startIdx = i * 4;
+    const monthKpis = sortedKpis.slice(startIdx, startIdx + 4);
+    const monthSum = monthKpis.reduce(
+      (sum, kpi) => sum + (kpi.umsatzIst ? Number(kpi.umsatzIst) : 0),
+      0
+    );
+    monthlyRevenues.push(monthSum);
+  }
+
+  // Check if ALL months meet the threshold
+  const allMonthsAboveThreshold = monthlyRevenues.every(
+    (revenue) => revenue >= monthlyThreshold
+  );
+
+  if (allMonthsAboveThreshold) {
     const actions: string[] = [];
+    const avgMonthlyRevenue = Math.round(
+      monthlyRevenues.reduce((a, b) => a + b, 0) / monthlyRevenues.length
+    );
 
     // Set upsell flag
     await prisma.member.update({
@@ -200,20 +254,32 @@ export async function checkUpsellSignal(
     });
     actions.push("SET_FLAG: upsellCandidate = true");
 
-    // Create upsell pipeline entry
-    await prisma.upsellPipeline.create({
-      data: {
+    // Check if already in upsell pipeline
+    const existingUpsell = await prisma.upsellPipeline.findFirst({
+      where: {
         memberId: member.id,
-        triggerReason: `Performance über Ziel: Umsatz ${Math.round(umsatzPerf * 100)}%, Abschlüsse ${Math.round(terminePerf * 100)}%`,
-        triggerRuleId: ruleId,
-        status: "IDENTIFIED",
+        status: { not: "VERLOREN" },
       },
     });
-    actions.push("CREATE_UPSELL_PIPELINE: Performance über Ziel");
+
+    if (!existingUpsell) {
+      // Create upsell pipeline entry
+      await prisma.upsellPipeline.create({
+        data: {
+          memberId: member.id,
+          triggerReason: `${numMonths} Monate in Folge über ${monthlyThreshold.toLocaleString("de-DE")}€ Monatsumsatz (Ø ${avgMonthlyRevenue.toLocaleString("de-DE")}€)`,
+          triggerRuleId: ruleId,
+          status: "IDENTIFIED",
+        },
+      });
+      actions.push("CREATE_UPSELL_PIPELINE: Monatsumsatz-Trigger");
+    }
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
-      umsatzPerf: Math.round(umsatzPerf * 100),
-      terminePerf: Math.round(terminePerf * 100),
+      monthlyRevenues,
+      avgMonthlyRevenue,
+      threshold: monthlyThreshold,
+      consecutiveWeeks,
     });
 
     await setCooldown(member.id, ruleId, 720); // 30 days

@@ -553,9 +553,9 @@ model SystemSettings {
   churnRiskWeeks         Int     @default(2)
   dangerZoneWeeks        Int     @default(4)
 
-  // Upsell-Trigger
-  upsellRevenueThreshold Decimal @default(20000) @db.Decimal(12, 2)
-  upsellConsecutiveWeeks Int     @default(3)
+  // Upsell-Trigger (Monatsumsatz-basiert)
+  upsellRevenueThreshold Decimal @default(20000) @db.Decimal(12, 2) // Mindest-Monatsumsatz
+  upsellConsecutiveWeeks Int     @default(12) // 12 Wochen = 3 Monate
 
   // Notifications
   coachEmailNotifications Boolean @default(true)

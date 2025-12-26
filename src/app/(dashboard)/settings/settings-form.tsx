@@ -503,7 +503,7 @@ export function SettingsForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Umsatz-Schwelle (EUR)</Label>
+              <Label>Monatsumsatz-Schwelle (EUR)</Label>
               <Input
                 type="number"
                 min="0"
@@ -512,7 +512,7 @@ export function SettingsForm() {
                 onChange={(e) => updateSetting("upsellRevenueThreshold", parseFloat(e.target.value) || 20000)}
               />
               <p className="text-xs text-muted-foreground">
-                Mindest-Wochenumsatz für Upsell-Signal
+                Mindest-Monatsumsatz für Upsell-Signal (Summe aus 4 Wochen)
               </p>
             </div>
 
@@ -520,13 +520,15 @@ export function SettingsForm() {
               <Label>Aufeinanderfolgende Wochen</Label>
               <Input
                 type="number"
-                min="1"
-                max="12"
+                min="4"
+                max="24"
                 value={settings.upsellConsecutiveWeeks}
-                onChange={(e) => updateSetting("upsellConsecutiveWeeks", parseInt(e.target.value) || 3)}
+                onChange={(e) => updateSetting("upsellConsecutiveWeeks", parseInt(e.target.value) || 12)}
               />
               <p className="text-xs text-muted-foreground">
-                Wie viele Wochen in Folge über Schwelle?
+                Wie viele Wochen in Folge? (z.B. 12 Wochen = 3 Monate)
+                <br />
+                Jeder 4-Wochen-Block muss die Monatsumsatz-Schwelle erreichen.
               </p>
             </div>
           </CardContent>
