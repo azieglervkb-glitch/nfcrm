@@ -25,6 +25,8 @@ export async function GET() {
       isActive: true,
       lastLogin: true,
       createdAt: true,
+      taskRuleIds: true,
+      showAllTasks: true,
       _count: {
         select: { assignedMembers: true },
       },
@@ -49,7 +51,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { email, vorname, nachname, password, role, isActive } = body;
+    const { email, vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks } = body;
 
     if (!email || !vorname || !nachname || !password) {
       return NextResponse.json(
@@ -80,6 +82,8 @@ export async function POST(request: NextRequest) {
         passwordHash,
         role: role || "COACH",
         isActive: isActive ?? true,
+        taskRuleIds: taskRuleIds || [],
+        showAllTasks: showAllTasks ?? false,
       },
       select: {
         id: true,
@@ -88,6 +92,8 @@ export async function POST(request: NextRequest) {
         nachname: true,
         role: true,
         isActive: true,
+        taskRuleIds: true,
+        showAllTasks: true,
       },
     });
 

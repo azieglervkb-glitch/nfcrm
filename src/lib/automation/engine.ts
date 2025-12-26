@@ -68,6 +68,35 @@ async function getRecentKpis(
   });
 }
 
+// Find the appropriate assignee for a task based on rule preferences
+async function findTaskAssignee(
+  assignedCoachId: string | null,
+  ruleId: string
+): Promise<string | null> {
+  // 1. Check if the assigned coach has this rule enabled
+  if (assignedCoachId) {
+    const coach = await prisma.user.findUnique({
+      where: { id: assignedCoachId },
+      select: { taskRuleIds: true, isActive: true },
+    });
+
+    if (coach?.isActive && coach.taskRuleIds?.includes(ruleId)) {
+      return assignedCoachId;
+    }
+  }
+
+  // 2. Find another active user who has this rule enabled
+  const eligibleUser = await prisma.user.findFirst({
+    where: {
+      isActive: true,
+      taskRuleIds: { has: ruleId },
+    },
+    select: { id: true },
+  });
+
+  return eligibleUser?.id || null;
+}
+
 // ==================== RULE IMPLEMENTATIONS ====================
 
 // R1: Low-Feeling-Streak
@@ -107,6 +136,7 @@ export async function checkLowFeelingStreak(
     actions.push("SET_FLAG: reviewFlag = true");
 
     // Create urgent task
+    const assigneeR1 = await findTaskAssignee(member.assignedCoachId, ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -114,7 +144,7 @@ export async function checkLowFeelingStreak(
         description: `${member.vorname} ${member.nachname} hat 3 Wochen in Folge einen Feeling-Score unter 5. Dringender persönlicher Check-in erforderlich.`,
         priority: "HIGH",
         ruleId,
-        assignedToId: member.assignedCoachId,
+        assignedToId: assigneeR1,
       },
     });
     actions.push("CREATE_TASK: Check-in 1:1 binnen 24h (HIGH)");
@@ -163,6 +193,7 @@ export async function checkLeistungsabfall(
     actions.push("SET_FLAG: dangerZone = true");
 
     // Create urgent task
+    const assigneeR3 = await findTaskAssignee(member.assignedCoachId, ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -170,7 +201,7 @@ export async function checkLeistungsabfall(
         description: `${member.vorname} ${member.nachname} zeigt Leistungsabfall über 2 Wochen. Dringender Strategie-Call erforderlich.`,
         priority: "URGENT",
         ruleId,
-        assignedToId: member.assignedCoachId,
+        assignedToId: assigneeR3,
       },
     });
     actions.push("CREATE_TASK: Taktik-Call planen (URGENT)");
@@ -386,6 +417,7 @@ export async function checkHighNoShow(
     const actions: string[] = [];
 
     // Create task
+    const assigneeQ1 = await findTaskAssignee(member.assignedCoachId, ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -393,7 +425,7 @@ export async function checkHighNoShow(
         description: `${member.vorname} ${member.nachname} hat eine No-Show-Quote von ${Math.round(Number(kpiWeek.noshowQuote) * 100)}%. Reminder-Strategie besprechen.`,
         priority: "MEDIUM",
         ruleId,
-        assignedToId: member.assignedCoachId,
+        assignedToId: assigneeQ1,
       },
     });
     actions.push("CREATE_TASK: Reminder-Routine implementieren");
@@ -437,6 +469,7 @@ export async function checkChurnRisk(member: Member): Promise<void> {
     actions.push("SET_FLAG: churnRisk = true");
 
     // Create urgent task
+    const assigneeL1 = await findTaskAssignee(member.assignedCoachId, ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -444,7 +477,7 @@ export async function checkChurnRisk(member: Member): Promise<void> {
         description: `${member.vorname} ${member.nachname} zeigt Kündigungsrisiko. ${twoWeeksNoKpi ? "2 Wochen keine KPI-Abgabe." : "Niedrige Performance und Feeling."}`,
         priority: "URGENT",
         ruleId,
-        assignedToId: member.assignedCoachId,
+        assignedToId: assigneeL1,
       },
     });
     actions.push("CREATE_TASK: Retention-Call planen (URGENT)");
@@ -521,6 +554,7 @@ export async function checkBlockade(
     actions.push("BLOCK_AI_FEEDBACK");
 
     // Create task
+    const assigneeC2 = await findTaskAssignee(member.assignedCoachId, ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -528,7 +562,7 @@ export async function checkBlockade(
         description: `${member.vorname} ${member.nachname} hat eine Blockade gemeldet (Feeling: ${kpiWeek.feelingScore}): "${kpiWeek.blockiert}"`,
         priority: "HIGH",
         ruleId,
-        assignedToId: member.assignedCoachId,
+        assignedToId: assigneeC2,
       },
     });
     actions.push("CREATE_TASK: Persönlicher Check-in (HIGH)");
@@ -820,6 +854,7 @@ export async function checkFunnelLeak(
     const issue = entscheiderRatio < 0.3 ? "Pitch optimieren" : "Terminierung verbessern";
 
     // Create task
+    const assigneeP2 = await findTaskAssignee(member.assignedCoachId, ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -827,7 +862,7 @@ export async function checkFunnelLeak(
         description: `${member.vorname} ${member.nachname} zeigt Funnel-Leak: ${issue}. Entscheider-Quote: ${Math.round(entscheiderRatio * 100)}%, Termin-Quote: ${Math.round(termineRatio * 100)}%`,
         priority: "MEDIUM",
         ruleId,
-        assignedToId: member.assignedCoachId,
+        assignedToId: assigneeP2,
       },
     });
     actions.push("CREATE_TASK: Konvertierungs-Training");

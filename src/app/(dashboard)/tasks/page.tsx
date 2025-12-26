@@ -3,16 +3,29 @@ import { auth } from "@/lib/auth";
 import { SectionHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Clock, CheckCircle2, Circle } from "lucide-react";
+import { Plus, Clock, CheckCircle2, Circle, Users, User } from "lucide-react";
 import { TaskCard } from "@/components/tasks/task-card";
+import Link from "next/link";
 
-async function getTasks() {
-  const session = await auth();
+interface TasksPageProps {
+  searchParams: Promise<{ view?: string }>;
+}
+
+async function getTasks(showAll: boolean, currentUserId?: string) {
+  const baseWhere = {
+    status: { in: ["OPEN", "IN_PROGRESS"] as ("OPEN" | "IN_PROGRESS")[] },
+  };
 
   const tasks = await prisma.task.findMany({
-    where: {
-      status: { in: ["OPEN", "IN_PROGRESS"] },
-    },
+    where: showAll
+      ? baseWhere
+      : {
+          ...baseWhere,
+          OR: [
+            { assignedToId: currentUserId },
+            { assignedToId: null }, // Also show unassigned tasks
+          ],
+        },
     include: {
       member: {
         select: { id: true, vorname: true, nachname: true },
@@ -31,20 +44,63 @@ async function getTasks() {
   const openTasks = tasks.filter((t) => t.status === "OPEN");
   const inProgressTasks = tasks.filter((t) => t.status === "IN_PROGRESS");
 
-  return { openTasks, inProgressTasks, currentUserId: session?.user.id };
+  return { openTasks, inProgressTasks };
 }
 
-export default async function TasksPage() {
-  const { openTasks, inProgressTasks, currentUserId } = await getTasks();
+export default async function TasksPage({ searchParams }: TasksPageProps) {
+  const session = await auth();
+  const params = await searchParams;
+
+  // Get user's default preference
+  const user = session?.user?.id
+    ? await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { showAllTasks: true },
+      })
+    : null;
+
+  // Use URL param if provided, otherwise use user's saved preference
+  const showAll = params.view
+    ? params.view === "all"
+    : user?.showAllTasks ?? false;
+
+  const { openTasks, inProgressTasks } = await getTasks(showAll, session?.user?.id);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <SectionHeader title="Tasks" />
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Task erstellen
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* View Toggle */}
+          <div className="flex items-center rounded-lg border bg-muted/50 p-1">
+            <Link
+              href="/tasks?view=mine"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                !showAll
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <User className="h-4 w-4" />
+              Meine
+            </Link>
+            <Link
+              href="/tasks?view=all"
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                showAll
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              Alle
+            </Link>
+          </div>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Task erstellen
+          </Button>
+        </div>
       </div>
 
       {/* Kanban Board */}
@@ -63,7 +119,7 @@ export default async function TasksPage() {
           <CardContent className="space-y-3">
             {openTasks.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Keine offenen Tasks
+                {showAll ? "Keine offenen Tasks" : "Keine offenen Tasks für dich"}
               </p>
             ) : (
               openTasks.map((task) => <TaskCard key={task.id} task={task} />)
@@ -85,7 +141,7 @@ export default async function TasksPage() {
           <CardContent className="space-y-3">
             {inProgressTasks.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                Keine Tasks in Bearbeitung
+                {showAll ? "Keine Tasks in Bearbeitung" : "Keine Tasks in Bearbeitung für dich"}
               </p>
             ) : (
               inProgressTasks.map((task) => (

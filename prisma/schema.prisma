@@ -80,6 +80,10 @@ model User {
   isActive      Boolean   @default(true)
   lastLogin     DateTime?
 
+  // Task-Einstellungen
+  taskRuleIds   String[]  @default([])  // Welche Regel-Tasks dieser User empfangen soll (z.B. ["R1", "R3", "C2"])
+  showAllTasks  Boolean   @default(false) // Ob alle Tasks oder nur zugewiesene angezeigt werden
+
   // Relations
   assignedMembers Member[]  @relation("CoachMembers")
   tasks           Task[]    @relation("AssignedTasks")

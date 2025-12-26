@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Users,
   Plus,
@@ -31,9 +32,21 @@ import {
   User,
   Save,
   Loader2,
-  Mail
+  Mail,
+  ClipboardList,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
+
+// Regeln die Tasks erstellen
+const TASK_RULES = [
+  { id: "R1", name: "Low-Feeling-Streak", description: "Check-in bei niedrigem Feeling (3 Wochen < 5)" },
+  { id: "R3", name: "Leistungsabfall", description: "Taktik-Call bei Performance-Abfall" },
+  { id: "Q1", name: "No-Show hoch", description: "Reminder bei hoher No-Show-Quote (>= 30%)" },
+  { id: "L1", name: "Kündigungsrisiko", description: "Retention-Call bei Churn-Risiko" },
+  { id: "C2", name: "Blockade aktiv", description: "Check-in bei gemeldeter Blockade" },
+  { id: "P2", name: "Funnel-Leak", description: "Training bei Konversionsproblemen" },
+];
 
 interface TeamMember {
   id: string;
@@ -44,6 +57,8 @@ interface TeamMember {
   isActive: boolean;
   lastLogin: string | null;
   createdAt: string;
+  taskRuleIds: string[];
+  showAllTasks: boolean;
   _count?: { assignedMembers: number };
 }
 
@@ -61,6 +76,8 @@ export default function TeamPage() {
     password: "",
     role: "COACH" as "SUPER_ADMIN" | "ADMIN" | "COACH",
     isActive: true,
+    taskRuleIds: [] as string[],
+    showAllTasks: false,
   });
 
   useEffect(() => {
@@ -90,6 +107,8 @@ export default function TeamPage() {
       password: "",
       role: member.role,
       isActive: member.isActive,
+      taskRuleIds: member.taskRuleIds || [],
+      showAllTasks: member.showAllTasks || false,
     });
     setIsDialogOpen(true);
   }
@@ -103,8 +122,33 @@ export default function TeamPage() {
       password: "",
       role: "COACH",
       isActive: true,
+      taskRuleIds: TASK_RULES.map(r => r.id), // Alle Regeln standardmäßig aktiv
+      showAllTasks: false,
     });
     setIsDialogOpen(true);
+  }
+
+  function toggleTaskRule(ruleId: string) {
+    setFormData((prev) => ({
+      ...prev,
+      taskRuleIds: prev.taskRuleIds.includes(ruleId)
+        ? prev.taskRuleIds.filter((id) => id !== ruleId)
+        : [...prev.taskRuleIds, ruleId],
+    }));
+  }
+
+  function selectAllRules() {
+    setFormData((prev) => ({
+      ...prev,
+      taskRuleIds: TASK_RULES.map((r) => r.id),
+    }));
+  }
+
+  function deselectAllRules() {
+    setFormData((prev) => ({
+      ...prev,
+      taskRuleIds: [],
+    }));
   }
 
   async function handleSave() {
@@ -349,7 +393,7 @@ export default function TeamPage() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingMember ? "Teammitglied bearbeiten" : "Neues Teammitglied"}
@@ -434,6 +478,77 @@ export default function TeamPage() {
                 }
               />
               <Label htmlFor="isActive">Account aktiv</Label>
+            </div>
+
+            {/* Task-Regeln */}
+            <div className="space-y-3 border-t pt-4">
+              <div className="flex items-center justify-between">
+                <Label className="flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4" />
+                  Task-Regeln
+                </Label>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={selectAllRules}
+                  >
+                    Alle
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={deselectAllRules}
+                  >
+                    Keine
+                  </Button>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Welche Automation-Tasks soll dieser User erhalten?
+              </p>
+              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto">
+                {TASK_RULES.map((rule) => (
+                  <div
+                    key={rule.id}
+                    className="flex items-start gap-3 p-2 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                  >
+                    <Checkbox
+                      id={`rule-${rule.id}`}
+                      checked={formData.taskRuleIds.includes(rule.id)}
+                      onCheckedChange={() => toggleTaskRule(rule.id)}
+                    />
+                    <label
+                      htmlFor={`rule-${rule.id}`}
+                      className="flex-1 cursor-pointer"
+                    >
+                      <span className="font-medium text-sm">
+                        {rule.id}: {rule.name}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        {rule.description}
+                      </p>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Task-Ansicht */}
+            <div className="flex items-center gap-2 border-t pt-4">
+              <Switch
+                id="showAllTasks"
+                checked={formData.showAllTasks}
+                onCheckedChange={(checked) =>
+                  setFormData({ ...formData, showAllTasks: checked })
+                }
+              />
+              <Label htmlFor="showAllTasks" className="flex items-center gap-2">
+                <Eye className="h-4 w-4" />
+                Alle Tasks anzeigen (nicht nur zugewiesene)
+              </Label>
             </div>
 
             <div className="flex justify-end gap-2 pt-4">
