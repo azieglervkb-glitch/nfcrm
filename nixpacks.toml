@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = { nodejs = "22.12.0"; }
+
+[phases.install]
+cmds = ["npm ci"]
+
+[phases.build]
+cmds = ["npm run build"]
+
+[phases.start]
+cmd = "npm start"
