@@ -35,8 +35,8 @@ const systemSettingsSchema = z.object({
   dangerZoneWeeks: z.number().min(1).max(24).optional(),
 
   // Upsell Triggers
-  upsellRevenueThreshold: z.number().min(0).optional(),
-  upsellConsecutiveWeeks: z.number().min(4).max(52).optional(), // Min 4 (1 month), max 52 (1 year)
+  upsellRevenueThreshold: z.coerce.number().min(0).optional(),
+  upsellConsecutiveWeeks: z.coerce.number().min(1).max(52).optional(), // Automation requires min 4 to work
 
   // Notifications
   coachEmailNotifications: z.boolean().optional(),
