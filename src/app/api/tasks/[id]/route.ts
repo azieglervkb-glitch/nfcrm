@@ -120,6 +120,13 @@ export async function PATCH(
       taskBeforeUpdate.memberId
     ) {
       // Find the KPI week that was blocked (try current week first, then most recent)
+      // Prefer KPI-Woche marker from task description/title if present (prevents unblocking the wrong week)
+      const taskText = `${taskBeforeUpdate.title || ""}
+${taskBeforeUpdate.description || ""}`;
+      const weekMatch = taskText.match(/KPI-Woche\s+(\d+)\/(\d+)/);
+      const targetWeekNumber = weekMatch ? Number(weekMatch[1]) : null;
+      const targetYear = weekMatch ? Number(weekMatch[2]) : null;
+
       const currentWeekStart = (() => {
         const now = new Date();
         const dayOfWeek = now.getDay();
@@ -134,7 +141,9 @@ export async function PATCH(
       let kpiWeek = await prisma.kpiWeek.findFirst({
         where: {
           memberId: taskBeforeUpdate.memberId,
-          weekStart: currentWeekStart,
+          ...(targetWeekNumber && targetYear
+            ? { weekNumber: targetWeekNumber, year: targetYear }
+            : { weekStart: currentWeekStart }),
           aiFeedbackBlocked: true,
         },
         include: {
@@ -148,6 +157,9 @@ export async function PATCH(
           where: {
             memberId: taskBeforeUpdate.memberId,
             aiFeedbackBlocked: true,
+            ...(targetWeekNumber && targetYear
+              ? { weekNumber: targetWeekNumber, year: targetYear }
+              : {}),
           },
           orderBy: { weekStart: "desc" },
           include: {
@@ -158,9 +170,12 @@ export async function PATCH(
 
       if (kpiWeek && kpiWeek.member) {
         // Generate AI feedback asynchronously
-        generateAiFeedbackForBlockedTask(kpiWeek.id, kpiWeek.member, kpiWeek).catch(
-          console.error
-        );
+        generateAiFeedbackForBlockedTask(
+          kpiWeek.id,
+          kpiWeek.member,
+          kpiWeek,
+          taskBeforeUpdate.ruleId || "FEEDBACK_BLOCK"
+        ).catch(console.error);
       }
     }
 
@@ -212,7 +227,8 @@ export async function DELETE(
 async function generateAiFeedbackForBlockedTask(
   kpiWeekId: string,
   member: any,
-  kpiWeek: any
+  kpiWeek: any,
+  triggerRuleId: string
 ) {
   try {
     // Check if API key is configured
@@ -267,8 +283,11 @@ async function generateAiFeedbackForBlockedTask(
     await prisma.automationLog.create({
       data: {
         memberId: member.id,
-        ruleId: "Q2",
-        ruleName: "Daten-Anomalie Review",
+        ruleId: triggerRuleId,
+        ruleName:
+          triggerRuleId === "Q2"
+            ? "Daten-Anomalie Review"
+            : "KI-Feedback Review",
         triggered: true,
         actionsTaken: [
           "REVIEW_COMPLETED",

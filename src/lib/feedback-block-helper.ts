@@ -11,12 +11,27 @@ export async function createFeedbackBlockTask(
   ruleId?: string
 ): Promise<void> {
   try {
-    // Check if task already exists for this KPI week
+
+    // Get KPI week info (used to avoid mixing multiple blocked weeks for same member)
+    const kpiWeek = await prisma.kpiWeek.findUnique({
+      where: { id: kpiWeekId },
+      select: { weekNumber: true, year: true },
+    });
+
+    const weekInfo = kpiWeek
+      ? `KPI-Woche ${kpiWeek.weekNumber}/${kpiWeek.year}`
+      : "KPI-Woche";
+
+    // Check if task already exists for this KPI week (by weekInfo marker)
     const existingTask = await prisma.task.findFirst({
       where: {
         memberId,
         ruleId: ruleId || "FEEDBACK_BLOCK",
         status: { in: ["OPEN", "IN_PROGRESS"] },
+        OR: [
+          { description: { contains: weekInfo } },
+          { title: { contains: weekInfo } },
+        ],
       },
       include: {
         member: {
@@ -30,7 +45,7 @@ export async function createFeedbackBlockTask(
       await prisma.task.update({
         where: { id: existingTask.id },
         data: {
-          description: `KI-Feedback blockiert: ${reason}. Bitte prüfen und bei Bestätigung das KI-Feedback freigeben.`,
+          description: `${weekInfo} - KI-Feedback blockiert: ${reason}. Bitte prüfen und bei Bestätigung das KI-Feedback freigeben.`,
           priority: "HIGH",
         },
       });
@@ -48,21 +63,11 @@ export async function createFeedbackBlockTask(
       return;
     }
 
-    // Get KPI week info
-    const kpiWeek = await prisma.kpiWeek.findUnique({
-      where: { id: kpiWeekId },
-      select: { weekNumber: true, year: true },
-    });
-
-    const weekInfo = kpiWeek
-      ? `KPI-Woche ${kpiWeek.weekNumber}/${kpiWeek.year}`
-      : "KPI-Woche";
-
     // Create task
     await prisma.task.create({
       data: {
         memberId,
-        title: `KI-Feedback prüfen: ${member.vorname} ${member.nachname}`,
+        title: `KI-Feedback prüfen: ${member.vorname} ${member.nachname} (${weekInfo})`,
         description: `${weekInfo} - KI-Feedback blockiert: ${reason}. Bitte prüfen und bei Bestätigung das KI-Feedback freigeben.`,
         priority: "HIGH",
         status: "OPEN",
