@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
+import { shouldRunSystemHealth, hasRunThisMinute } from "@/lib/cron-scheduler";
 
-// Daily AI-powered system health check
+// Daily AI-powered system health check (runs at 07:00)
 export async function GET(request: NextRequest) {
   // Verify cron secret
   const authHeader = request.headers.get("authorization");
@@ -12,7 +13,29 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Check for manual trigger (force=true query param)
+  const url = new URL(request.url);
+  const forceRun = url.searchParams.get("force") === "true";
+
   try {
+    // Check if we should run based on schedule (unless forced)
+    if (!forceRun) {
+      const scheduleCheck = await shouldRunSystemHealth();
+      if (!scheduleCheck.shouldRun) {
+        return NextResponse.json({
+          skipped: true,
+          reason: scheduleCheck.reason,
+        });
+      }
+
+      // Prevent duplicate runs within the same minute
+      if (await hasRunThisMinute("SYSTEM_HEALTH", "System Health Check")) {
+        return NextResponse.json({
+          skipped: true,
+          reason: "Already ran this minute",
+        });
+      }
+    }
     const now = new Date();
     const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);

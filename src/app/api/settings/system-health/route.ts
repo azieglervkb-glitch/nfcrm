@@ -77,11 +77,11 @@ export async function POST() {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
-    // Call the health check endpoint internally
+    // Call the health check endpoint internally with force=true to bypass schedule check
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
     const cronSecret = process.env.CRON_SECRET || "";
 
-    const response = await fetch(`${baseUrl}/api/cron/system-health`, {
+    const response = await fetch(`${baseUrl}/api/cron/system-health?force=true`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${cronSecret}`,

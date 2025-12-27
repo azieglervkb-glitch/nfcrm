@@ -4,14 +4,10 @@ import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { sendKpiReminderEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { randomBytes } from "crypto";
+import { shouldRunKpiReminder, hasRunThisMinute } from "@/lib/cron-scheduler";
 
-// This endpoint should be called by an external cron service
-// Recommended: Sunday 18:00 and Monday 10:00
-//
-// Example cron jobs:
-// - Railway: Add to railway.toml or use Railway Cron
-// - Vercel: Add to vercel.json crons
-// - External: Use cron-job.org with secret header
+// This endpoint runs every minute and checks if it should execute based on settings
+// Settings: kpiReminderDay1, kpiReminderTime1, kpiReminderDay2, kpiReminderTime2
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -23,6 +19,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Check if we should run based on settings
+    const scheduleCheck = await shouldRunKpiReminder();
+    if (!scheduleCheck.shouldRun) {
+      return NextResponse.json({
+        skipped: true,
+        reason: scheduleCheck.reason,
+      });
+    }
+
+    // Prevent duplicate runs within the same minute
+    if (await hasRunThisMinute("CRON", "KPI Reminder Cron")) {
+      return NextResponse.json({
+        skipped: true,
+        reason: "Already ran this minute",
+      });
+    }
     const weekStart = getCurrentWeekStart();
     const { weekNumber } = getWeekInfo(weekStart);
 
