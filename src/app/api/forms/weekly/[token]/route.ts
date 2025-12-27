@@ -4,6 +4,7 @@ import { weeklyKpiFormSchema } from "@/lib/validations";
 import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
+import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
 
 export async function GET(
   request: NextRequest,
