@@ -2,35 +2,48 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
-// Cronjob-Konfigurationen
-const CRONJOBS = [
+type CronLogConfig = {
+  id: string;
+  name: string;
+  endpoint: string;
+  schedule: string;
+  logRuleId: string;
+  logRuleName: string;
+};
+
+// Cronjob-Konfigurationen (Status basiert auf Cron-Run Logs)
+const CRONJOBS: CronLogConfig[] = [
   {
     id: "kpi-reminder",
     name: "KPI Reminder",
     endpoint: "/api/cron/kpi-reminder",
     schedule: "Sonntag 18:00 + Montag 10:00",
-    ruleIds: ["M1"], // Weekly Reminder
+    logRuleId: "CRON",
+    logRuleName: "KPI Reminder Cron",
   },
   {
     id: "scheduled-automations",
     name: "Scheduled Automations",
     endpoint: "/api/cron/scheduled-automations",
     schedule: "Montag 9:00",
-    ruleIds: ["L1", "R2", "R3"], // Churn Risk, Silent Member, Danger Zone
+    logRuleId: "CRON",
+    logRuleName: "Scheduled Automations",
   },
   {
     id: "send-feedback",
     name: "Send Feedback",
     endpoint: "/api/cron/send-feedback",
     schedule: "Alle 5 Minuten",
-    ruleIds: [], // Wird nicht über AutomationLog getrackt
+    logRuleId: "CRON_FEEDBACK",
+    logRuleName: "Scheduled Feedback Sender",
   },
   {
     id: "weekly-reminders",
     name: "Weekly Reminders",
     endpoint: "/api/cron/weekly-reminders",
     schedule: "Täglich 6:00 + 19:00",
-    ruleIds: ["M1"], // Weekly Reminder
+    logRuleId: "CRON",
+    logRuleName: "Weekly Reminders",
   },
 ];
 
@@ -38,12 +51,14 @@ export async function GET() {
   const session = await auth();
 
   // Nur Admins können den Status sehen
-  if (!session?.user || (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")) {
+  if (
+    !session?.user ||
+    (session.user.role !== "ADMIN" && session.user.role !== "SUPER_ADMIN")
+  ) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    // Hole die letzten AutomationLogs für jede Cronjob-Regel
     const cronjobStatuses = await Promise.all(
       CRONJOBS.map(async (cronjob) => {
         let lastExecution: Date | null = null;
@@ -53,34 +68,27 @@ export async function GET() {
         let successCount = 0;
         let errorCount = 0;
 
-        if (cronjob.ruleIds.length > 0) {
-          // Hole die letzten Logs für diese Rules
-          const logs = await prisma.automationLog.findMany({
-            where: {
-              ruleId: { in: cronjob.ruleIds },
-            },
-            orderBy: { firedAt: "desc" },
-            take: 100, // Letzte 100 Ausführungen
-          });
+        const logs = await prisma.automationLog.findMany({
+          where: {
+            ruleId: cronjob.logRuleId,
+            ruleName: cronjob.logRuleName,
+          },
+          orderBy: { firedAt: "desc" },
+          take: 100,
+        });
 
-          if (logs.length > 0) {
-            lastExecution = logs[0].firedAt;
-            executionCount = logs.length;
+        if (logs.length > 0) {
+          lastExecution = logs[0].firedAt;
+          executionCount = logs.length;
 
-            // Zähle Erfolge/Fehler (triggered = true bedeutet Erfolg)
-            const successes = logs.filter((log) => log.triggered);
-            const errors = logs.filter((log) => !log.triggered);
+          const successes = logs.filter((log) => log.triggered);
+          const errors = logs.filter((log) => !log.triggered);
 
-            successCount = successes.length;
-            errorCount = errors.length;
+          successCount = successes.length;
+          errorCount = errors.length;
 
-            if (successes.length > 0) {
-              lastSuccess = successes[0].firedAt;
-            }
-            if (errors.length > 0) {
-              lastError = errors[0].firedAt;
-            }
-          }
+          if (successes.length > 0) lastSuccess = successes[0].firedAt;
+          if (errors.length > 0) lastError = errors[0].firedAt;
         }
 
         // Berechne Status
@@ -88,9 +96,9 @@ export async function GET() {
         let statusMessage = "Keine Ausführungen gefunden";
 
         if (lastExecution) {
-          const hoursSinceLastExecution = (Date.now() - lastExecution.getTime()) / (1000 * 60 * 60);
+          const hoursSinceLastExecution =
+            (Date.now() - lastExecution.getTime()) / (1000 * 60 * 60);
 
-          // Für "Send Feedback" (alle 5 Min) sollte es max. 1 Stunde her sein
           if (cronjob.id === "send-feedback") {
             if (hoursSinceLastExecution < 1) {
               status = "healthy";
@@ -102,9 +110,7 @@ export async function GET() {
               status = "error";
               statusMessage = "Keine Ausführung seit > 6 Stunden";
             }
-          }
-          // Für Weekly Reminders (täglich) sollte es max. 25 Stunden her sein
-          else if (cronjob.id === "weekly-reminders") {
+          } else if (cronjob.id === "weekly-reminders") {
             if (hoursSinceLastExecution < 25) {
               status = "healthy";
               statusMessage = "Läuft normal";
@@ -115,9 +121,7 @@ export async function GET() {
               status = "error";
               statusMessage = "Keine Ausführung seit > 48 Stunden";
             }
-          }
-          // Für KPI Reminder (wöchentlich) sollte es max. 8 Tage her sein
-          else if (cronjob.id === "kpi-reminder") {
+          } else if (cronjob.id === "kpi-reminder") {
             const daysSinceLastExecution = hoursSinceLastExecution / 24;
             if (daysSinceLastExecution < 8) {
               status = "healthy";
@@ -129,9 +133,7 @@ export async function GET() {
               status = "error";
               statusMessage = "Keine Ausführung seit > 14 Tagen";
             }
-          }
-          // Für Scheduled Automations (wöchentlich) sollte es max. 8 Tage her sein
-          else if (cronjob.id === "scheduled-automations") {
+          } else if (cronjob.id === "scheduled-automations") {
             const daysSinceLastExecution = hoursSinceLastExecution / 24;
             if (daysSinceLastExecution < 8) {
               status = "healthy";
@@ -178,4 +180,3 @@ export async function GET() {
     );
   }
 }
-

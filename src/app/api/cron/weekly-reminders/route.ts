@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 import { runWeeklyReminders } from "@/lib/automation/engine";
 
 // This endpoint should be called daily (e.g., 6:00 AM and 7:00 PM)
-// It handles:
-// - Morning email reminders for missing KPIs
-// - Evening WhatsApp reminders for missing KPIs
+// It handles weekly KPI reminders (email morning, WhatsApp evening)
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -15,8 +14,21 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const startedAt = new Date();
+
   try {
     await runWeeklyReminders();
+
+    // Always log the cron run (even if there was nothing to do)
+    await prisma.automationLog.create({
+      data: {
+        ruleId: "CRON",
+        ruleName: "Weekly Reminders",
+        triggered: true,
+        actionsTaken: ["runWeeklyReminders executed"],
+        details: { startedAt: startedAt.toISOString() },
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -24,6 +36,22 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Weekly reminders cron error:", error);
+
+    // Log failed cron run
+    try {
+      await prisma.automationLog.create({
+        data: {
+          ruleId: "CRON",
+          ruleName: "Weekly Reminders",
+          triggered: false,
+          actionsTaken: ["ERROR"],
+          details: { startedAt: startedAt.toISOString(), error: String(error) },
+        },
+      });
+    } catch (e) {
+      console.error("Failed to log weekly reminders cron error:", e);
+    }
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -34,4 +62,3 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return GET(request);
 }
-

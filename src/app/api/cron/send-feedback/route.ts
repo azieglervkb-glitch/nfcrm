@@ -4,9 +4,6 @@ import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 
 // This endpoint should be called by an external cron service every 5 minutes
 // It sends scheduled WhatsApp feedback messages when their scheduled time arrives
-//
-// Example: cron-job.org, Railway Cron, or VPS crontab
-// Recommended: */5 * * * * (every 5 minutes)
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -20,6 +17,14 @@ export async function GET(request: NextRequest) {
   try {
     const now = new Date();
     const quietHours = await isInQuietHours();
+
+    const results = {
+      processed: 0,
+      sent: 0,
+      skippedQuietHours: 0,
+      skippedNoNumber: 0,
+      errors: [] as string[],
+    };
 
     // Find KPI weeks with scheduled feedback that's due
     const pendingFeedback = await prisma.kpiWeek.findMany({
@@ -46,27 +51,11 @@ export async function GET(request: NextRequest) {
       take: 20, // Process max 20 at a time to avoid timeouts
     });
 
-    if (pendingFeedback.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "No pending feedback to send",
-        processed: 0,
-      });
-    }
-
-    const results = {
-      processed: 0,
-      sent: 0,
-      skippedQuietHours: 0,
-      skippedNoNumber: 0,
-      errors: [] as string[],
-    };
-
     for (const kpi of pendingFeedback) {
       results.processed++;
 
       if (!kpi.member.whatsappNummer) {
-        // No WhatsApp number, mark as done
+        // No WhatsApp number, clear schedule so it won't retry
         await prisma.kpiWeek.update({
           where: { id: kpi.id },
           data: {
@@ -133,20 +122,26 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Log the cron run if any messages were processed
-    if (results.processed > 0) {
-      await prisma.automationLog.create({
-        data: {
-          ruleId: "CRON_FEEDBACK",
-          ruleName: "Scheduled Feedback Sender",
-          triggered: true,
-          actionsTaken: [
-            `${results.sent} feedback messages sent`,
-            `${results.skippedQuietHours} rescheduled (quiet hours)`,
-            `${results.skippedNoNumber} skipped (no WhatsApp)`,
-          ],
-          details: results,
-        },
+    // Always log the cron run (even if processed=0)
+    await prisma.automationLog.create({
+      data: {
+        ruleId: "CRON_FEEDBACK",
+        ruleName: "Scheduled Feedback Sender",
+        triggered: true,
+        actionsTaken: [
+          `${results.sent} feedback messages sent`,
+          `${results.skippedQuietHours} rescheduled (quiet hours)`,
+          `${results.skippedNoNumber} skipped (no WhatsApp)`,
+        ],
+        details: { ...results, quietHours, pendingFound: pendingFeedback.length },
+      },
+    });
+
+    if (pendingFeedback.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No pending feedback to send",
+        processed: 0,
       });
     }
 
