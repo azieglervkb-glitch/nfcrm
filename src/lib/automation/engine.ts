@@ -922,14 +922,19 @@ export async function checkDatenAnomalie(
     const actions: string[] = [];
 
     // Block AI feedback
+    const blockReason = `Daten-Anomalie: ${anomalies.join(", ")}`;
     await prisma.kpiWeek.update({
       where: { id: kpiWeek.id },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: `Daten-Anomalie: ${anomalies.join(", ")}`,
+        aiFeedbackBlockReason: blockReason,
       },
     });
     actions.push("BLOCK_AI_FEEDBACK");
+
+    // Create feedback block task
+    const { createFeedbackBlockTask } = await import("@/lib/feedback-block-helper");
+    await createFeedbackBlockTask(kpiWeek.id, member.id, blockReason, "Q2");
 
     // Set review flag
     await prisma.member.update({
