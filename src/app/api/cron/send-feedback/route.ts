@@ -67,10 +67,14 @@ export async function GET(request: NextRequest) {
       }
 
       if (quietHours) {
-        // Reschedule to next available time (8:00 AM)
+        // Reschedule to next available time (8:00 AM + random 0-60 min delay)
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(8, 0, 0, 0);
+        
+        // Add random delay (0-60 minutes) so messages don't all arrive at exactly 8:00
+        const randomDelayMinutes = Math.floor(Math.random() * 60);
+        tomorrow.setMinutes(randomDelayMinutes);
 
         await prisma.kpiWeek.update({
           where: { id: kpi.id },
