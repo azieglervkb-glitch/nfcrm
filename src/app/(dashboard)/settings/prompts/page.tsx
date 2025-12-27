@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, Save, RotateCcw, Loader2, CheckCircle, AlertCircle, Info, Copy } from "lucide-react";
+import { Bot, Save, RotateCcw, Loader2, CheckCircle, AlertCircle, Info, Copy, TestTube } from "lucide-react";
 import { toast } from "sonner";
+import { PromptTestDialog } from "@/components/settings/PromptTestDialog";
 
 interface Prompt {
   id: string | null;
@@ -29,6 +30,7 @@ export default function PromptsSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [editedPrompts, setEditedPrompts] = useState<Record<string, string>>({});
+  const [testDialogOpen, setTestDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchPrompts();
@@ -111,14 +113,20 @@ export default function PromptsSettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold flex items-center gap-2">
-          <Bot className="h-6 w-6" />
-          AI Prompts
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Verwalte die KI-Prompts für automatische Feedback-Nachrichten
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Bot className="h-6 w-6" />
+            AI Prompts
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Verwalte die KI-Prompts für automatische Feedback-Nachrichten
+          </p>
+        </div>
+        <Button onClick={() => setTestDialogOpen(true)} variant="outline">
+          <TestTube className="h-4 w-4 mr-2" />
+          Prompt testen
+        </Button>
       </div>
 
       <Card className="bg-blue-50 border-blue-200">
@@ -308,6 +316,9 @@ export default function PromptsSettingsPage() {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Test Dialog */}
+      <PromptTestDialog open={testDialogOpen} onOpenChange={setTestDialogOpen} />
     </div>
   );
 }
