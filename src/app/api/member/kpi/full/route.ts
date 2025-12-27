@@ -224,7 +224,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Create task for review
-      await createFeedbackBlockTask(kpiWeek.id, memberId, anomalyCheck.reason, "Q2");
+      await createFeedbackBlockTask(kpiWeek.id, memberId, (anomalyCheck.reason || "Daten-Anomalie"), "Q2");
 
       await prisma.automationLog.create({
         data: {

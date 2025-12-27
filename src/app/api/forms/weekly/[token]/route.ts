@@ -172,7 +172,7 @@ export async function POST(
       });
 
       // Create task for review
-      await createFeedbackBlockTask(kpiWeek.id, formToken.memberId, anomalyCheck.reason, "Q2");
+      await createFeedbackBlockTask(kpiWeek.id, formToken.memberId, (anomalyCheck.reason || "Daten-Anomalie"), "Q2");
 
       // Log automation
       await prisma.automationLog.create({
