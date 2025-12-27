@@ -34,7 +34,7 @@ export async function GET() {
 
     // Simple test call
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.OPENAI_MODEL || "gpt-5.2",
       messages: [
         { role: "user", content: "Antworte nur mit: OK" }
       ],

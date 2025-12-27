@@ -104,8 +104,12 @@ Gewählte Stilvariante für diese Nachricht: ${style}`;
 
   const userPrompt = buildUserPrompt(member, kpiWeek);
 
+  // Use the best available model
+  // GPT-5.2 is the latest model (as of Dec 2024), fallback to latest GPT-4o if not available
+  const model = process.env.OPENAI_MODEL || "gpt-5.2";
+  
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
+    model: model,
     messages: [
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
