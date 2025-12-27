@@ -529,16 +529,17 @@ export async function checkBlockade(
     const actions: string[] = [];
 
     // Block AI feedback
+    const blockReason = "Blockade erkannt - persönlicher Check-in erforderlich";
     await prisma.kpiWeek.update({
       where: { id: kpiWeek.id },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: "Blockade erkannt - persönlicher Check-in erforderlich",
+        aiFeedbackBlockReason: blockReason,
       },
     });
     actions.push("BLOCK_AI_FEEDBACK");
 
-    // Create task
+    // Create task for check-in
     const assigneeC2 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
@@ -551,6 +552,10 @@ export async function checkBlockade(
       },
     });
     actions.push("CREATE_TASK: Persönlicher Check-in (HIGH)");
+
+    // Also create feedback block task
+    const { createFeedbackBlockTask } = await import("@/lib/feedback-block-helper");
+    await createFeedbackBlockTask(kpiWeek.id, member.id, blockReason, ruleId);
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
       blockade: kpiWeek.blockiert?.substring(0, 100),

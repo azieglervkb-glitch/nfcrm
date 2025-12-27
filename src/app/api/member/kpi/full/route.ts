@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
+import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
 
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
@@ -223,16 +224,7 @@ export async function POST(request: NextRequest) {
       });
 
       // Create task for review
-      await prisma.task.create({
-        data: {
-          memberId,
-          title: `Daten-Anomalie prüfen: ${member.vorname} ${member.nachname}`,
-          description: `KPI-Woche ${kpiWeek.weekNumber}/${kpiWeek.year} hat eine Daten-Anomalie erkannt: ${anomalyCheck.reason}. Bitte prüfen und bei Bestätigung das KI-Feedback freigeben.`,
-          priority: "HIGH",
-          status: "OPEN",
-          ruleId: "Q2",
-        },
-      });
+      await createFeedbackBlockTask(kpiWeek.id, memberId, anomalyCheck.reason, "Q2");
 
       await prisma.automationLog.create({
         data: {
@@ -269,13 +261,16 @@ async function generateAiFeedbackAsync(
   try {
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
+      const reason = "OpenAI API Key nicht konfiguriert";
       await prisma.kpiWeek.update({
         where: { id: kpiWeekId },
         data: {
           aiFeedbackBlocked: true,
-          aiFeedbackBlockReason: "OpenAI API Key nicht konfiguriert",
+          aiFeedbackBlockReason: reason,
         },
       });
+      // Create task for admin to configure API key
+      await createFeedbackBlockTask(kpiWeekId, member.id, reason, "FEEDBACK_BLOCK");
       console.error("OpenAI API Key not configured");
       return;
     }
@@ -311,14 +306,18 @@ async function generateAiFeedbackAsync(
   } catch (error: any) {
     // Store the error so it's visible in the UI
     const errorMessage = error?.message || "Unbekannter Fehler bei KI-Feedback-Generierung";
+    const reason = `OpenAI Fehler: ${errorMessage.substring(0, 200)}`;
     console.error("Error generating AI feedback:", error);
 
     await prisma.kpiWeek.update({
       where: { id: kpiWeekId },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: `OpenAI Fehler: ${errorMessage.substring(0, 200)}`,
+        aiFeedbackBlockReason: reason,
       },
     });
+
+    // Create task for admin to review the error
+    await createFeedbackBlockTask(kpiWeekId, member.id, reason, "FEEDBACK_BLOCK");
   }
 }

@@ -104,14 +104,22 @@ export async function PATCH(
       },
     });
 
-    // If this is a Q2 (Anomalie) task that was just completed, generate AI feedback
+    // If this is a feedback block task that was just completed, generate AI feedback
+    // Check for Q2 (Anomalie), FEEDBACK_BLOCK, or any task related to blocked feedback
+    const isFeedbackBlockTask =
+      taskBeforeUpdate &&
+      (taskBeforeUpdate.ruleId === "Q2" ||
+        taskBeforeUpdate.ruleId === "FEEDBACK_BLOCK" ||
+        taskBeforeUpdate.title?.includes("KI-Feedback") ||
+        taskBeforeUpdate.title?.includes("Feedback"));
+
     if (
-      taskBeforeUpdate?.ruleId === "Q2" &&
+      isFeedbackBlockTask &&
       !wasCompleted &&
       willBeCompleted &&
       taskBeforeUpdate.memberId
     ) {
-      // Find the KPI week that was blocked
+      // Find the KPI week that was blocked (try current week first, then most recent)
       const currentWeekStart = (() => {
         const now = new Date();
         const dayOfWeek = now.getDay();
@@ -122,7 +130,8 @@ export async function PATCH(
         return weekStart;
       })();
 
-      const kpiWeek = await prisma.kpiWeek.findFirst({
+      // Try to find blocked KPI week (current week first, then most recent)
+      let kpiWeek = await prisma.kpiWeek.findFirst({
         where: {
           memberId: taskBeforeUpdate.memberId,
           weekStart: currentWeekStart,
@@ -133,9 +142,23 @@ export async function PATCH(
         },
       });
 
+      // If not found, get most recent blocked KPI week
+      if (!kpiWeek) {
+        kpiWeek = await prisma.kpiWeek.findFirst({
+          where: {
+            memberId: taskBeforeUpdate.memberId,
+            aiFeedbackBlocked: true,
+          },
+          orderBy: { weekStart: "desc" },
+          include: {
+            member: true,
+          },
+        });
+      }
+
       if (kpiWeek && kpiWeek.member) {
         // Generate AI feedback asynchronously
-        generateAiFeedbackForAnomalieTask(kpiWeek.id, kpiWeek.member, kpiWeek).catch(
+        generateAiFeedbackForBlockedTask(kpiWeek.id, kpiWeek.member, kpiWeek).catch(
           console.error
         );
       }
@@ -185,8 +208,8 @@ export async function DELETE(
   }
 }
 
-// Helper function to generate AI feedback after anomaly review
-async function generateAiFeedbackForAnomalieTask(
+// Helper function to generate AI feedback after blocked feedback review
+async function generateAiFeedbackForBlockedTask(
   kpiWeekId: string,
   member: any,
   kpiWeek: any

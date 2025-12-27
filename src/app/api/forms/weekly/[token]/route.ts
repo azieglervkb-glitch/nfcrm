@@ -171,16 +171,7 @@ export async function POST(
       });
 
       // Create task for review
-      await prisma.task.create({
-        data: {
-          memberId: formToken.memberId,
-          title: `Daten-Anomalie prüfen: ${formToken.member.vorname} ${formToken.member.nachname}`,
-          description: `KPI-Woche ${kpiWeek.weekNumber}/${kpiWeek.year} hat eine Daten-Anomalie erkannt: ${anomalyCheck.reason}. Bitte prüfen und bei Bestätigung das KI-Feedback freigeben.`,
-          priority: "HIGH",
-          status: "OPEN",
-          ruleId: "Q2",
-        },
-      });
+      await createFeedbackBlockTask(kpiWeek.id, formToken.memberId, anomalyCheck.reason, "Q2");
 
       // Log automation
       await prisma.automationLog.create({
@@ -220,13 +211,16 @@ async function generateAiFeedback(
   try {
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
+      const reason = "OpenAI API Key nicht konfiguriert";
       await prisma.kpiWeek.update({
         where: { id: kpiWeekId },
         data: {
           aiFeedbackBlocked: true,
-          aiFeedbackBlockReason: "OpenAI API Key nicht konfiguriert",
+          aiFeedbackBlockReason: reason,
         },
       });
+      // Create task for admin to configure API key
+      await createFeedbackBlockTask(kpiWeekId, member.id, reason, "FEEDBACK_BLOCK");
       console.error("OpenAI API Key not configured");
       return;
     }
@@ -262,14 +256,18 @@ async function generateAiFeedback(
   } catch (error: any) {
     // Store the error so it's visible in the UI
     const errorMessage = error?.message || "Unbekannter Fehler bei KI-Feedback-Generierung";
+    const reason = `OpenAI Fehler: ${errorMessage.substring(0, 200)}`;
     console.error("Error generating AI feedback:", error);
 
     await prisma.kpiWeek.update({
       where: { id: kpiWeekId },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: `OpenAI Fehler: ${errorMessage.substring(0, 200)}`,
+        aiFeedbackBlockReason: reason,
       },
     });
+
+    // Create task for admin to review the error
+    await createFeedbackBlockTask(kpiWeekId, member.id, reason, "FEEDBACK_BLOCK");
   }
 }
