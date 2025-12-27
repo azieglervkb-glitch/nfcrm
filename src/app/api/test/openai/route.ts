@@ -38,7 +38,7 @@ export async function GET() {
       messages: [
         { role: "user", content: "Antworte nur mit: OK" }
       ],
-      max_tokens: 10,
+      max_completion_tokens: 10,
     });
 
     const reply = response.choices[0].message.content;

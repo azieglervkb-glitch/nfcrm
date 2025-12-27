@@ -115,7 +115,8 @@ Gewählte Stilvariante für diese Nachricht: ${style}`;
       { role: "user", content: userPrompt },
     ],
     temperature: 0.8,
-    max_tokens: 500,
+    // GPT-5.x uses max_completion_tokens (max_tokens is rejected)
+    max_completion_tokens: 500,
   });
 
   return {
