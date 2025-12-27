@@ -74,10 +74,10 @@ export function CreateTaskDialog({
   async function fetchMembers() {
     setLoadingMembers(true);
     try {
-      const response = await fetch("/api/members");
+      const response = await fetch("/api/members?limit=1000");
       if (response.ok) {
         const data = await response.json();
-        setMembers(data);
+        setMembers(Array.isArray(data) ? data : data.members || []);
       }
     } catch (error) {
       console.error("Error fetching members:", error);
@@ -92,7 +92,7 @@ export function CreateTaskDialog({
       const response = await fetch("/api/team");
       if (response.ok) {
         const data = await response.json();
-        setTeamMembers(data);
+        setTeamMembers(Array.isArray(data) ? data : []);
       }
     } catch (error) {
       console.error("Error fetching team:", error);
