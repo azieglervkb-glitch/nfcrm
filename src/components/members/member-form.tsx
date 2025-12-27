@@ -27,9 +27,17 @@ interface MemberFormProps {
 const PRODUKTE = ["NFM", "PREMIUM", "VPMC"];
 const STATUSES = ["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"];
 
+interface TeamMember {
+  id: string;
+  vorname: string;
+  nachname: string;
+  role: string;
+}
+
 export function MemberForm({ memberId, initialData }: MemberFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [formData, setFormData] = useState({
     email: initialData?.email || "",
     vorname: initialData?.vorname || "",
@@ -63,7 +71,24 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
     // Flags
     churnRisk: initialData?.churnRisk || false,
     upsellCandidate: initialData?.upsellCandidate || false,
+    // Zuweisung
+    assignedToId: initialData?.assignedToId || null,
   });
+
+  useEffect(() => {
+    async function fetchTeamMembers() {
+      try {
+        const res = await fetch("/api/team");
+        if (res.ok) {
+          const data = await res.json();
+          setTeamMembers(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch team:", error);
+      }
+    }
+    fetchTeamMembers();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -214,6 +239,27 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="assignedTo">Zuständiger Mitarbeiter</Label>
+              <Select
+                value={formData.assignedToId || "none"}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, assignedToId: value === "none" ? null : value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Nicht zugewiesen" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.vorname} {member.nachname}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="unternehmen">Unternehmen</Label>
               <Input

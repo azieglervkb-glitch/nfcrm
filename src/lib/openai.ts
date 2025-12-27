@@ -1,9 +1,17 @@
 import OpenAI from "openai";
 import type { Member, KpiWeek } from "@prisma/client";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initialization to avoid build-time errors when OPENAI_API_KEY is not set
+let openaiInstance: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    openaiInstance = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+  }
+  return openaiInstance;
+}
 
 const SYSTEM_PROMPT = `Du schreibst als Nino, Mentor des NF-Mentorings.
 
@@ -110,7 +118,7 @@ Gewählte Stilvariante für diese Nachricht: ${style}`;
   // GPT-5.2 is the latest model (as of Dec 2024), fallback to latest GPT-4o if not available
   const model = process.env.OPENAI_MODEL || "gpt-5.2";
   
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: model,
     messages: [
       { role: "system", content: systemPrompt },

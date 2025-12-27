@@ -46,6 +46,7 @@ export const authConfig: NextAuthConfig = {
         token.vorname = user.vorname;
         token.nachname = user.nachname;
         token.avatarUrl = user.avatarUrl;
+        token.permissions = user.permissions;
       }
       return token;
     },
@@ -56,6 +57,7 @@ export const authConfig: NextAuthConfig = {
         session.user.vorname = token.vorname as string;
         session.user.nachname = token.nachname as string;
         session.user.avatarUrl = token.avatarUrl as string | null;
+        session.user.permissions = token.permissions as string[] | undefined;
       }
       return session;
     },

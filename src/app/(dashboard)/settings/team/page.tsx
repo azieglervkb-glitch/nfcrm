@@ -48,18 +48,33 @@ const TASK_RULES = [
   { id: "P2", name: "Funnel-Leak", description: "Training bei Konversionsproblemen" },
 ];
 
+// Granulare Berechtigungen für Dashboard-Bereiche
+const PERMISSIONS = [
+  { id: "dashboard", name: "Dashboard", description: "Zugriff auf die Übersichtsseite" },
+  { id: "leads", name: "Leads", description: "Leads anzeigen und bearbeiten" },
+  { id: "members", name: "Mitglieder", description: "Mitglieder anzeigen und bearbeiten" },
+  { id: "kpis", name: "KPIs", description: "KPI-Übersicht und Ausstehende" },
+  { id: "tasks", name: "Tasks", description: "Tasks anzeigen und bearbeiten" },
+  { id: "automations", name: "Automationen", description: "Regeln und Logs einsehen" },
+  { id: "communications", name: "Kommunikation", description: "Nachrichten-Log und Templates" },
+  { id: "upsell", name: "Upsell Pipeline", description: "Upsell-Kandidaten verwalten" },
+  { id: "settings", name: "Einstellungen", description: "System-Einstellungen (nur Admins)" },
+  { id: "team", name: "Team", description: "Team-Verwaltung (nur Admins)" },
+];
+
 interface TeamMember {
   id: string;
   email: string;
   vorname: string;
   nachname: string;
-  role: "SUPER_ADMIN" | "ADMIN" | "COACH";
+  role: "SUPER_ADMIN" | "ADMIN" | "COACH" | "MITARBEITER";
   isActive: boolean;
   lastLogin: string | null;
   createdAt: string;
   taskRuleIds: string[];
   showAllTasks: boolean;
-  _count?: { assignedMembers: number };
+  permissions: string[];
+  _count?: { assignedMembers: number; assignedLeads: number };
 }
 
 export default function TeamPage() {
@@ -74,10 +89,11 @@ export default function TeamPage() {
     vorname: "",
     nachname: "",
     password: "",
-    role: "COACH" as "SUPER_ADMIN" | "ADMIN" | "COACH",
+    role: "COACH" as "SUPER_ADMIN" | "ADMIN" | "COACH" | "MITARBEITER",
     isActive: true,
     taskRuleIds: [] as string[],
     showAllTasks: false,
+    permissions: ["dashboard", "tasks"] as string[],
   });
 
   useEffect(() => {
@@ -109,6 +125,7 @@ export default function TeamPage() {
       isActive: member.isActive,
       taskRuleIds: member.taskRuleIds || [],
       showAllTasks: member.showAllTasks || false,
+      permissions: member.permissions || ["dashboard", "tasks"],
     });
     setIsDialogOpen(true);
   }
@@ -124,8 +141,32 @@ export default function TeamPage() {
       isActive: true,
       taskRuleIds: TASK_RULES.map(r => r.id), // Alle Regeln standardmäßig aktiv
       showAllTasks: false,
+      permissions: ["dashboard", "leads", "members", "kpis", "tasks"], // Standard für Coach
     });
     setIsDialogOpen(true);
+  }
+
+  function togglePermission(permId: string) {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: prev.permissions.includes(permId)
+        ? prev.permissions.filter((id) => id !== permId)
+        : [...prev.permissions, permId],
+    }));
+  }
+
+  function selectAllPermissions() {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: PERMISSIONS.map((p) => p.id),
+    }));
+  }
+
+  function deselectAllPermissions() {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: [],
+    }));
   }
 
   function toggleTaskRule(ruleId: string) {
@@ -223,6 +264,8 @@ export default function TeamPage() {
         return "Admin";
       case "COACH":
         return "Coach";
+      case "MITARBEITER":
+        return "Mitarbeiter";
       default:
         return role;
     }
@@ -234,10 +277,15 @@ export default function TeamPage() {
         return "destructive" as const;
       case "ADMIN":
         return "default" as const;
+      case "MITARBEITER":
+        return "outline" as const;
       default:
         return "secondary" as const;
     }
   }
+
+  // Prüft ob Permissions-UI angezeigt werden soll (nur für COACH/MITARBEITER)
+  const showPermissionsUI = formData.role === "COACH" || formData.role === "MITARBEITER";
 
   if (loading) {
     return (
@@ -263,7 +311,7 @@ export default function TeamPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -305,6 +353,21 @@ export default function TeamPage() {
                   {team.filter((m) => m.role === "COACH").length}
                 </div>
                 <p className="text-sm text-muted-foreground">Coaches</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <Users className="h-6 w-6 text-gray-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {team.filter((m) => m.role === "MITARBEITER").length}
+                </div>
+                <p className="text-sm text-muted-foreground">Mitarbeiter</p>
               </div>
             </div>
           </CardContent>
@@ -454,7 +517,7 @@ export default function TeamPage() {
               <Label>Rolle</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: "SUPER_ADMIN" | "ADMIN" | "COACH") =>
+                onValueChange={(value: "SUPER_ADMIN" | "ADMIN" | "COACH" | "MITARBEITER") =>
                   setFormData({ ...formData, role: value })
                 }
               >
@@ -462,11 +525,18 @@ export default function TeamPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="MITARBEITER">Mitarbeiter</SelectItem>
                   <SelectItem value="COACH">Coach</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="SUPER_ADMIN">Super-Admin</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.role === "SUPER_ADMIN" && "Voller Zugriff auf alles"}
+                {formData.role === "ADMIN" && "Voller Zugriff, kann Team verwalten"}
+                {formData.role === "COACH" && "Zugriff auf zugewiesene Leads/Members + ausgewählte Bereiche"}
+                {formData.role === "MITARBEITER" && "Eingeschränkter Zugriff auf ausgewählte Bereiche"}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -479,6 +549,62 @@ export default function TeamPage() {
               />
               <Label htmlFor="isActive">Account aktiv</Label>
             </div>
+
+            {/* Berechtigungen (nur für COACH/MITARBEITER) */}
+            {showPermissionsUI && (
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Berechtigungen
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllPermissions}
+                    >
+                      Alle
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={deselectAllPermissions}
+                    >
+                      Keine
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Auf welche Bereiche hat dieser Benutzer Zugriff?
+                </p>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                  {PERMISSIONS.map((perm) => (
+                    <div
+                      key={perm.id}
+                      className="flex items-start gap-3 p-2 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <Checkbox
+                        id={`perm-${perm.id}`}
+                        checked={formData.permissions.includes(perm.id)}
+                        onCheckedChange={() => togglePermission(perm.id)}
+                      />
+                      <label
+                        htmlFor={`perm-${perm.id}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <span className="font-medium text-sm">{perm.name}</span>
+                        <p className="text-xs text-muted-foreground">
+                          {perm.description}
+                        </p>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Task-Regeln */}
             <div className="space-y-3 border-t pt-4">

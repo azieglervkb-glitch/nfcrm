@@ -40,9 +40,20 @@ export async function GET(request: NextRequest) {
     ];
   }
 
+  // Sichtbarkeits-Filterung: COACH/MITARBEITER sehen nur zugewiesene Members
+  const userRole = session.user.role;
+  if (userRole === "COACH" || userRole === "MITARBEITER") {
+    where.assignedToId = session.user.id;
+  }
+
   const [members, total] = await Promise.all([
     prisma.member.findMany({
       where,
+      include: {
+        assignedTo: {
+          select: { id: true, vorname: true, nachname: true },
+        },
+      },
       orderBy: { updatedAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,

@@ -27,6 +27,13 @@ export async function GET() {
       createdAt: true,
       taskRuleIds: true,
       showAllTasks: true,
+      permissions: true,
+      _count: {
+        select: {
+          assignedMembers: true,
+          assignedLeads: true,
+        },
+      },
     },
     orderBy: [{ role: "asc" }, { vorname: "asc" }],
   });
@@ -48,7 +55,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { email, vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks } = body;
+    const { email, vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks, permissions } = body;
 
     if (!email || !vorname || !nachname || !password) {
       return NextResponse.json(
@@ -81,6 +88,7 @@ export async function POST(request: NextRequest) {
         isActive: isActive ?? true,
         taskRuleIds: taskRuleIds || [],
         showAllTasks: showAllTasks ?? false,
+        permissions: permissions || ["dashboard", "tasks"],
       },
       select: {
         id: true,
@@ -91,6 +99,7 @@ export async function POST(request: NextRequest) {
         isActive: true,
         taskRuleIds: true,
         showAllTasks: true,
+        permissions: true,
       },
     });
 
