@@ -25,6 +25,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { KpiWeeksList } from "@/components/member/KpiWeeksList";
+import { AddNoteDialog } from "@/components/member/AddNoteDialog";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
 
 async function getMember(id: string) {
@@ -495,7 +496,7 @@ export default async function MemberDetailPage({
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-base">Notizen</CardTitle>
-                <Button size="sm">Notiz hinzufügen</Button>
+                <AddNoteDialog memberId={member.id} />
               </div>
             </CardHeader>
             <CardContent>
