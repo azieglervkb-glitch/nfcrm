@@ -28,6 +28,13 @@ interface Member {
   nachname: string;
 }
 
+interface TeamMember {
+  id: string;
+  vorname: string;
+  nachname: string;
+  role: string;
+}
+
 interface CreateTaskDialogProps {
   onTaskCreated?: () => void;
   defaultMemberId?: string;
@@ -40,12 +47,15 @@ export function CreateTaskDialog({
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [loadingTeam, setLoadingTeam] = useState(false);
 
   const [formData, setFormData] = useState({
     title: "",
     description: "",
     memberId: defaultMemberId || "",
+    assignedToId: "", // empty = assign to self, "all" = create for all team members
     priority: "MEDIUM",
     dueDate: "",
   });
@@ -53,6 +63,7 @@ export function CreateTaskDialog({
   useEffect(() => {
     if (open) {
       fetchMembers();
+      fetchTeamMembers();
     }
   }, [open]);
 
@@ -71,6 +82,21 @@ export function CreateTaskDialog({
     }
   }
 
+  async function fetchTeamMembers() {
+    setLoadingTeam(true);
+    try {
+      const response = await fetch("/api/team");
+      if (response.ok) {
+        const data = await response.json();
+        setTeamMembers(data);
+      }
+    } catch (error) {
+      console.error("Error fetching team:", error);
+    } finally {
+      setLoadingTeam(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
@@ -82,28 +108,56 @@ export function CreateTaskDialog({
     setLoading(true);
 
     try {
-      const response = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formData.title.trim(),
-          description: formData.description.trim() || undefined,
-          memberId: formData.memberId || undefined,
-          priority: formData.priority,
-          dueDate: formData.dueDate || undefined,
-        }),
-      });
+      // If "all" is selected, create a task for each team member
+      if (formData.assignedToId === "all") {
+        const promises = teamMembers.map((tm) =>
+          fetch("/api/tasks", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: formData.title.trim(),
+              description: formData.description.trim() || undefined,
+              memberId: formData.memberId || undefined,
+              assignedToId: tm.id,
+              priority: formData.priority,
+              dueDate: formData.dueDate || undefined,
+            }),
+          })
+        );
+        const results = await Promise.all(promises);
+        const failed = results.filter((r) => !r.ok).length;
+        if (failed > 0) {
+          toast.warning(`${teamMembers.length - failed} Tasks erstellt, ${failed} fehlgeschlagen`);
+        } else {
+          toast.success(`${teamMembers.length} Tasks erstellt (für alle Team-Mitglieder)`);
+        }
+      } else {
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: formData.title.trim(),
+            description: formData.description.trim() || undefined,
+            memberId: formData.memberId || undefined,
+            assignedToId: formData.assignedToId || undefined,
+            priority: formData.priority,
+            dueDate: formData.dueDate || undefined,
+          }),
+        });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Fehler beim Erstellen");
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || "Fehler beim Erstellen");
+        }
+
+        toast.success("Task erstellt");
       }
 
-      toast.success("Task erstellt");
       setFormData({
         title: "",
         description: "",
         memberId: defaultMemberId || "",
+        assignedToId: "",
         priority: "MEDIUM",
         dueDate: "",
       });
@@ -160,7 +214,7 @@ export function CreateTaskDialog({
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="member">Mitglied</Label>
+              <Label htmlFor="member">Mitglied (betrifft)</Label>
               <Select
                 value={formData.memberId}
                 onValueChange={(value) =>
@@ -188,6 +242,37 @@ export function CreateTaskDialog({
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="assignedTo">Zuweisen an</Label>
+              <Select
+                value={formData.assignedToId}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, assignedToId: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Mir selbst" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Mir selbst</SelectItem>
+                  <SelectItem value="all">👥 Alle Team-Mitglieder</SelectItem>
+                  {loadingTeam ? (
+                    <SelectItem value="loading" disabled>
+                      Lädt...
+                    </SelectItem>
+                  ) : (
+                    teamMembers.map((tm) => (
+                      <SelectItem key={tm.id} value={tm.id}>
+                        {tm.vorname} {tm.nachname}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="priority">Priorität</Label>
               <Select
                 value={formData.priority}
@@ -206,18 +291,18 @@ export function CreateTaskDialog({
                 </SelectContent>
               </Select>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="dueDate">Fällig am</Label>
-            <Input
-              id="dueDate"
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, dueDate: e.target.value }))
-              }
-            />
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">Fällig am</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, dueDate: e.target.value }))
+                }
+              />
+            </div>
           </div>
 
           <div className="flex justify-end gap-2 pt-2">
