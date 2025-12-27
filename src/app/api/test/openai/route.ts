@@ -12,6 +12,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Safety: don't expose this endpoint in production
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Check if API key exists
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
