@@ -208,6 +208,11 @@ export default async function MemberDetailPage({
                 <CardTitle className="text-base flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
                   Aktuelle Performance
+                  {latestKpi && (
+                    <span className="text-xs font-normal text-muted-foreground ml-auto">
+                      KW {latestKpi.weekNumber}/{latestKpi.year}
+                    </span>
+                  )}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">

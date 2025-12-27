@@ -1,0 +1,279 @@
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+import OpenAI from "openai";
+
+// Daily AI-powered system health check
+export async function GET(request: NextRequest) {
+  // Verify cron secret
+  const authHeader = request.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const now = new Date();
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // 1. Collect Cronjob Status
+    const cronLogs = await prisma.automationLog.findMany({
+      where: {
+        firedAt: { gte: oneDayAgo },
+        ruleId: "CRON",
+      },
+      orderBy: { firedAt: "desc" },
+    });
+
+    const cronStatus = {
+      sendFeedback: cronLogs.filter((l) => l.ruleName === "Send Feedback Cron").length,
+      weeklyReminders: cronLogs.filter((l) => l.ruleName === "Weekly Reminders Cron").length,
+      scheduledAutomations: cronLogs.filter((l) => l.ruleName === "Scheduled Automations Cron").length,
+      kpiReminder: cronLogs.filter((l) => l.ruleName === "KPI Reminder Cron").length,
+    };
+
+    // 2. Collect Error Logs (automation failures)
+    const errorLogs = await prisma.automationLog.findMany({
+      where: {
+        firedAt: { gte: oneDayAgo },
+        triggered: false,
+      },
+      take: 10,
+    });
+
+    // 3. Collect pending tasks (open/in_progress)
+    const pendingTasks = await prisma.task.count({
+      where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
+    });
+
+    const urgentTasks = await prisma.task.count({
+      where: { status: { in: ["OPEN", "IN_PROGRESS"] }, priority: "URGENT" },
+    });
+
+    const overdueTasks = await prisma.task.count({
+      where: {
+        status: { in: ["OPEN", "IN_PROGRESS"] },
+        dueDate: { lt: now },
+      },
+    });
+
+    // 4. Member Stats
+    const memberStats = {
+      total: await prisma.member.count({ where: { status: "AKTIV" } }),
+      churnRisk: await prisma.member.count({ where: { churnRisk: true, status: "AKTIV" } }),
+      reviewFlag: await prisma.member.count({ where: { reviewFlag: true } }),
+      upsellCandidate: await prisma.member.count({ where: { upsellCandidate: true, status: "AKTIV" } }),
+    };
+
+    // 5. KPI Stats for current week
+    const weekStart = new Date();
+    const dayOfWeek = weekStart.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    weekStart.setDate(weekStart.getDate() + mondayOffset);
+    weekStart.setHours(0, 0, 0, 0);
+
+    const kpisThisWeek = await prisma.kpiWeek.count({
+      where: { weekStart: { gte: weekStart } },
+    });
+
+    const kpisWithFeedback = await prisma.kpiWeek.count({
+      where: {
+        weekStart: { gte: weekStart },
+        aiFeedbackGenerated: true,
+      },
+    });
+
+    const blockedFeedback = await prisma.kpiWeek.count({
+      where: {
+        weekStart: { gte: weekStart },
+        aiFeedbackBlocked: true,
+      },
+    });
+
+    // 6. WhatsApp Stats
+    const whatsappSent = await prisma.communicationLog.count({
+      where: {
+        channel: "WHATSAPP",
+        sent: true,
+        createdAt: { gte: oneDayAgo },
+      },
+    });
+
+    const whatsappFailed = await prisma.communicationLog.count({
+      where: {
+        channel: "WHATSAPP",
+        sent: false,
+        createdAt: { gte: oneDayAgo },
+      },
+    });
+
+    // 7. Recent automation triggers
+    const recentAutomations = await prisma.automationLog.findMany({
+      where: {
+        firedAt: { gte: oneDayAgo },
+        ruleId: { not: "CRON" },
+        triggered: true,
+      },
+      select: { ruleId: true, ruleName: true },
+    });
+
+    const automationCounts: Record<string, number> = {};
+    for (const log of recentAutomations) {
+      automationCounts[log.ruleId] = (automationCounts[log.ruleId] || 0) + 1;
+    }
+
+    // Build analysis prompt for GPT
+    const systemData = {
+      timestamp: now.toISOString(),
+      cronjobs: {
+        description: "Anzahl Ausführungen in den letzten 24h",
+        sendFeedback: `${cronStatus.sendFeedback} (sollte ~288 sein, alle 5 Min)`,
+        weeklyReminders: `${cronStatus.weeklyReminders} (sollte 2 sein, 6:00 + 19:00)`,
+        scheduledAutomations: `${cronStatus.scheduledAutomations} (sollte 0-1 sein, nur Dienstag 09:00)`,
+        kpiReminder: `${cronStatus.kpiReminder} (sollte 0-2 sein, Mo 08:05 + 18:02)`,
+      },
+      errors: {
+        count: errorLogs.length,
+        recent: errorLogs.slice(0, 3).map((l) => ({ rule: l.ruleId, name: l.ruleName })),
+      },
+      tasks: {
+        pending: pendingTasks,
+        urgent: urgentTasks,
+        overdue: overdueTasks,
+      },
+      members: memberStats,
+      kpis: {
+        thisWeek: kpisThisWeek,
+        withFeedback: kpisWithFeedback,
+        blocked: blockedFeedback,
+        feedbackRate: kpisThisWeek > 0 ? Math.round((kpisWithFeedback / kpisThisWeek) * 100) : 0,
+      },
+      whatsapp: {
+        sent: whatsappSent,
+        failed: whatsappFailed,
+        successRate: whatsappSent + whatsappFailed > 0 
+          ? Math.round((whatsappSent / (whatsappSent + whatsappFailed)) * 100) 
+          : 100,
+      },
+      automations: automationCounts,
+    };
+
+    // Call GPT-5.2 for analysis
+    let aiSummary = "";
+    let healthStatus: "OK" | "WARNING" | "ERROR" = "OK";
+    const issues: string[] = [];
+
+    try {
+      const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || "gpt-5.2",
+        messages: [
+          {
+            role: "system",
+            content: `Du bist ein System-Überwacher für ein CRM-System. Analysiere die folgenden System-Daten und erstelle eine kurze, prägnante Zusammenfassung.
+
+AUFGABE:
+1. Identifiziere Probleme oder Anomalien
+2. Gib eine kurze Bewertung: OK, WARNUNG oder FEHLER
+3. Schreibe max. 3-4 Sätze als Zusammenfassung
+4. Liste wichtige Punkte auf die Aufmerksamkeit brauchen
+
+FORMAT:
+Status: [OK/WARNUNG/FEHLER]
+Zusammenfassung: [Kurze Zusammenfassung]
+Wichtig: [Falls Probleme vorhanden, liste sie auf]
+
+REGELN:
+- Sei präzise und technisch korrekt
+- Fokussiere auf das Wesentliche
+- Wenn alles normal läuft, sag das kurz
+- Sprache: Deutsch`,
+          },
+          {
+            role: "user",
+            content: `Hier sind die aktuellen System-Daten:\n\n${JSON.stringify(systemData, null, 2)}`,
+          },
+        ],
+        max_completion_tokens: 500,
+        temperature: 0.3,
+      });
+
+      aiSummary = response.choices[0]?.message?.content || "Keine Analyse verfügbar";
+
+      // Parse status from AI response
+      if (aiSummary.includes("FEHLER") || aiSummary.includes("ERROR")) {
+        healthStatus = "ERROR";
+      } else if (aiSummary.includes("WARNUNG") || aiSummary.includes("WARNING")) {
+        healthStatus = "WARNING";
+      }
+    } catch (aiError) {
+      console.error("AI analysis failed:", aiError);
+      aiSummary = "KI-Analyse fehlgeschlagen. Manuelle Prüfung empfohlen.";
+      healthStatus = "WARNING";
+      issues.push("OpenAI API nicht erreichbar");
+    }
+
+    // Check for obvious issues
+    if (cronStatus.sendFeedback < 200) {
+      issues.push("Send-Feedback Cronjob läuft nicht regelmäßig");
+      healthStatus = "WARNING";
+    }
+    if (overdueTasks > 5) {
+      issues.push(`${overdueTasks} überfällige Tasks`);
+      healthStatus = "WARNING";
+    }
+    if (whatsappFailed > 5) {
+      issues.push(`${whatsappFailed} WhatsApp-Nachrichten fehlgeschlagen`);
+      healthStatus = "WARNING";
+    }
+    if (memberStats.churnRisk > memberStats.total * 0.2) {
+      issues.push(`Hohe Churn-Risk Quote: ${memberStats.churnRisk}/${memberStats.total}`);
+      healthStatus = "WARNING";
+    }
+
+    // Save health check result
+    await prisma.automationLog.create({
+      data: {
+        ruleId: "SYSTEM_HEALTH",
+        ruleName: "System Health Check",
+        triggered: true,
+        actionsTaken: issues.length > 0 ? issues : ["Keine Probleme erkannt"],
+        details: {
+          status: healthStatus,
+          summary: aiSummary,
+          data: systemData,
+          issues,
+        },
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      status: healthStatus,
+      summary: aiSummary,
+      issues,
+      data: systemData,
+    });
+  } catch (error) {
+    console.error("System health check failed:", error);
+
+    // Log the failure
+    await prisma.automationLog.create({
+      data: {
+        ruleId: "SYSTEM_HEALTH",
+        ruleName: "System Health Check",
+        triggered: false,
+        actionsTaken: ["Health Check fehlgeschlagen"],
+        details: { error: String(error) },
+      },
+    });
+
+    return NextResponse.json(
+      { error: "Health check failed", details: String(error) },
+      { status: 500 }
+    );
+  }
+}
+

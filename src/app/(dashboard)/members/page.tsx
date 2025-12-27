@@ -65,9 +65,12 @@ async function getMembers(searchParams: SearchParams) {
       where,
       include: {
         kpiWeeks: {
-          where: { weekStart },
-          take: 1,
-          orderBy: { submittedAt: "desc" },
+          orderBy: { weekStart: "desc" },
+          select: {
+            weekStart: true,
+            feelingScore: true,
+            umsatzIst: true,
+          },
         },
       },
       orderBy: { updatedAt: "desc" },
@@ -77,7 +80,30 @@ async function getMembers(searchParams: SearchParams) {
     prisma.member.count({ where }),
   ]);
 
-  return { members, total, page, perPage };
+  // Process members to add current week feeling/umsatz and average feeling
+  const membersWithFeeling = members.map((member) => {
+    const currentWeekKpi = member.kpiWeeks.find(
+      (kpi) => kpi.weekStart.getTime() === weekStart.getTime()
+    );
+    
+    const feelingsWithScore = member.kpiWeeks
+      .filter((kpi) => kpi.feelingScore !== null)
+      .map((kpi) => kpi.feelingScore as number);
+    
+    const avgFeeling = feelingsWithScore.length > 0
+      ? feelingsWithScore.reduce((a, b) => a + b, 0) / feelingsWithScore.length
+      : null;
+
+    return {
+      ...member,
+      currentFeeling: currentWeekKpi?.feelingScore ?? null,
+      currentUmsatz: currentWeekKpi?.umsatzIst ?? null,
+      avgFeeling: avgFeeling ? Math.round(avgFeeling * 10) / 10 : null,
+      totalKpis: feelingsWithScore.length,
+    };
+  });
+
+  return { members: membersWithFeeling, total, page, perPage };
 }
 
 export default async function MembersPage({
@@ -160,7 +186,8 @@ export default async function MembersPage({
               <TableHead>Mitglied</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Produkte</TableHead>
-              <TableHead>Feeling</TableHead>
+              <TableHead>Feeling (Woche)</TableHead>
+              <TableHead>Ø Feeling</TableHead>
               <TableHead>Umsatz (Woche)</TableHead>
               <TableHead className="w-[100px]">Aktionen</TableHead>
             </TableRow>
@@ -168,7 +195,7 @@ export default async function MembersPage({
           <TableBody>
             {members.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8">
+                <TableCell colSpan={7} className="text-center py-8">
                   <p className="text-muted-foreground">
                     Keine Mitglieder gefunden
                   </p>
@@ -176,7 +203,6 @@ export default async function MembersPage({
               </TableRow>
             ) : (
               members.map((member) => {
-                const latestKpi = member.kpiWeeks[0];
                 return (
                   <TableRow key={member.id}>
                     <TableCell>
@@ -231,16 +257,28 @@ export default async function MembersPage({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {latestKpi?.feelingScore ? (
-                        <FeelingEmoji score={latestKpi.feelingScore} size="sm" />
+                      {member.currentFeeling ? (
+                        <FeelingEmoji score={member.currentFeeling} size="sm" />
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      {latestKpi?.umsatzIst ? (
+                      {member.avgFeeling ? (
+                        <div className="flex items-center gap-1">
+                          <FeelingEmoji score={Math.round(member.avgFeeling)} size="sm" />
+                          <span className="text-xs text-muted-foreground">
+                            ({member.avgFeeling.toFixed(1)})
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">-</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {member.currentUmsatz ? (
                         <span className="font-medium">
-                          {Number(latestKpi.umsatzIst).toLocaleString("de-DE", {
+                          {Number(member.currentUmsatz).toLocaleString("de-DE", {
                             style: "currency",
                             currency: "EUR",
                             minimumFractionDigits: 0,

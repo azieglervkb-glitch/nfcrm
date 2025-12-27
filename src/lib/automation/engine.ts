@@ -201,7 +201,7 @@ export async function checkLeistungsabfall(
   }
 }
 
-// P1: Upsell-Signal (based on consecutive months hitting revenue threshold)
+// P1: Upsell-Signal (based on X months with revenue threshold in last 12 months, NOT consecutive)
 export async function checkUpsellSignal(
   member: Member,
   kpiWeek: KpiWeek
@@ -216,66 +216,50 @@ export async function checkUpsellSignal(
     where: { id: "default" },
   });
 
-  const consecutiveWeeks = settings?.upsellConsecutiveWeeks ?? 12;
+  // upsellConsecutiveWeeks is now used as "required months" (e.g., 12 = 3 months)
+  // Interpretation: upsellConsecutiveWeeks / 4 = required months above threshold
+  const requiredMonths = Math.floor((settings?.upsellConsecutiveWeeks ?? 12) / 4);
   const monthlyThreshold = settings?.upsellRevenueThreshold
     ? Number(settings.upsellRevenueThreshold)
     : 20000;
 
-  // Need at least 4 weeks for one "month"
-  if (consecutiveWeeks < 4) return;
+  // Get last 12 months of KPIs (52 weeks)
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  // Get recent KPIs
   const recentKpis = await prisma.kpiWeek.findMany({
-    where: { memberId: member.id },
-    orderBy: { weekStart: "desc" },
-    take: consecutiveWeeks,
+    where: {
+      memberId: member.id,
+      weekStart: { gte: twelveMonthsAgo },
+    },
+    orderBy: { weekStart: "asc" },
   });
 
-  // Not enough data yet
-  if (recentKpis.length < consecutiveWeeks) return;
+  // Need at least 4 weeks for one "month"
+  if (recentKpis.length < 4) return;
 
-  // Check if weeks are consecutive (no gaps)
-  const sortedKpis = [...recentKpis].sort(
-    (a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime()
-  );
-
-  let isConsecutive = true;
-  for (let i = 1; i < sortedKpis.length; i++) {
-    const prevDate = new Date(sortedKpis[i - 1].weekStart);
-    const currDate = new Date(sortedKpis[i].weekStart);
-    const daysDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-    // Should be exactly 7 days apart (allow 1 day tolerance)
-    if (daysDiff < 6 || daysDiff > 8) {
-      isConsecutive = false;
-      break;
-    }
+  // Group KPIs by calendar month
+  const kpisByMonth: Map<string, number> = new Map();
+  
+  for (const kpi of recentKpis) {
+    const date = new Date(kpi.weekStart);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const currentSum = kpisByMonth.get(monthKey) || 0;
+    kpisByMonth.set(monthKey, currentSum + (kpi.umsatzIst ? Number(kpi.umsatzIst) : 0));
   }
 
-  if (!isConsecutive) return;
-
-  // Group into "months" (4 weeks each)
-  const numMonths = Math.floor(consecutiveWeeks / 4);
-  const monthlyRevenues: number[] = [];
-
-  for (let i = 0; i < numMonths; i++) {
-    const startIdx = i * 4;
-    const monthKpis = sortedKpis.slice(startIdx, startIdx + 4);
-    const monthSum = monthKpis.reduce(
-      (sum, kpi) => sum + (kpi.umsatzIst ? Number(kpi.umsatzIst) : 0),
-      0
-    );
-    monthlyRevenues.push(monthSum);
-  }
-
-  // Check if ALL months meet the threshold
-  const allMonthsAboveThreshold = monthlyRevenues.every(
+  // Count months that meet the threshold
+  const monthlyRevenues = Array.from(kpisByMonth.values());
+  const monthsAboveThreshold = monthlyRevenues.filter(
     (revenue) => revenue >= monthlyThreshold
-  );
+  ).length;
 
-  if (allMonthsAboveThreshold) {
+  // Check if required number of months meet threshold (not necessarily consecutive)
+  if (monthsAboveThreshold >= requiredMonths) {
     const actions: string[] = [];
+    const qualifyingMonths = monthlyRevenues.filter((r) => r >= monthlyThreshold);
     const avgMonthlyRevenue = Math.round(
-      monthlyRevenues.reduce((a, b) => a + b, 0) / monthlyRevenues.length
+      qualifyingMonths.reduce((a, b) => a + b, 0) / qualifyingMonths.length
     );
 
     // Set upsell flag
@@ -298,19 +282,20 @@ export async function checkUpsellSignal(
       await prisma.upsellPipeline.create({
         data: {
           memberId: member.id,
-          triggerReason: `${numMonths} Monate in Folge über ${monthlyThreshold.toLocaleString("de-DE")}€ Monatsumsatz (Ø ${avgMonthlyRevenue.toLocaleString("de-DE")}€)`,
+          triggerReason: `${monthsAboveThreshold} von ${kpisByMonth.size} Monaten über ${monthlyThreshold.toLocaleString("de-DE")}€ (Ø ${avgMonthlyRevenue.toLocaleString("de-DE")}€)`,
           triggerRuleId: ruleId,
           status: "IDENTIFIED",
         },
       });
-      actions.push("CREATE_UPSELL_PIPELINE: Monatsumsatz-Trigger");
+      actions.push("CREATE_UPSELL_PIPELINE: Monatsumsatz-Trigger (nicht konsekutiv)");
     }
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
-      monthlyRevenues,
+      monthsAboveThreshold,
+      requiredMonths,
+      totalMonths: kpisByMonth.size,
       avgMonthlyRevenue,
       threshold: monthlyThreshold,
-      consecutiveWeeks,
     });
 
     await setCooldown(member.id, ruleId, 720); // 30 days

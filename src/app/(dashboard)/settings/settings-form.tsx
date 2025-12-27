@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Bot, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 interface SystemSettings {
@@ -70,10 +70,24 @@ export function SettingsForm() {
   const [saved, setSaved] = useState(false);
   const [cronjobStatuses, setCronjobStatuses] = useState<CronjobStatus[]>([]);
   const [loadingCronStatus, setLoadingCronStatus] = useState(false);
+  
+  // AI System Health
+  interface HealthCheckResult {
+    status: "OK" | "WARNING" | "ERROR" | "UNKNOWN";
+    summary: string;
+    issues: string[];
+    lastCheck: string | null;
+    triggered: boolean;
+    data: unknown;
+  }
+  const [healthCheck, setHealthCheck] = useState<HealthCheckResult | null>(null);
+  const [loadingHealthCheck, setLoadingHealthCheck] = useState(false);
+  const [runningHealthCheck, setRunningHealthCheck] = useState(false);
 
   useEffect(() => {
     fetchSettings();
     fetchCronjobStatus();
+    fetchHealthCheck();
     // Refresh cronjob status every 30 seconds
     const interval = setInterval(fetchCronjobStatus, 30000);
     return () => clearInterval(interval);
@@ -138,6 +152,44 @@ export function SettingsForm() {
     }
   }
 
+  async function fetchHealthCheck() {
+    setLoadingHealthCheck(true);
+    try {
+      const response = await fetch("/api/settings/system-health");
+      if (response.ok) {
+        const data = await response.json();
+        setHealthCheck(data);
+      }
+    } catch (error) {
+      console.error("Error fetching health check:", error);
+    } finally {
+      setLoadingHealthCheck(false);
+    }
+  }
+
+  async function runHealthCheck() {
+    setRunningHealthCheck(true);
+    try {
+      const response = await fetch("/api/settings/system-health", {
+        method: "POST",
+      });
+      if (response.ok) {
+        const result = await response.json();
+        toast.success("Health-Check abgeschlossen");
+        // Refresh the health check data
+        await fetchHealthCheck();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || "Health-Check fehlgeschlagen");
+      }
+    } catch (error) {
+      console.error("Error running health check:", error);
+      toast.error("Health-Check konnte nicht ausgeführt werden");
+    } finally {
+      setRunningHealthCheck(false);
+    }
+  }
+
   function updateSetting<K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) {
     if (settings) {
       setSettings({ ...settings, [key]: value });
@@ -167,6 +219,32 @@ export function SettingsForm() {
         return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
       default:
         return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  }
+
+  function getHealthStatusColor(status: string) {
+    switch (status) {
+      case "OK":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 border-green-200";
+      case "WARNING":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200 border-yellow-200";
+      case "ERROR":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 border-gray-200";
+    }
+  }
+
+  function getHealthStatusIcon(status: string) {
+    switch (status) {
+      case "OK":
+        return <CheckCircle2 className="h-5 w-5 text-green-600" />;
+      case "WARNING":
+        return <AlertCircle className="h-5 w-5 text-yellow-600" />;
+      case "ERROR":
+        return <XCircle className="h-5 w-5 text-red-600" />;
+      default:
+        return <AlertCircle className="h-5 w-5 text-gray-400" />;
     }
   }
 
@@ -658,6 +736,98 @@ export function SettingsForm() {
                   value={settings.adminEmailDigestTime}
                   onChange={(e) => updateSetting("adminEmailDigestTime", e.target.value)}
                 />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* KI-Systemüberwacher */}
+        <Card className="lg:col-span-2 border-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Bot className="h-4 w-4" />
+                  KI-Systemüberwacher
+                  <Sparkles className="h-3 w-3 text-yellow-500" />
+                </CardTitle>
+                <CardDescription>
+                  GPT-5.2 analysiert täglich den Systemzustand
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={runHealthCheck}
+                disabled={runningHealthCheck}
+              >
+                {runningHealthCheck ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Shield className="h-4 w-4 mr-2" />
+                )}
+                {runningHealthCheck ? "Prüfe..." : "Jetzt prüfen"}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingHealthCheck && !healthCheck ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !healthCheck || healthCheck.status === "UNKNOWN" ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p className="font-medium">Noch kein Health-Check durchgeführt</p>
+                <p className="text-sm mt-1">Klicke auf "Jetzt prüfen" um die erste Analyse zu starten.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Status Badge */}
+                <div className={`p-4 rounded-lg border ${getHealthStatusColor(healthCheck.status)}`}>
+                  <div className="flex items-center gap-3">
+                    {getHealthStatusIcon(healthCheck.status)}
+                    <div>
+                      <p className="font-semibold">
+                        System-Status: {healthCheck.status === "OK" ? "Alles OK" : healthCheck.status === "WARNING" ? "Warnung" : healthCheck.status === "ERROR" ? "Fehler erkannt" : "Unbekannt"}
+                      </p>
+                      {healthCheck.lastCheck && (
+                        <p className="text-xs opacity-75 mt-0.5">
+                          Letzte Prüfung: {formatRelativeTime(healthCheck.lastCheck)} ({new Date(healthCheck.lastCheck).toLocaleString("de-DE")})
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* AI Summary */}
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium flex items-center gap-2">
+                    <Brain className="h-4 w-4" />
+                    KI-Analyse
+                  </Label>
+                  <div className="p-4 rounded-lg bg-muted/50 border">
+                    <p className="text-sm whitespace-pre-wrap">{healthCheck.summary}</p>
+                  </div>
+                </div>
+
+                {/* Issues List */}
+                {healthCheck.issues && healthCheck.issues.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium flex items-center gap-2 text-yellow-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      Erkannte Probleme ({healthCheck.issues.length})
+                    </Label>
+                    <ul className="space-y-1">
+                      {healthCheck.issues.map((issue, index) => (
+                        <li key={index} className="flex items-start gap-2 text-sm p-2 rounded bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200">
+                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          {issue}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

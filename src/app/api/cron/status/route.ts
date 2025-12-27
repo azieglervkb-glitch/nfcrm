@@ -45,6 +45,14 @@ const CRONJOBS: CronLogConfig[] = [
     logRuleId: "CRON",
     logRuleName: "Weekly Reminders",
   },
+  {
+    id: "system-health",
+    name: "KI-Systemüberwacher",
+    endpoint: "/api/cron/system-health",
+    schedule: "Täglich 07:00",
+    logRuleId: "SYSTEM_HEALTH",
+    logRuleName: "System Health Check",
+  },
 ];
 
 export async function GET() {
@@ -144,6 +152,17 @@ export async function GET() {
             } else {
               status = "error";
               statusMessage = "Keine Ausführung seit > 14 Tagen";
+            }
+          } else if (cronjob.id === "system-health") {
+            if (hoursSinceLastExecution < 26) {
+              status = "healthy";
+              statusMessage = "Läuft normal";
+            } else if (hoursSinceLastExecution < 48) {
+              status = "warning";
+              statusMessage = "Lange keine Ausführung";
+            } else {
+              status = "error";
+              statusMessage = "Keine Ausführung seit > 48 Stunden";
             }
           }
 
