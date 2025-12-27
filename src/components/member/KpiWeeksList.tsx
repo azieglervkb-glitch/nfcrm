@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeelingEmoji } from "@/components/common";
 import { formatDate } from "@/lib/date-utils";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import {
   TrendingUp,
   Users,
@@ -21,7 +23,8 @@ import {
   AlertCircle,
   Lightbulb,
   Bot,
-  Clock
+  Clock,
+  RefreshCw,
 } from "lucide-react";
 
 interface KpiWeek {
@@ -74,6 +77,7 @@ interface KpiWeeksListProps {
 
 export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
   const [selectedKpi, setSelectedKpi] = useState<KpiWeek | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
 
   const formatCurrency = (value: number | null) => {
     if (value === null) return "-";
@@ -381,6 +385,64 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                           </Badge>
                         )}
                       </div>
+
+                      {!selectedKpi.whatsappFeedbackSent && selectedKpi.whatsappScheduledFor && (
+                        <div className="mt-3 flex justify-end">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={regenerating}
+                            onClick={async () => {
+                              try {
+                                setRegenerating(true);
+                                const res = await fetch(
+                                  `/api/kpi-weeks/${selectedKpi.id}/regenerate-ai-feedback`,
+                                  { method: "POST" }
+                                );
+                                const data = await res.json().catch(() => ({}));
+
+                                if (!res.ok) {
+                                  toast.error(
+                                    data?.message ||
+                                      data?.error ||
+                                      "Konnte KI-Feedback nicht neu erstellen"
+                                  );
+                                  return;
+                                }
+
+                                const updated = data.kpiWeek;
+                                setSelectedKpi((prev) =>
+                                  prev
+                                    ? {
+                                        ...prev,
+                                        aiFeedbackText: updated.aiFeedbackText ?? prev.aiFeedbackText,
+                                        aiFeedbackGeneratedAt: updated.aiFeedbackGeneratedAt
+                                          ? new Date(updated.aiFeedbackGeneratedAt)
+                                          : prev.aiFeedbackGeneratedAt,
+                                        whatsappScheduledFor: updated.whatsappScheduledFor
+                                          ? new Date(updated.whatsappScheduledFor)
+                                          : prev.whatsappScheduledFor,
+                                      }
+                                    : prev
+                                );
+
+                                toast.success(
+                                  "KI-Feedback wurde neu erstellt und neu geplant"
+                                );
+                              } catch {
+                                toast.error("Konnte KI-Feedback nicht neu erstellen");
+                              } finally {
+                                setRegenerating(false);
+                              }
+                            }}
+                          >
+                            <RefreshCw
+                              className={`h-4 w-4 mr-2 ${regenerating ? "animate-spin" : ""}`}
+                            />
+                            Neu erstellen
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
