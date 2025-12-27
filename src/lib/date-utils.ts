@@ -1,9 +1,19 @@
 import { startOfWeek, endOfWeek, format, getWeek, getYear, addWeeks, subWeeks } from "date-fns";
 import { de } from "date-fns/locale";
 
-// Get the Monday of the current week
+// Get the Monday of the current week (UTC-based for DB consistency)
 export function getCurrentWeekStart(): Date {
-  return startOfWeek(new Date(), { weekStartsOn: 1 });
+  const now = new Date();
+  // Calculate Monday of current week in local time
+  const localMonday = startOfWeek(now, { weekStartsOn: 1 });
+  // Create a UTC date with just the date part (no time offset issues)
+  // This ensures consistency regardless of server timezone
+  return new Date(Date.UTC(
+    localMonday.getFullYear(),
+    localMonday.getMonth(),
+    localMonday.getDate(),
+    0, 0, 0, 0
+  ));
 }
 
 // Get week number and year for a date
