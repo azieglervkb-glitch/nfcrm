@@ -151,13 +151,6 @@ export async function GET(request: NextRequest) {
           status: "AKTIV",
           kpiTrackingActive: true,
         },
-        select: {
-          id: true,
-          email: true,
-          vorname: true,
-          nachname: true,
-          whatsappNummer: true,
-        },
       });
 
       for (const member of activeMembers) {
