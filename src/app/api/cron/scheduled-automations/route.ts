@@ -44,9 +44,6 @@ export async function GET(request: NextRequest) {
           orderBy: { weekStart: "desc" },
           take: 1,
         },
-        assignedCoach: {
-          select: { id: true, email: true, vorname: true },
-        },
       },
     });
 
@@ -70,11 +67,10 @@ export async function GET(request: NextRequest) {
           });
           results.churnRiskFlagged++;
 
-          // Create task for coach
+          // Create task
           await prisma.task.create({
             data: {
               memberId: member.id,
-              assignedToId: member.assignedCoachId,
               title: `Retention-Call: ${member.vorname} ${member.nachname}`,
               description: `${weeksSinceLastKpi} Wochen ohne KPI-Abgabe. Bitte zeitnah kontaktieren.`,
               priority: "HIGH",
@@ -117,7 +113,6 @@ export async function GET(request: NextRequest) {
           await prisma.task.create({
             data: {
               memberId: member.id,
-              assignedToId: member.assignedCoachId,
               title: `🚨 DANGER ZONE: ${member.vorname} ${member.nachname}`,
               description: `${weeksSinceLastKpi} Wochen ohne Aktivität! Sofortiger Kontakt erforderlich.`,
               priority: "URGENT",

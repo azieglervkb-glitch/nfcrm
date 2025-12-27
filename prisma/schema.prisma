@@ -85,7 +85,6 @@ model User {
   showAllTasks  Boolean   @default(false) // Ob alle Tasks oder nur zugewiesene angezeigt werden
 
   // Relations
-  assignedMembers Member[]  @relation("CoachMembers")
   tasks           Task[]    @relation("AssignedTasks")
   createdTasks    Task[]    @relation("CreatedTasks")
   sessions        Session[]
@@ -261,10 +260,6 @@ model Member {
   membershipEnd     DateTime?
   copecartCustomerId String?
 
-  // Coach Zuordnung
-  assignedCoach   User?   @relation("CoachMembers", fields: [assignedCoachId], references: [id])
-  assignedCoachId String?
-
   // Onboarding Daten (Formular 1: "Starte jetzt dein NF Mentoring")
   unternehmen           String?
   position              String?
@@ -326,7 +321,6 @@ model Member {
   updatedAt DateTime @updatedAt
 
   @@index([status])
-  @@index([assignedCoachId])
   @@index([churnRisk])
 }
 

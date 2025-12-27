@@ -29,9 +29,6 @@ async function getPendingKpis() {
       },
     },
     include: {
-      assignedCoach: {
-        select: { vorname: true, nachname: true },
-      },
       kpiWeeks: {
         orderBy: { weekStart: "desc" },
         take: 1,
@@ -82,7 +79,6 @@ export default async function PendingKpisPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Mitglied</TableHead>
-                  <TableHead>Coach</TableHead>
                   <TableHead>Letzter KPI</TableHead>
                   <TableHead className="w-[120px]">Aktionen</TableHead>
                 </TableRow>
@@ -112,16 +108,6 @@ export default async function PendingKpisPage() {
                             </p>
                           </div>
                         </Link>
-                      </TableCell>
-                      <TableCell>
-                        {member.assignedCoach ? (
-                          <span>
-                            {member.assignedCoach.vorname}{" "}
-                            {member.assignedCoach.nachname}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
                       </TableCell>
                       <TableCell>
                         {lastKpi ? (

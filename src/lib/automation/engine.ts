@@ -69,23 +69,8 @@ async function getRecentKpis(
 }
 
 // Find the appropriate assignee for a task based on rule preferences
-async function findTaskAssignee(
-  assignedCoachId: string | null,
-  ruleId: string
-): Promise<string | null> {
-  // 1. Check if the assigned coach has this rule enabled
-  if (assignedCoachId) {
-    const coach = await prisma.user.findUnique({
-      where: { id: assignedCoachId },
-      select: { taskRuleIds: true, isActive: true },
-    });
-
-    if (coach?.isActive && coach.taskRuleIds?.includes(ruleId)) {
-      return assignedCoachId;
-    }
-  }
-
-  // 2. Find another active user who has this rule enabled
+async function findTaskAssignee(ruleId: string): Promise<string | null> {
+  // Find an active user who has this rule enabled
   const eligibleUser = await prisma.user.findFirst({
     where: {
       isActive: true,
@@ -136,7 +121,7 @@ export async function checkLowFeelingStreak(
     actions.push("SET_FLAG: reviewFlag = true");
 
     // Create urgent task
-    const assigneeR1 = await findTaskAssignee(member.assignedCoachId, ruleId);
+    const assigneeR1 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -193,7 +178,7 @@ export async function checkLeistungsabfall(
     actions.push("SET_FLAG: dangerZone = true");
 
     // Create urgent task
-    const assigneeR3 = await findTaskAssignee(member.assignedCoachId, ruleId);
+    const assigneeR3 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -417,7 +402,7 @@ export async function checkHighNoShow(
     const actions: string[] = [];
 
     // Create task
-    const assigneeQ1 = await findTaskAssignee(member.assignedCoachId, ruleId);
+    const assigneeQ1 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -469,7 +454,7 @@ export async function checkChurnRisk(member: Member): Promise<void> {
     actions.push("SET_FLAG: churnRisk = true");
 
     // Create urgent task
-    const assigneeL1 = await findTaskAssignee(member.assignedCoachId, ruleId);
+    const assigneeL1 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -554,7 +539,7 @@ export async function checkBlockade(
     actions.push("BLOCK_AI_FEEDBACK");
 
     // Create task
-    const assigneeC2 = await findTaskAssignee(member.assignedCoachId, ruleId);
+    const assigneeC2 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,
@@ -854,7 +839,7 @@ export async function checkFunnelLeak(
     const issue = entscheiderRatio < 0.3 ? "Pitch optimieren" : "Terminierung verbessern";
 
     // Create task
-    const assigneeP2 = await findTaskAssignee(member.assignedCoachId, ruleId);
+    const assigneeP2 = await findTaskAssignee(ruleId);
     await prisma.task.create({
       data: {
         memberId: member.id,

@@ -35,10 +35,6 @@ interface ProfileData {
   membershipStart: string;
   onboardingCompleted: boolean;
   kpiTrackingActive: boolean;
-  assignedCoach: {
-    vorname: string;
-    nachname: string;
-  } | null;
 }
 
 export default function MemberProfilePage() {
@@ -224,17 +220,6 @@ export default function MemberProfilePage() {
                       <p className="font-medium">{profile.produkte.join(", ")}</p>
                     </div>
                   </div>
-                  {profile.assignedCoach && (
-                    <div className="flex items-center gap-3">
-                      <User className="h-5 w-5 text-gray-400" />
-                      <div>
-                        <p className="text-sm text-gray-600">Dein Coach</p>
-                        <p className="font-medium">
-                          {profile.assignedCoach.vorname} {profile.assignedCoach.nachname}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </CardContent>
               </Card>
 

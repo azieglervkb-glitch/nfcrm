@@ -19,12 +19,6 @@ import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 
-interface Coach {
-  id: string;
-  vorname: string;
-  nachname: string;
-}
-
 interface MemberFormProps {
   memberId?: string;
   initialData?: any;
@@ -36,7 +30,6 @@ const STATUSES = ["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"];
 export function MemberForm({ memberId, initialData }: MemberFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
-  const [coaches, setCoaches] = useState<Coach[]>([]);
   const [formData, setFormData] = useState({
     email: initialData?.email || "",
     vorname: initialData?.vorname || "",
@@ -47,7 +40,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
     position: initialData?.position || "",
     produkte: initialData?.produkte || [],
     status: initialData?.status || "AKTIV",
-    assignedCoachId: initialData?.assignedCoachId || "",
     // Goals
     hauptzielEinSatz: initialData?.hauptzielEinSatz || "",
     zielMonatsumsatz: initialData?.zielMonatsumsatz || "",
@@ -73,22 +65,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
     upsellCandidate: initialData?.upsellCandidate || false,
   });
 
-  useEffect(() => {
-    fetchCoaches();
-  }, []);
-
-  async function fetchCoaches() {
-    try {
-      const res = await fetch("/api/team");
-      if (res.ok) {
-        const data = await res.json();
-        setCoaches(data.filter((u: any) => u.role === "COACH" || u.role === "ADMIN"));
-      }
-    } catch (error) {
-      console.error("Failed to fetch coaches:", error);
-    }
-  }
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -113,7 +89,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
         termineAbschlussSoll: formData.termineAbschlussSoll ? Number(formData.termineAbschlussSoll) : null,
         einheitenSoll: formData.einheitenSoll ? Number(formData.einheitenSoll) : null,
         empfehlungenSoll: formData.empfehlungenSoll ? Number(formData.empfehlungenSoll) : null,
-        assignedCoachId: formData.assignedCoachId || null,
       };
 
       const url = memberId ? `/api/members/${memberId}` : "/api/members";
@@ -272,25 +247,6 @@ export function MemberForm({ memberId, initialData }: MemberFormProps) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Coach zuweisen</Label>
-            <Select
-              value={formData.assignedCoachId || "__none__"}
-              onValueChange={(value) => setFormData({ ...formData, assignedCoachId: value === "__none__" ? "" : value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Keinen Coach zugewiesen" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="__none__">Keinen Coach</SelectItem>
-                {coaches.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.vorname} {c.nachname}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
         </CardContent>
       </Card>
 

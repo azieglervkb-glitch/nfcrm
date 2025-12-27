@@ -87,21 +87,6 @@ export async function DELETE(
   }
 
   try {
-    // Check if user has assigned members
-    const user = await prisma.user.findUnique({
-      where: { id },
-      include: { _count: { select: { assignedMembers: true } } },
-    });
-
-    if (user?._count.assignedMembers && user._count.assignedMembers > 0) {
-      return NextResponse.json(
-        {
-          error: `Dieser Benutzer hat noch ${user._count.assignedMembers} zugewiesene Mitglieder. Bitte zuerst neu zuweisen.`,
-        },
-        { status: 400 }
-      );
-    }
-
     await prisma.user.delete({
       where: { id },
     });

@@ -27,9 +27,6 @@ export async function GET() {
       createdAt: true,
       taskRuleIds: true,
       showAllTasks: true,
-      _count: {
-        select: { assignedMembers: true },
-      },
     },
     orderBy: [{ role: "asc" }, { vorname: "asc" }],
   });

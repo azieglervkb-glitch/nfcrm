@@ -34,7 +34,6 @@ export const createMemberSchema = z.object({
   position: z.string().optional().nullable(),
   produkte: z.array(z.enum(["VPMC", "NFM", "PREMIUM"])).default([]),
   status: z.enum(["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"]).default("AKTIV"),
-  assignedCoachId: z.string().optional().nullable(),
   // Goals
   hauptzielEinSatz: z.string().optional().nullable(),
   zielMonatsumsatz: z.number().optional().nullable(),
@@ -67,7 +66,6 @@ export const updateMemberSchema = z.object({
   whatsappNummer: z.string().optional(),
   status: z.enum(["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"]).optional(),
   produkte: z.array(z.enum(["VPMC", "NFM", "PREMIUM"])).optional(),
-  assignedCoachId: z.string().nullable().optional(),
 
   // Flags
   reviewFlag: z.boolean().optional(),

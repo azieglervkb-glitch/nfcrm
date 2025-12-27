@@ -233,7 +233,6 @@ async function handleCancellation(data: any) {
       title: "Kündigungs-Feedback einholen",
       description: `${member.vorname} ${member.nachname} hat gekündigt. Feedback-Gespräch führen.`,
       priority: "HIGH",
-      assignedToId: member.assignedCoachId,
     },
   });
 

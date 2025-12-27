@@ -64,9 +64,6 @@ async function getMembers(searchParams: SearchParams) {
     prisma.member.findMany({
       where,
       include: {
-        assignedCoach: {
-          select: { vorname: true, nachname: true },
-        },
         kpiWeeks: {
           where: { weekStart },
           take: 1,
@@ -165,14 +162,13 @@ export default async function MembersPage({
               <TableHead>Produkte</TableHead>
               <TableHead>Feeling</TableHead>
               <TableHead>Umsatz (Woche)</TableHead>
-              <TableHead>Coach</TableHead>
               <TableHead className="w-[100px]">Aktionen</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {members.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
+                <TableCell colSpan={6} className="text-center py-8">
                   <p className="text-muted-foreground">
                     Keine Mitglieder gefunden
                   </p>
@@ -249,16 +245,6 @@ export default async function MembersPage({
                             currency: "EUR",
                             minimumFractionDigits: 0,
                           })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {member.assignedCoach ? (
-                        <span className="text-sm">
-                          {member.assignedCoach.vorname}{" "}
-                          {member.assignedCoach.nachname}
                         </span>
                       ) : (
                         <span className="text-muted-foreground text-sm">-</span>

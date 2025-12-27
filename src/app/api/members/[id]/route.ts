@@ -17,9 +17,6 @@ export async function GET(
   const member = await prisma.member.findUnique({
     where: { id },
     include: {
-      assignedCoach: {
-        select: { id: true, vorname: true, nachname: true },
-      },
       kpiWeeks: {
         orderBy: { weekStart: "desc" },
         take: 12,

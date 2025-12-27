@@ -43,11 +43,6 @@ export async function GET(request: NextRequest) {
   const [members, total] = await Promise.all([
     prisma.member.findMany({
       where,
-      include: {
-        assignedCoach: {
-          select: { id: true, vorname: true, nachname: true },
-        },
-      },
       orderBy: { updatedAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,

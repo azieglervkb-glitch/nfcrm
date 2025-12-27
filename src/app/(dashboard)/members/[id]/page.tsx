@@ -31,9 +31,6 @@ async function getMember(id: string) {
   const member = await prisma.member.findUnique({
     where: { id },
     include: {
-      assignedCoach: {
-        select: { id: true, vorname: true, nachname: true },
-      },
       kpiWeeks: {
         orderBy: { weekStart: "desc" },
         take: 12,
@@ -199,15 +196,6 @@ export default async function MemberDetailPage({
                   <div className="flex items-center gap-3">
                     <MessageSquare className="h-4 w-4 text-muted-foreground" />
                     <span className="text-sm">{member.whatsappNummer}</span>
-                  </div>
-                )}
-                {member.assignedCoach && (
-                  <div className="pt-2 border-t">
-                    <p className="text-xs text-muted-foreground mb-1">Coach</p>
-                    <p className="text-sm font-medium">
-                      {member.assignedCoach.vorname}{" "}
-                      {member.assignedCoach.nachname}
-                    </p>
                   </div>
                 )}
               </CardContent>

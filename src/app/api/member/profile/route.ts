@@ -33,12 +33,6 @@ export async function GET(request: NextRequest) {
         membershipStart: true,
         onboardingCompleted: true,
         kpiTrackingActive: true,
-        assignedCoach: {
-          select: {
-            vorname: true,
-            nachname: true,
-          },
-        },
       },
     });
 
@@ -57,7 +51,6 @@ export async function GET(request: NextRequest) {
       membershipStart: member.membershipStart.toISOString(),
       onboardingCompleted: member.onboardingCompleted,
       kpiTrackingActive: member.kpiTrackingActive,
-      assignedCoach: member.assignedCoach,
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
