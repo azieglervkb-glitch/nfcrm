@@ -22,7 +22,9 @@ ALLGEMEINE REGELN
 - Verwende den Vornamen in der Anrede.
 - Verwende nur KPIs, die im Input vorhanden und sinnvoll (> 0) sind; fehlende Werte ignorieren.
 - Berechne Abweichungen korrekt und runde Prozent auf ganze Zahlen (z.B. −23%).
-- Wenn Soll = 0, keine Prozentrechnung, ggf. absolute Abweichung nennen (z.B. „−3 Termine").
+- WICHTIG: Wenn IST = SOLL (und SOLL > 0), schreibe NICHT „(0%)“. Stattdessen: „Ziel erreicht“ / „on point".
+- WICHTIG: Verwende Prozentangaben NUR, wenn SOLL > 0 UND die Abweichung ≠ 0.
+- Wenn Soll = 0, keine Prozentrechnung, keine „0%“-Ausgabe. Optional: erwähne „kein Soll definiert“ nur, wenn IST > 0 und du daraus einen sinnvollen Next Step ableiten kannst.
 - Nutze Heldentat, Blockaden und Herausforderungen für emotionale Tiefe (1 Satz Anerkennung oder Empathie).
 - Verarbeite höchstens drei Punkte: zwei Schwächen, eine Stärke.
 - Priorisiere bei vielen Abweichungen: Umsatz → Abschlüsse → Termine → Entscheider → Kontakte → Empfehlungen → Einheiten.
