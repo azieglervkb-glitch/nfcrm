@@ -41,19 +41,24 @@ export async function GET(request: NextRequest) {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     // 1. Collect Cronjob Status
+    // Note: send-feedback uses CRON_FEEDBACK, others use CRON
     const cronLogs = await prisma.automationLog.findMany({
       where: {
         firedAt: { gte: oneDayAgo },
-        ruleId: "CRON",
+        ruleId: { in: ["CRON", "CRON_FEEDBACK"] },
       },
       orderBy: { firedAt: "desc" },
     });
 
     const cronStatus = {
-      sendFeedback: cronLogs.filter((l) => l.ruleName === "Send Feedback Cron").length,
-      weeklyReminders: cronLogs.filter((l) => l.ruleName === "Weekly Reminders Cron").length,
-      scheduledAutomations: cronLogs.filter((l) => l.ruleName === "Scheduled Automations Cron").length,
-      kpiReminder: cronLogs.filter((l) => l.ruleName === "KPI Reminder Cron").length,
+      // send-feedback uses ruleId: "CRON_FEEDBACK", ruleName: "Scheduled Feedback Sender"
+      sendFeedback: cronLogs.filter((l) => l.ruleId === "CRON_FEEDBACK" && l.ruleName === "Scheduled Feedback Sender").length,
+      // weekly-reminders uses ruleId: "CRON", ruleName: "Weekly Reminders"
+      weeklyReminders: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "Weekly Reminders").length,
+      // scheduled-automations uses ruleId: "CRON", ruleName: "Scheduled Automations"
+      scheduledAutomations: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "Scheduled Automations").length,
+      // kpi-reminder uses ruleId: "CRON", ruleName: "KPI Reminder Cron"
+      kpiReminder: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "KPI Reminder Cron").length,
     };
 
     // 2. Collect Error Logs (automation failures)
@@ -239,8 +244,20 @@ REGELN:
     }
 
     // Check for obvious issues
-    if (cronStatus.sendFeedback < 200) {
-      issues.push("Send-Feedback Cronjob läuft nicht regelmäßig");
+    // sendFeedback should run ~288 times per day (every 5 minutes)
+    // But it only logs when it actually runs, so if there's no feedback to send, it might be lower
+    // We check if it's completely missing (0) or very low (< 50) which would indicate a problem
+    if (cronStatus.sendFeedback === 0) {
+      issues.push("Send-Feedback Cronjob wurde in den letzten 24h nicht ausgeführt");
+      healthStatus = "ERROR";
+    } else if (cronStatus.sendFeedback < 50) {
+      issues.push(`Send-Feedback Cronjob läuft unregelmäßig (${cronStatus.sendFeedback} statt ~288)`);
+      healthStatus = "WARNING";
+    }
+    
+    // weeklyReminders should run 2x per day (06:00 + 19:00)
+    if (cronStatus.weeklyReminders === 0) {
+      issues.push("Weekly-Reminders Cronjob wurde in den letzten 24h nicht ausgeführt");
       healthStatus = "WARNING";
     }
     if (overdueTasks > 5) {
