@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 // Default prompts (hardcoded for now, will be moved to database)
 const DEFAULT_PROMPTS = [
@@ -109,8 +110,58 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Return default prompts (database storage coming soon)
-    return NextResponse.json(DEFAULT_PROMPTS);
+    // Try to load prompts from database
+    const dbPrompts = await prisma.aiPrompt.findMany({
+      orderBy: { promptKey: "asc" },
+    });
+
+    // If no prompts in DB, initialize with defaults
+    if (dbPrompts.length === 0) {
+      // Initialize default prompts
+      for (const defaultPrompt of DEFAULT_PROMPTS) {
+        await prisma.aiPrompt.create({
+          data: {
+            promptKey: defaultPrompt.promptKey,
+            name: defaultPrompt.name,
+            description: defaultPrompt.description || null,
+            content: defaultPrompt.content,
+            isActive: defaultPrompt.isActive,
+          },
+        });
+      }
+      // Reload from DB
+      const initializedPrompts = await prisma.aiPrompt.findMany({
+        orderBy: { promptKey: "asc" },
+      });
+      return NextResponse.json(
+        initializedPrompts.map((p) => ({
+          id: p.id,
+          promptKey: p.promptKey,
+          name: p.name,
+          description: p.description,
+          content: p.content,
+          isActive: p.isActive,
+          isDefault: false, // Not default anymore since stored in DB
+          createdAt: p.createdAt.toISOString(),
+          updatedAt: p.updatedAt.toISOString(),
+        }))
+      );
+    }
+
+    // Return prompts from database
+    return NextResponse.json(
+      dbPrompts.map((p) => ({
+        id: p.id,
+        promptKey: p.promptKey,
+        name: p.name,
+        description: p.description,
+        content: p.content,
+        isActive: p.isActive,
+        isDefault: false,
+        createdAt: p.createdAt.toISOString(),
+        updatedAt: p.updatedAt.toISOString(),
+      }))
+    );
   } catch (error) {
     console.error("Failed to fetch prompts:", error);
     return NextResponse.json(
@@ -132,15 +183,53 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Database storage coming soon - for now, prompts are read-only
+    const body = await request.json();
+    const { promptKey, name, description, content, isActive } = body;
+
+    if (!promptKey || !content) {
+      return NextResponse.json(
+        { error: "promptKey and content are required" },
+        { status: 400 }
+      );
+    }
+
+    // Update or create prompt in database
+    const prompt = await prisma.aiPrompt.upsert({
+      where: { promptKey },
+      update: {
+        name: name || undefined,
+        description: description || null,
+        content,
+        isActive: isActive !== undefined ? isActive : true,
+        updatedAt: new Date(),
+      },
+      create: {
+        promptKey,
+        name: name || `Prompt ${promptKey}`,
+        description: description || null,
+        content,
+        isActive: isActive !== undefined ? isActive : true,
+      },
+    });
+
     return NextResponse.json({
-      success: false,
-      message: "Prompt-Speicherung in der Datenbank kommt bald. Die Prompts werden derzeit aus dem Code geladen.",
+      success: true,
+      prompt: {
+        id: prompt.id,
+        promptKey: prompt.promptKey,
+        name: prompt.name,
+        description: prompt.description,
+        content: prompt.content,
+        isActive: prompt.isActive,
+        isDefault: false,
+        createdAt: prompt.createdAt.toISOString(),
+        updatedAt: prompt.updatedAt.toISOString(),
+      },
     });
   } catch (error) {
     console.error("Failed to update prompt:", error);
     return NextResponse.json(
-      { error: "Failed to update prompt" },
+      { error: "Failed to update prompt", details: String(error) },
       { status: 500 }
     );
   }

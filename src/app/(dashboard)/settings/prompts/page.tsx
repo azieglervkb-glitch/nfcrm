@@ -67,16 +67,22 @@ export default function PromptsSettingsPage() {
       });
 
       if (res.ok) {
-        toast.success("Prompt gespeichert");
-        // Clear edited state
-        setEditedPrompts((prev) => {
-          const next = { ...prev };
-          delete next[prompt.promptKey];
-          return next;
-        });
-        fetchPrompts();
+        const data = await res.json();
+        if (data.success) {
+          toast.success("Prompt gespeichert");
+          // Clear edited state
+          setEditedPrompts((prev) => {
+            const next = { ...prev };
+            delete next[prompt.promptKey];
+            return next;
+          });
+          fetchPrompts();
+        } else {
+          toast.error(data.message || "Fehler beim Speichern");
+        }
       } else {
-        toast.error("Fehler beim Speichern");
+        const error = await res.json().catch(() => ({}));
+        toast.error(error.error || error.message || "Fehler beim Speichern");
       }
     } catch (error) {
       toast.error("Fehler beim Speichern");
