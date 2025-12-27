@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check } from "lucide-react";
+import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 interface SystemSettings {
@@ -48,14 +48,35 @@ const DAYS = [
   { value: 6, label: "Samstag" },
 ];
 
+interface CronjobStatus {
+  id: string;
+  name: string;
+  endpoint: string;
+  schedule: string;
+  status: "healthy" | "warning" | "error" | "unknown";
+  statusMessage: string;
+  lastExecution: string | null;
+  lastSuccess: string | null;
+  lastError: string | null;
+  executionCount: number;
+  successCount: number;
+  errorCount: number;
+}
+
 export function SettingsForm() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [cronjobStatuses, setCronjobStatuses] = useState<CronjobStatus[]>([]);
+  const [loadingCronStatus, setLoadingCronStatus] = useState(false);
 
   useEffect(() => {
     fetchSettings();
+    fetchCronjobStatus();
+    // Refresh cronjob status every 30 seconds
+    const interval = setInterval(fetchCronjobStatus, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   async function fetchSettings() {
@@ -102,10 +123,67 @@ export function SettingsForm() {
     }
   }
 
+  async function fetchCronjobStatus() {
+    setLoadingCronStatus(true);
+    try {
+      const response = await fetch("/api/cron/status");
+      if (response.ok) {
+        const data = await response.json();
+        setCronjobStatuses(data.cronjobs || []);
+      }
+    } catch (error) {
+      console.error("Error fetching cronjob status:", error);
+    } finally {
+      setLoadingCronStatus(false);
+    }
+  }
+
   function updateSetting<K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) {
     if (settings) {
       setSettings({ ...settings, [key]: value });
     }
+  }
+
+  function getStatusIcon(status: string) {
+    switch (status) {
+      case "healthy":
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case "warning":
+        return <AlertCircle className="h-4 w-4 text-yellow-600" />;
+      case "error":
+        return <XCircle className="h-4 w-4 text-red-600" />;
+      default:
+        return <AlertCircle className="h-4 w-4 text-gray-400" />;
+    }
+  }
+
+  function getStatusBadgeColor(status: string) {
+    switch (status) {
+      case "healthy":
+        return "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200";
+      case "warning":
+        return "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200";
+      case "error":
+        return "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200";
+      default:
+        return "bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200";
+    }
+  }
+
+  function formatRelativeTime(dateString: string | null) {
+    if (!dateString) return "Nie";
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "Gerade eben";
+    if (diffMins < 60) return `vor ${diffMins} Min`;
+    if (diffHours < 24) return `vor ${diffHours} Std`;
+    if (diffDays < 7) return `vor ${diffDays} Tag${diffDays > 1 ? "en" : ""}`;
+    return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
 
   if (loading) {
@@ -580,6 +658,102 @@ export function SettingsForm() {
                   value={settings.adminEmailDigestTime}
                   onChange={(e) => updateSetting("adminEmailDigestTime", e.target.value)}
                 />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Cronjob Status */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Activity className="h-4 w-4" />
+                  Cronjob Status
+                </CardTitle>
+                <CardDescription>
+                  Überwachung der automatisierten Aufgaben
+                </CardDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={fetchCronjobStatus}
+                disabled={loadingCronStatus}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${loadingCronStatus ? "animate-spin" : ""}`} />
+                Aktualisieren
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingCronStatus && cronjobStatuses.length === 0 ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : cronjobStatuses.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Keine Cronjob-Statusdaten verfügbar
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {cronjobStatuses.map((cronjob) => (
+                  <div
+                    key={cronjob.id}
+                    className="p-4 rounded-lg border bg-card"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium text-sm">{cronjob.name}</h4>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusBadgeColor(cronjob.status)}`}>
+                            {cronjob.status === "healthy" ? "Aktiv" : cronjob.status === "warning" ? "Warnung" : cronjob.status === "error" ? "Fehler" : "Unbekannt"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {cronjob.schedule}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {cronjob.statusMessage}
+                        </p>
+                      </div>
+                      {getStatusIcon(cronjob.status)}
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t text-xs">
+                      <div>
+                        <p className="text-muted-foreground mb-1">Letzte Ausführung</p>
+                        <p className="font-medium">
+                          {formatRelativeTime(cronjob.lastExecution)}
+                        </p>
+                        {cronjob.lastExecution && (
+                          <p className="text-muted-foreground text-[10px] mt-0.5">
+                            {new Date(cronjob.lastExecution).toLocaleString("de-DE")}
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-muted-foreground mb-1">Statistik</p>
+                        <div className="flex gap-3">
+                          <div>
+                            <p className="font-medium text-green-600">{cronjob.successCount}</p>
+                            <p className="text-[10px] text-muted-foreground">Erfolg</p>
+                          </div>
+                          {cronjob.errorCount > 0 && (
+                            <div>
+                              <p className="font-medium text-red-600">{cronjob.errorCount}</p>
+                              <p className="text-[10px] text-muted-foreground">Fehler</p>
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-medium">{cronjob.executionCount}</p>
+                            <p className="text-[10px] text-muted-foreground">Gesamt</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </CardContent>
