@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import type { Member, KpiWeek } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 
 // Lazy initialization to avoid build-time errors when OPENAI_API_KEY is not set
 let openaiInstance: OpenAI | null = null;
@@ -57,39 +58,65 @@ Gib NUR den Nachrichtentext aus, keine Einleitung oder Erklärung.`;
 
 function buildUserPrompt(
   member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll">,
-  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst">
+  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst">,
+  userPromptTemplate?: string
 ): string {
-  return `Member:
-- vorname: ${member.vorname}
-- feeling_score: ${kpiWeek.feelingScore || "nicht angegeben"}
-- heldentat: ${kpiWeek.heldentat || "keine"}
-- blockiert: ${kpiWeek.blockiert || "keine"}
-- herausforderung: ${kpiWeek.herausforderung || "keine"}
+  // Use template from database if provided, otherwise use default
+  const template = userPromptTemplate || `Member:
+- vorname: {{vorname}}
+- feeling_score: {{feeling_score}}
+- heldentat: {{heldentat}}
+- blockiert: {{blockiert}}
+- herausforderung: {{herausforderung}}
 
 ZIELWERTE (SOLL):
-- umsatz_soll: ${member.umsatzSollWoche || 0}
-- kontakte_soll: ${member.kontakteSoll || 0}
-- entscheider_soll: ${member.entscheiderSoll || 0}
-- termine_vereinbart_soll: ${member.termineVereinbartSoll || 0}
-- termine_stattgefunden_soll: ${member.termineStattgefundenSoll || 0}
-- termine_abschluss_soll: ${member.termineAbschlussSoll || 0}
-- einheiten_soll: ${member.einheitenSoll || 0}
-- empfehlungen_soll: ${member.empfehlungenSoll || 0}
+- umsatz_soll: {{umsatz_soll}}
+- kontakte_soll: {{kontakte_soll}}
+- entscheider_soll: {{entscheider_soll}}
+- termine_vereinbart_soll: {{termine_vereinbart_soll}}
+- termine_stattgefunden_soll: {{termine_stattgefunden_soll}}
+- termine_abschluss_soll: {{termine_abschluss_soll}}
+- einheiten_soll: {{einheiten_soll}}
+- empfehlungen_soll: {{empfehlungen_soll}}
 
 IST-WERTE (diese Woche):
-- umsatz_ist: ${kpiWeek.umsatzIst || 0}
-- kontakte_ist: ${kpiWeek.kontakteIst || 0}
-- entscheider_ist: ${kpiWeek.entscheiderIst || 0}
-- termine_vereinbart_ist: ${kpiWeek.termineVereinbartIst || 0}
-- termine_stattgefunden_ist: ${kpiWeek.termineStattgefundenIst || 0}
-- termine_abschluss_ist: ${kpiWeek.termineAbschlussIst || 0}
-- einheiten_ist: ${kpiWeek.einheitenIst || 0}
-- empfehlungen_ist: ${kpiWeek.empfehlungenIst || 0}
+- umsatz_ist: {{umsatz_ist}}
+- kontakte_ist: {{kontakte_ist}}
+- entscheider_ist: {{entscheider_ist}}
+- termine_vereinbart_ist: {{termine_vereinbart_ist}}
+- termine_stattgefunden_ist: {{termine_stattgefunden_ist}}
+- termine_abschluss_ist: {{termine_abschluss_ist}}
+- einheiten_ist: {{einheiten_ist}}
+- empfehlungen_ist: {{empfehlungen_ist}}
 
 AUFGABE:
 1. Vergleiche alle IST- mit den SOLL-Werten.
 2. Bestimme die zwei größten negativen Abweichungen und einen besonders positiven KPI.
 3. Erstelle die WhatsApp-Nachricht gemäß den Regeln, inkl. zufälliger Stilvariante.`;
+
+  // Replace template variables
+  return template
+    .replace(/\{\{vorname\}\}/g, member.vorname)
+    .replace(/\{\{feeling_score\}\}/g, String(kpiWeek.feelingScore || "nicht angegeben"))
+    .replace(/\{\{heldentat\}\}/g, kpiWeek.heldentat || "keine")
+    .replace(/\{\{blockiert\}\}/g, kpiWeek.blockiert || "keine")
+    .replace(/\{\{herausforderung\}\}/g, kpiWeek.herausforderung || "keine")
+    .replace(/\{\{umsatz_soll\}\}/g, String(member.umsatzSollWoche || 0))
+    .replace(/\{\{kontakte_soll\}\}/g, String(member.kontakteSoll || 0))
+    .replace(/\{\{entscheider_soll\}\}/g, String(member.entscheiderSoll || 0))
+    .replace(/\{\{termine_vereinbart_soll\}\}/g, String(member.termineVereinbartSoll || 0))
+    .replace(/\{\{termine_stattgefunden_soll\}\}/g, String(member.termineStattgefundenSoll || 0))
+    .replace(/\{\{termine_abschluss_soll\}\}/g, String(member.termineAbschlussSoll || 0))
+    .replace(/\{\{einheiten_soll\}\}/g, String(member.einheitenSoll || 0))
+    .replace(/\{\{empfehlungen_soll\}\}/g, String(member.empfehlungenSoll || 0))
+    .replace(/\{\{umsatz_ist\}\}/g, String(kpiWeek.umsatzIst || 0))
+    .replace(/\{\{kontakte_ist\}\}/g, String(kpiWeek.kontakteIst || 0))
+    .replace(/\{\{entscheider_ist\}\}/g, String(kpiWeek.entscheiderIst || 0))
+    .replace(/\{\{termine_vereinbart_ist\}\}/g, String(kpiWeek.termineVereinbartIst || 0))
+    .replace(/\{\{termine_stattgefunden_ist\}\}/g, String(kpiWeek.termineStattgefundenIst || 0))
+    .replace(/\{\{termine_abschluss_ist\}\}/g, String(kpiWeek.termineAbschlussIst || 0))
+    .replace(/\{\{einheiten_ist\}\}/g, String(kpiWeek.einheitenIst || 0))
+    .replace(/\{\{empfehlungen_ist\}\}/g, String(kpiWeek.empfehlungenIst || 0));
 }
 
 export type FeedbackStyle = "standard" | "locker" | "coachend";
@@ -103,16 +130,39 @@ export async function generateKpiFeedback(
   member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll">,
   kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst">
 ): Promise<GenerateFeedbackResult> {
+  // Load prompts from database (or use defaults)
+  let systemPromptContent = SYSTEM_PROMPT;
+  let userPromptTemplate: string | undefined;
+
+  try {
+    const systemPrompt = await prisma.aiPrompt.findUnique({
+      where: { promptKey: "KPI_FEEDBACK_SYSTEM", isActive: true },
+    });
+    if (systemPrompt) {
+      systemPromptContent = systemPrompt.content;
+    }
+
+    const userPrompt = await prisma.aiPrompt.findUnique({
+      where: { promptKey: "KPI_FEEDBACK_USER", isActive: true },
+    });
+    if (userPrompt) {
+      userPromptTemplate = userPrompt.content;
+    }
+  } catch (error) {
+    console.error("Failed to load prompts from database, using defaults:", error);
+    // Fallback to hardcoded prompts
+  }
+
   // Randomly select style
   const rand = Math.random();
   const style: FeedbackStyle =
     rand < 0.6 ? "standard" : rand < 0.9 ? "locker" : "coachend";
 
-  const systemPrompt = `${SYSTEM_PROMPT}
+  const systemPrompt = `${systemPromptContent}
 
 Gewählte Stilvariante für diese Nachricht: ${style}`;
 
-  const userPrompt = buildUserPrompt(member, kpiWeek);
+  const userPrompt = buildUserPrompt(member, kpiWeek, userPromptTemplate);
 
   // Use the best available model
   // GPT-5.2 is the latest model (as of Dec 2024), fallback to latest GPT-4o if not available
