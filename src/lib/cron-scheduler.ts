@@ -29,6 +29,14 @@ export async function shouldRunKpiReminder(): Promise<ScheduleMatch> {
     where: { id: "default" },
   });
 
+  console.log("[SCHEDULER] KPI Reminder - Settings:", {
+    enabled: settings?.kpiReminderEnabled,
+    day1: settings?.kpiReminderDay1,
+    time1: settings?.kpiReminderTime1,
+    day2: settings?.kpiReminderDay2,
+    time2: settings?.kpiReminderTime2,
+  });
+
   if (!settings?.kpiReminderEnabled) {
     return { shouldRun: false, reason: "KPI reminders disabled" };
   }
@@ -38,17 +46,26 @@ export async function shouldRunKpiReminder(): Promise<ScheduleMatch> {
   const currentHour = now.getHours();
   const currentMinute = now.getMinutes();
 
+  console.log("[SCHEDULER] Current time:", { currentDay, currentHour, currentMinute, nowString: now.toISOString() });
+
   // Parse times from settings (format: "HH:MM")
   const [hour1, minute1] = (settings.kpiReminderTime1 || "08:00").split(":").map(Number);
   const [hour2, minute2] = (settings.kpiReminderTime2 || "18:00").split(":").map(Number);
 
+  console.log("[SCHEDULER] Parsed times:", { hour1, minute1, hour2, minute2 });
+
   // Check first reminder
-  if (currentDay === settings.kpiReminderDay1 && currentHour === hour1 && currentMinute === minute1) {
+  const match1 = currentDay === settings.kpiReminderDay1 && currentHour === hour1 && currentMinute === minute1;
+  const match2 = currentDay === settings.kpiReminderDay2 && currentHour === hour2 && currentMinute === minute2;
+  
+  console.log("[SCHEDULER] Match check:", { match1, match2 });
+
+  if (match1) {
     return { shouldRun: true, reason: `First reminder: Day ${currentDay}, ${hour1}:${minute1}` };
   }
 
   // Check second reminder
-  if (currentDay === settings.kpiReminderDay2 && currentHour === hour2 && currentMinute === minute2) {
+  if (match2) {
     return { shouldRun: true, reason: `Second reminder: Day ${currentDay}, ${hour2}:${minute2}` };
   }
 

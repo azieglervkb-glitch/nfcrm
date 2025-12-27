@@ -21,12 +21,17 @@ export async function GET(request: NextRequest) {
   try {
     // Check if we should run based on settings
     const scheduleCheck = await shouldRunKpiReminder();
+    console.log("[KPI-REMINDER] Schedule check result:", JSON.stringify(scheduleCheck));
+    
     if (!scheduleCheck.shouldRun) {
+      console.log("[KPI-REMINDER] Skipping - not scheduled");
       return NextResponse.json({
         skipped: true,
         reason: scheduleCheck.reason,
       });
     }
+    
+    console.log("[KPI-REMINDER] Running - schedule matched");
 
     // Prevent duplicate runs within the same minute
     if (await hasRunThisMinute("CRON", "KPI Reminder Cron")) {
