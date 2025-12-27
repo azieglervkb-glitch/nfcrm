@@ -222,13 +222,25 @@ export async function POST(request: NextRequest) {
         data: { reviewFlag: true },
       });
 
+      // Create task for review
+      await prisma.task.create({
+        data: {
+          memberId,
+          title: `Daten-Anomalie prüfen: ${member.vorname} ${member.nachname}`,
+          description: `KPI-Woche ${kpiWeek.weekNumber}/${kpiWeek.year} hat eine Daten-Anomalie erkannt: ${anomalyCheck.reason}. Bitte prüfen und bei Bestätigung das KI-Feedback freigeben.`,
+          priority: "HIGH",
+          status: "OPEN",
+          ruleId: "Q2",
+        },
+      });
+
       await prisma.automationLog.create({
         data: {
           memberId,
           ruleId: "Q2",
           ruleName: "Daten-Anomalie",
-          actionsTaken: ["BLOCK_AI_FEEDBACK", "SET_FLAG: reviewFlag"],
-          details: { reason: anomalyCheck.reason },
+          actionsTaken: ["BLOCK_AI_FEEDBACK", "SET_FLAG: reviewFlag", "CREATE_TASK: Review"],
+          details: { reason: anomalyCheck.reason, kpiWeekId: kpiWeek.id },
         },
       });
     } else {
