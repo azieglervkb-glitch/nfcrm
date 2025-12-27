@@ -86,8 +86,8 @@ export default function ProfileSettingsPage() {
     } catch (error) {
       console.error("Failed to fetch profile:", error);
       toast({
-        title: "Error",
-        description: "Failed to load profile",
+        title: "Fehler",
+        description: "Profil konnte nicht geladen werden",
         variant: "destructive",
       });
     } finally {
@@ -231,22 +231,22 @@ export default function ProfileSettingsPage() {
         const data = await response.json();
         setProfile(data);
         toast({
-          title: "Success",
-          description: "Profile updated successfully",
+          title: "Erfolg",
+          description: "Profil erfolgreich gespeichert",
         });
       } else {
         const error = await response.json();
         toast({
-          title: "Error",
-          description: error.message || "Failed to update profile",
+          title: "Fehler",
+          description: error.message || "Profil konnte nicht gespeichert werden",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Failed to save profile:", error);
       toast({
-        title: "Error",
-        description: "Failed to save profile",
+        title: "Fehler",
+        description: "Profil konnte nicht gespeichert werden",
         variant: "destructive",
       });
     } finally {
@@ -257,8 +257,8 @@ export default function ProfileSettingsPage() {
   const handleChangePassword = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
       toast({
-        title: "Error",
-        description: "New passwords do not match",
+        title: "Fehler",
+        description: "Die neuen Passwörter stimmen nicht überein",
         variant: "destructive",
       });
       return;
@@ -266,8 +266,8 @@ export default function ProfileSettingsPage() {
 
     if (passwordData.newPassword.length < 8) {
       toast({
-        title: "Error",
-        description: "Password must be at least 8 characters",
+        title: "Fehler",
+        description: "Passwort muss mindestens 8 Zeichen lang sein",
         variant: "destructive",
       });
       return;
@@ -291,22 +291,22 @@ export default function ProfileSettingsPage() {
           confirmPassword: "",
         });
         toast({
-          title: "Success",
-          description: "Password changed successfully",
+          title: "Erfolg",
+          description: "Passwort erfolgreich geändert",
         });
       } else {
         const error = await response.json();
         toast({
-          title: "Error",
-          description: error.message || "Failed to change password",
+          title: "Fehler",
+          description: error.message || "Passwort konnte nicht geändert werden",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Failed to change password:", error);
       toast({
-        title: "Error",
-        description: "Failed to change password",
+        title: "Fehler",
+        description: "Passwort konnte nicht geändert werden",
         variant: "destructive",
       });
     } finally {
@@ -317,7 +317,7 @@ export default function ProfileSettingsPage() {
   const getRoleBadge = (role: string) => {
     switch (role) {
       case "SUPER_ADMIN":
-        return <Badge className="bg-purple-100 text-purple-800">Super Admin</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800">Super-Admin</Badge>;
       case "ADMIN":
         return <Badge className="bg-blue-100 text-blue-800">Admin</Badge>;
       case "COACH":
@@ -338,19 +338,19 @@ export default function ProfileSettingsPage() {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Profile Settings</h1>
-        <p className="text-gray-600">Manage your account settings</p>
+        <h1 className="text-2xl font-bold text-gray-900">Profileinstellungen</h1>
+        <p className="text-gray-600">Verwalte deine Kontoeinstellungen</p>
       </div>
 
-      {/* Profile Information */}
+      {/* Profilinformationen */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
-            Profile Information
+            Profilinformationen
           </CardTitle>
           <CardDescription>
-            Update your personal information
+            Aktualisiere deine persönlichen Daten
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -363,13 +363,13 @@ export default function ProfileSettingsPage() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 className="pl-10"
-                placeholder="Your name"
+                placeholder="Dein Name"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">E-Mail</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
@@ -378,17 +378,17 @@ export default function ProfileSettingsPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 className="pl-10"
-                placeholder="your@email.com"
+                placeholder="deine@email.de"
               />
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>Rolle</Label>
             <div className="flex items-center gap-2">
               <Shield className="h-4 w-4 text-gray-400" />
               {profile && getRoleBadge(profile.role)}
-              <span className="text-sm text-gray-500">(Contact admin to change)</span>
+              <span className="text-sm text-gray-500">(Admin kontaktieren zum Ändern)</span>
             </div>
           </div>
 
@@ -400,32 +400,32 @@ export default function ProfileSettingsPage() {
             {saving ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Saving...
+                Speichere...
               </>
             ) : (
               <>
                 <Save className="h-4 w-4 mr-2" />
-                Save Changes
+                Änderungen speichern
               </>
             )}
           </Button>
         </CardContent>
       </Card>
 
-      {/* Change Password */}
+      {/* Passwort ändern */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Key className="h-5 w-5" />
-            Change Password
+            Passwort ändern
           </CardTitle>
           <CardDescription>
-            Update your password to keep your account secure
+            Aktualisiere dein Passwort, um dein Konto zu schützen
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="currentPassword">Current Password</Label>
+            <Label htmlFor="currentPassword">Aktuelles Passwort</Label>
             <Input
               id="currentPassword"
               type="password"
@@ -433,12 +433,12 @@ export default function ProfileSettingsPage() {
               onChange={(e) =>
                 setPasswordData({ ...passwordData, currentPassword: e.target.value })
               }
-              placeholder="Enter current password"
+              placeholder="Aktuelles Passwort eingeben"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="newPassword">New Password</Label>
+            <Label htmlFor="newPassword">Neues Passwort</Label>
             <Input
               id="newPassword"
               type="password"
@@ -446,12 +446,12 @@ export default function ProfileSettingsPage() {
               onChange={(e) =>
                 setPasswordData({ ...passwordData, newPassword: e.target.value })
               }
-              placeholder="Enter new password (min. 8 characters)"
+              placeholder="Neues Passwort eingeben (min. 8 Zeichen)"
             />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm New Password</Label>
+            <Label htmlFor="confirmPassword">Neues Passwort bestätigen</Label>
             <Input
               id="confirmPassword"
               type="password"
@@ -459,7 +459,7 @@ export default function ProfileSettingsPage() {
               onChange={(e) =>
                 setPasswordData({ ...passwordData, confirmPassword: e.target.value })
               }
-              placeholder="Confirm new password"
+              placeholder="Neues Passwort bestätigen"
             />
           </div>
 
@@ -471,12 +471,12 @@ export default function ProfileSettingsPage() {
             {changingPassword ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Changing...
+                Ändere...
               </>
             ) : (
               <>
                 <Key className="h-4 w-4 mr-2" />
-                Change Password
+                Passwort ändern
               </>
             )}
           </Button>
