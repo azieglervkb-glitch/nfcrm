@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { sendChurnWarningEmail } from "@/lib/email";
 import { subWeeks } from "date-fns";
+import { checkSilentMember } from "@/lib/automation/engine";
 
 // This endpoint should be called weekly (e.g., Monday 9:00)
 // It handles:
@@ -27,6 +28,7 @@ export async function GET(request: NextRequest) {
     const results = {
       churnRiskFlagged: 0,
       dangerZoneFlagged: 0,
+      silentMemberChecked: 0,
       emailsSent: 0,
       tasksCreated: 0,
       errors: [] as string[],
@@ -142,6 +144,34 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // R2: Check Silent Members (no KPI for current week)
+    try {
+      const activeMembers = await prisma.member.findMany({
+        where: {
+          status: "AKTIV",
+          kpiTrackingActive: true,
+        },
+        select: {
+          id: true,
+          email: true,
+          vorname: true,
+          nachname: true,
+          whatsappNummer: true,
+        },
+      });
+
+      for (const member of activeMembers) {
+        try {
+          await checkSilentMember(member);
+          results.silentMemberChecked++;
+        } catch (error) {
+          results.errors.push(`Silent Member check failed for ${member.email}: ${error}`);
+        }
+      }
+    } catch (error) {
+      results.errors.push(`Silent Member check error: ${error}`);
+    }
+
     // Log the cron run
     await prisma.automationLog.create({
       data: {
@@ -151,6 +181,7 @@ export async function GET(request: NextRequest) {
         actionsTaken: [
           `${results.churnRiskFlagged} members flagged as churn risk`,
           `${results.dangerZoneFlagged} members flagged as danger zone`,
+          `${results.silentMemberChecked} silent members checked`,
           `${results.tasksCreated} tasks created`,
           `${results.emailsSent} emails sent`,
         ],
