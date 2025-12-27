@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -44,6 +45,9 @@ export function CreateTaskDialog({
   onTaskCreated,
   defaultMemberId,
 }: CreateTaskDialogProps) {
+  const MEMBER_NONE = "__none__";
+  const ASSIGNEE_SELF = "__self__";
+
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [members, setMembers] = useState<Member[]>([]);
@@ -54,8 +58,8 @@ export function CreateTaskDialog({
   const [formData, setFormData] = useState({
     title: "",
     description: "",
-    memberId: defaultMemberId || "",
-    assignedToId: "", // empty = assign to self, "all" = create for all team members
+    memberId: defaultMemberId || MEMBER_NONE,
+    assignedToId: ASSIGNEE_SELF, // "__self__" = assign to self, "all" = create for all team members
     priority: "MEDIUM",
     dueDate: "",
   });
@@ -117,7 +121,7 @@ export function CreateTaskDialog({
             body: JSON.stringify({
               title: formData.title.trim(),
               description: formData.description.trim() || undefined,
-              memberId: formData.memberId || undefined,
+              memberId: formData.memberId === MEMBER_NONE ? undefined : formData.memberId,
               assignedToId: tm.id,
               priority: formData.priority,
               dueDate: formData.dueDate || undefined,
@@ -138,8 +142,8 @@ export function CreateTaskDialog({
           body: JSON.stringify({
             title: formData.title.trim(),
             description: formData.description.trim() || undefined,
-            memberId: formData.memberId || undefined,
-            assignedToId: formData.assignedToId || undefined,
+            memberId: formData.memberId === MEMBER_NONE ? undefined : formData.memberId,
+            assignedToId: formData.assignedToId === ASSIGNEE_SELF ? undefined : formData.assignedToId,
             priority: formData.priority,
             dueDate: formData.dueDate || undefined,
           }),
@@ -156,8 +160,8 @@ export function CreateTaskDialog({
       setFormData({
         title: "",
         description: "",
-        memberId: defaultMemberId || "",
-        assignedToId: "",
+        memberId: defaultMemberId || MEMBER_NONE,
+        assignedToId: ASSIGNEE_SELF,
         priority: "MEDIUM",
         dueDate: "",
       });
@@ -184,6 +188,9 @@ export function CreateTaskDialog({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Neuer Task</DialogTitle>
+          <DialogDescription>
+            Erstelle einen neuen Task und weise ihn optional einem Mitglied und/oder Team-Mitglied zu.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -225,7 +232,7 @@ export function CreateTaskDialog({
                   <SelectValue placeholder="Optional" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Kein Mitglied</SelectItem>
+                  <SelectItem value={MEMBER_NONE}>Kein Mitglied</SelectItem>
                   {loadingMembers ? (
                     <SelectItem value="loading" disabled>
                       Lädt...
@@ -253,7 +260,7 @@ export function CreateTaskDialog({
                   <SelectValue placeholder="Mir selbst" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Mir selbst</SelectItem>
+                  <SelectItem value={ASSIGNEE_SELF}>Mir selbst</SelectItem>
                   <SelectItem value="all">👥 Alle Team-Mitglieder</SelectItem>
                   {loadingTeam ? (
                     <SelectItem value="loading" disabled>

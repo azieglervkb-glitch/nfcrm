@@ -38,6 +38,8 @@ interface ProfileData {
   name: string;
   email: string;
   role: string;
+  whatsappNummer?: string | null;
+  taskWhatsappEnabled?: boolean;
 }
 
 export default function ProfileSettingsPage() {
@@ -48,6 +50,8 @@ export default function ProfileSettingsPage() {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
+    whatsappNummer: "",
+    taskWhatsappEnabled: false,
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -81,6 +85,8 @@ export default function ProfileSettingsPage() {
         setFormData({
           name: data.name || "",
           email: data.email || "",
+          whatsappNummer: data.whatsappNummer || "",
+          taskWhatsappEnabled: Boolean(data.taskWhatsappEnabled),
         });
       }
     } catch (error) {

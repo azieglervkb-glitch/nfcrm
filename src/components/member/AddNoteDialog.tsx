@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -71,6 +72,9 @@ export function AddNoteDialog({ memberId, onNoteAdded }: AddNoteDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Neue Notiz</DialogTitle>
+          <DialogDescription>
+            Füge eine Notiz zum Mitglied hinzu (optional anpinnen).
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">

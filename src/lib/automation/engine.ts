@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, renderTemplate } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
+import { notifyTaskAssignee } from "@/lib/task-notifications";
 import type { Member, KpiWeek, AutomationRule } from "@prisma/client";
 
 // Check if cooldown is active for a rule/member combination
@@ -122,7 +123,7 @@ export async function checkLowFeelingStreak(
 
     // Create urgent task
     const assigneeR1 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Check-in 1:1 binnen 24h",
@@ -132,6 +133,8 @@ export async function checkLowFeelingStreak(
         assignedToId: assigneeR1,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Check-in 1:1 binnen 24h (HIGH)");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
@@ -179,7 +182,7 @@ export async function checkLeistungsabfall(
 
     // Create urgent task
     const assigneeR3 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Taktik-Call planen",
@@ -189,6 +192,8 @@ export async function checkLeistungsabfall(
         assignedToId: assigneeR3,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Taktik-Call planen (URGENT)");
 
     await logAutomation(member.id, ruleId, ruleName, actions);
@@ -403,7 +408,7 @@ export async function checkHighNoShow(
 
     // Create task
     const assigneeQ1 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Reminder-Routine implementieren",
@@ -413,6 +418,8 @@ export async function checkHighNoShow(
         assignedToId: assigneeQ1,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Reminder-Routine implementieren");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
@@ -455,7 +462,7 @@ export async function checkChurnRisk(member: Member): Promise<void> {
 
     // Create urgent task
     const assigneeL1 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Retention-Call planen",
@@ -465,6 +472,8 @@ export async function checkChurnRisk(member: Member): Promise<void> {
         assignedToId: assigneeL1,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Retention-Call planen (URGENT)");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
@@ -541,7 +550,7 @@ export async function checkBlockade(
 
     // Create task for check-in
     const assigneeC2 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Persönlicher Check-in",
@@ -551,6 +560,8 @@ export async function checkBlockade(
         assignedToId: assigneeC2,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Persönlicher Check-in (HIGH)");
 
     // Also create feedback block task
@@ -845,7 +856,7 @@ export async function checkFunnelLeak(
 
     // Create task
     const assigneeP2 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Konvertierungs-Training empfehlen",
@@ -855,6 +866,8 @@ export async function checkFunnelLeak(
         assignedToId: assigneeP2,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Konvertierungs-Training");
 
     // Add note
