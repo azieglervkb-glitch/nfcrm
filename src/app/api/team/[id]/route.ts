@@ -22,9 +22,10 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks } = body;
+    const { email, vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks } = body;
 
     const updateData: any = {};
+    if (email) updateData.email = email;
     if (vorname) updateData.vorname = vorname;
     if (nachname) updateData.nachname = nachname;
     if (role) updateData.role = role;
