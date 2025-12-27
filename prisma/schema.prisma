@@ -84,6 +84,10 @@ model User {
   taskRuleIds   String[]  @default([])  // Welche Regel-Tasks dieser User empfangen soll (z.B. ["R1", "R3", "C2"])
   showAllTasks  Boolean   @default(false) // Ob alle Tasks oder nur zugewiesene angezeigt werden
 
+  // 2FA (Two-Factor Authentication)
+  twoFactorEnabled Boolean  @default(false)
+  twoFactorSecret  String?  // Encrypted TOTP secret
+
   // Relations
   tasks           Task[]    @relation("AssignedTasks")
   createdTasks    Task[]    @relation("CreatedTasks")
