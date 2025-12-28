@@ -144,15 +144,15 @@ export default function KpiSetupFormPage({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-red-900 to-black">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (error && !memberData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-red-900 to-black p-4">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
@@ -166,7 +166,7 @@ export default function KpiSetupFormPage({
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-red-900 to-black p-4">
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
@@ -184,26 +184,25 @@ export default function KpiSetupFormPage({
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <div className="relative bg-gradient-to-br from-gray-900 via-red-900 to-black">
-        <div className="absolute top-4 left-4 flex items-center gap-2">
-          <div className="text-red-500 text-2xl font-bold">N</div>
-          <X className="h-5 w-5 text-white cursor-pointer" />
+    <div className="min-h-screen bg-muted/30 py-6 px-4 sm:py-8">
+      <div className="max-w-4xl mx-auto">
+        {/* Banner */}
+        <div className="rounded-xl overflow-hidden mb-6 shadow-lg">
+          <img
+            src="/kpitracking_banner.jpeg"
+            alt="NF Mentoring KPI-Tracking"
+            className="w-full h-auto object-cover"
+          />
         </div>
-        <div className="pt-20 pb-12 px-4 text-center">
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
-            Starte dein persönliches KPI-Tracking 🚀
-          </h1>
-          <p className="text-gray-200 max-w-2xl mx-auto text-sm sm:text-base">
+
+        {/* Header */}
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-bold">Starte dein persönliches KPI-Tracking 🚀</h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base max-w-2xl mx-auto">
             Dieses Formular aktiviert dein persönliches KPI-Tracking. Hier legst du fest, welche
-            Kennzahlen du ab jetzt wöchentlich messen möchtest – und mit welchen Zielwerten du
-            arbeitest.
+            Kennzahlen du ab jetzt wöchentlich messen möchtest.
           </p>
         </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-8">
         {/* So funktioniert's */}
         <Card className="mb-6">
           <CardContent className="pt-6">

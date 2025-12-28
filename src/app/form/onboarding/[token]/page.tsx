@@ -168,15 +168,17 @@ export default function OnboardingFormPage({
           </div>
         )}
 
+        {/* Banner */}
+        <div className="rounded-xl overflow-hidden mb-6 shadow-lg">
+          <img
+            src="/onboarding_banner.jpeg"
+            alt="NF Mentoring Onboarding"
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="flex justify-center mb-4">
-            <img
-              src="/nf-logo.png"
-              alt="NF Mentoring"
-              className="h-12 sm:h-16 w-auto"
-            />
-          </div>
           <h1 className="text-xl sm:text-2xl font-bold">Starte jetzt dein NF Mentoring</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Hallo {memberData?.vorname}! Erzähl uns mehr über dich.

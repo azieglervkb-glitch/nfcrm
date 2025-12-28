@@ -152,15 +152,17 @@ export default function WeeklyKpiFormPage({
           </div>
         )}
 
+        {/* Banner */}
+        <div className="rounded-xl overflow-hidden mb-6 shadow-lg">
+          <img
+            src="/kpiweeklytracking_banner.jpeg"
+            alt="NF Mentoring Weekly KPI-Tracking"
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="flex justify-center mb-4">
-            <img
-              src="/nf-logo.png"
-              alt="NF Mentoring"
-              className="h-12 sm:h-16 w-auto"
-            />
-          </div>
           <h1 className="text-xl sm:text-2xl font-bold">Dein Weekly KPI-Update</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Hallo {memberData?.vorname}! Trage deine Zahlen für diese Woche ein.
