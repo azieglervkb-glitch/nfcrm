@@ -30,12 +30,22 @@ interface LearningSuiteMember {
 interface LearningSuiteCourseRaw {
   id: string;
   sid?: string;
-  name: string;
+  name?: string;
+  title?: string;
   summary?: string;
+  description?: string;
+  // Progress fields - API may use different names
+  progress?: number;
   progressForCurrentMemberAccessibleContent?: number;
   progressShownToMember?: number;
   totalProgress?: number;
+  // Module info - may be directly on course
+  currentModule?: string | number;
+  completedLessons?: number;
+  totalLessons?: number;
+  // Activity
   lastVisit?: string | null;
+  lastActivityAt?: string | null;
   totalLearningTimeSeconds?: number;
   startDate?: string;
   hasAccess?: boolean;
@@ -49,6 +59,7 @@ interface LearningSuiteCourse {
   progress: number; // 0-100
   completedLessons: number;
   totalLessons: number;
+  currentModule?: string | number; // May be string like "Modul 3: Name" or number
   lastActivityAt?: string;
   isCompleted: boolean;
 }
@@ -232,17 +243,18 @@ export async function getMemberById(
  * Normalize raw course data from API to internal format
  */
 function normalizeCourse(raw: LearningSuiteCourseRaw): LearningSuiteCourse {
-  // Use progressShownToMember or totalProgress, whichever is available
-  const progress = raw.progressShownToMember ?? raw.totalProgress ?? raw.progressForCurrentMemberAccessibleContent ?? 0;
+  // Use progress field first, then fallbacks
+  const progress = raw.progress ?? raw.progressShownToMember ?? raw.totalProgress ?? raw.progressForCurrentMemberAccessibleContent ?? 0;
 
   return {
     id: raw.id,
-    title: raw.name,
-    description: raw.summary,
+    title: raw.title ?? raw.name ?? "Unknown Course",
+    description: raw.description ?? raw.summary,
     progress: Math.round(progress),
-    completedLessons: 0, // Not provided by API
-    totalLessons: 0, // Not provided by API
-    lastActivityAt: raw.lastVisit ?? undefined,
+    completedLessons: raw.completedLessons ?? 0,
+    totalLessons: raw.totalLessons ?? 0,
+    currentModule: raw.currentModule,
+    lastActivityAt: raw.lastActivityAt ?? raw.lastVisit ?? undefined,
     isCompleted: progress >= 100,
   };
 }
@@ -278,6 +290,36 @@ export async function getMemberCourses(
   courses.forEach(c => console.log(`[LearningSuite] Course "${c.title}": ${c.progress}% progress`));
 
   return courses;
+}
+
+/**
+ * Get detailed course info for a member
+ * Endpoint: GET /members/{memberId}/courses/{courseId}
+ * This may return more detailed progress info including currentModule
+ */
+export async function getMemberCourseDetails(
+  memberId: string,
+  courseId: string
+): Promise<LearningSuiteCourse | null> {
+  console.log(`[LearningSuite] Getting course details: member=${memberId}, course=${courseId}`);
+
+  const result = await apiRequest<LearningSuiteCourseRaw | { data: LearningSuiteCourseRaw }>(
+    `/members/${memberId}/courses/${courseId}`
+  );
+
+  console.log(`[LearningSuite] /members/${memberId}/courses/${courseId} response:`, JSON.stringify(result, null, 2));
+
+  if (!result.success || !result.data) {
+    console.log(`[LearningSuite] No course details found`);
+    return null;
+  }
+
+  // Handle nested data format
+  const raw = 'data' in result.data && result.data.data ? result.data.data : result.data as LearningSuiteCourseRaw;
+  const course = normalizeCourse(raw);
+
+  console.log(`[LearningSuite] Course details: progress=${course.progress}%, currentModule=${course.currentModule}`);
+  return course;
 }
 
 /**
@@ -369,6 +411,26 @@ function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
 }
 
 /**
+ * Parse current module from string or number format
+ * API may return "Modul 3: Kundenakquise" or just 3
+ */
+function parseCurrentModule(value: string | number | undefined): number | null {
+  if (value === undefined || value === null) return null;
+
+  if (typeof value === 'number') return value;
+
+  // Try to extract number from string like "Modul 3: Name" or "Modul 3"
+  const match = value.match(/Modul\s*(\d+)/i);
+  if (match) return parseInt(match[1], 10);
+
+  // Try parsing as plain number string
+  const num = parseInt(value, 10);
+  if (!isNaN(num)) return num;
+
+  return null;
+}
+
+/**
  * Get comprehensive member progress by email
  * This is the main function for syncing with the CRM
  */
@@ -392,19 +454,36 @@ export async function getMemberProgressByEmail(
 
   // Step 3: Determine current module from the primary course (NF Mentoring)
   let currentModule: number | null = null;
-  let modules: LearningSuiteModule[] = [];
 
   if (courses.length > 0) {
     // Find "Das NF Mentoring" course, or fall back to first course
     const nfMentoringCourse = courses.find(c => c.title.includes("NF Mentoring")) || courses[0];
-    console.log(`[LearningSuite] Using course for module detection: "${nfMentoringCourse.title}" (${nfMentoringCourse.id})`);
+    console.log(`[LearningSuite] Primary course: "${nfMentoringCourse.title}" (${nfMentoringCourse.id})`);
 
-    // Get modules for the primary course
-    modules = await getCourseModulesForMember(nfMentoringCourse.id, member.id);
-    console.log(`[LearningSuite] Got ${modules.length} modules from course`);
+    // Strategy 1: Check if currentModule is already in course data
+    if (nfMentoringCourse.currentModule) {
+      currentModule = parseCurrentModule(nfMentoringCourse.currentModule);
+      console.log(`[LearningSuite] Got currentModule from course list: ${currentModule}`);
+    }
 
-    currentModule = calculateCurrentModule(modules);
-    console.log(`[LearningSuite] Calculated current module: ${currentModule}`);
+    // Strategy 2: Try detailed course endpoint for more info
+    if (currentModule === null) {
+      console.log(`[LearningSuite] Trying detailed course endpoint...`);
+      const courseDetails = await getMemberCourseDetails(member.id, nfMentoringCourse.id);
+      if (courseDetails?.currentModule) {
+        currentModule = parseCurrentModule(courseDetails.currentModule);
+        console.log(`[LearningSuite] Got currentModule from course details: ${currentModule}`);
+      }
+    }
+
+    // Strategy 3: Fall back to modules endpoint
+    if (currentModule === null) {
+      console.log(`[LearningSuite] Trying modules endpoint...`);
+      const modules = await getCourseModulesForMember(nfMentoringCourse.id, member.id);
+      console.log(`[LearningSuite] Got ${modules.length} modules`);
+      currentModule = calculateCurrentModule(modules);
+      console.log(`[LearningSuite] Calculated from modules: ${currentModule}`);
+    }
   }
 
   // Calculate total progress across all courses
@@ -412,7 +491,7 @@ export async function getMemberProgressByEmail(
     ? Math.round(courses.reduce((sum, c) => sum + (c.progress || 0), 0) / courses.length)
     : 0;
 
-  console.log(`[LearningSuite] Total progress: ${totalProgress}%`);
+  console.log(`[LearningSuite] Final currentModule: ${currentModule}, totalProgress: ${totalProgress}%`);
   console.log(`[LearningSuite] ===== Progress sync complete =====`);
 
   return {
