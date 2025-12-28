@@ -7,17 +7,22 @@ export async function POST(request: NextRequest) {
     const {
       memberId,
       hauptzielEinSatz,
+      wasNervtAmMeisten,
       umsatzSollWoche,
       umsatzSollMonat,
       trackKontakte,
       trackTermine,
+      trackKonvertierung,
       trackEinheiten,
       trackEmpfehlungen,
       trackEntscheider,
       trackAbschluesse,
+      trackAbschlussquote,
       kontakteSoll,
       termineVereinbartSoll,
+      konvertierungTerminSoll,
       termineAbschlussSoll,
+      abschlussquoteSoll,
       einheitenSoll,
       empfehlungenSoll,
     } = body;
@@ -42,6 +47,7 @@ export async function POST(request: NextRequest) {
         kpiTrackingActive: true,
         kpiTrackingStartDate: new Date(),
         hauptzielEinSatz,
+        wasNervtAmMeisten: wasNervtAmMeisten || null,
 
         // Umsatzziele
         umsatzSollWoche,
@@ -50,15 +56,19 @@ export async function POST(request: NextRequest) {
         // Welche KPIs werden getrackt
         trackKontakte,
         trackTermine,
+        trackKonvertierung: trackKonvertierung ?? false,
         trackEinheiten,
         trackEmpfehlungen,
         trackEntscheider,
         trackAbschluesse,
+        trackAbschlussquote: trackAbschlussquote ?? false,
 
         // SOLL-Werte
         kontakteSoll: kontakteSoll || null,
         termineVereinbartSoll: termineVereinbartSoll || null,
+        konvertierungTerminSoll: konvertierungTerminSoll || null,
         termineAbschlussSoll: termineAbschlussSoll || null,
+        abschlussquoteSoll: abschlussquoteSoll || null,
         einheitenSoll: einheitenSoll || null,
         empfehlungenSoll: empfehlungenSoll || null,
       },
@@ -78,10 +88,12 @@ export async function POST(request: NextRequest) {
           trackedKpis: {
             kontakte: trackKontakte,
             termine: trackTermine,
+            konvertierung: trackKonvertierung,
             einheiten: trackEinheiten,
             empfehlungen: trackEmpfehlungen,
             entscheider: trackEntscheider,
             abschluesse: trackAbschluesse,
+            abschlussquote: trackAbschlussquote,
           },
         },
       },

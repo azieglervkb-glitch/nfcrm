@@ -29,26 +29,65 @@ import {
   AlertCircle,
   User,
   Home,
-  Users,
+  Euro,
+  Phone,
+  Handshake,
+  Gift,
+  Settings,
+  Percent,
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-// KPI Setup Schema
+// KPI Setup Schema - identical to token-based form
 const kpiSetupSchema = z.object({
-  hauptzielEinSatz: z.string().min(5, "Bitte formuliere dein Ziel (mind. 5 Zeichen)"),
-  umsatzSollWoche: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
-  umsatzSollMonat: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
+  // Ziel
+  umsatzSollMonat: z.number().min(1, "Bitte gib ein gültiges Ziel an"),
+
+  // KPIs
   trackKontakte: z.boolean(),
-  trackTermine: z.boolean(),
-  trackEinheiten: z.boolean(),
-  trackEmpfehlungen: z.boolean(),
+  kontakteSoll: z.number().min(1).optional().nullable(),
   trackEntscheider: z.boolean(),
+
+  trackTermine: z.boolean(),
+  termineVereinbartSoll: z.number().min(1).optional().nullable(),
+
+  trackKonvertierung: z.boolean(),
+  konvertierungTerminSoll: z.number().min(0).max(100).optional().nullable(),
+
   trackAbschluesse: z.boolean(),
-  kontakteSoll: z.number().optional(),
-  termineVereinbartSoll: z.number().optional(),
-  termineAbschlussSoll: z.number().optional(),
-  einheitenSoll: z.number().optional(),
-  empfehlungenSoll: z.number().optional(),
+  termineAbschlussSoll: z.number().min(1).optional().nullable(),
+
+  trackAbschlussquote: z.boolean(),
+  abschlussquoteSoll: z.number().min(0).max(100).optional().nullable(),
+
+  trackEinheiten: z.boolean(),
+  einheitenSoll: z.number().min(1).optional().nullable(),
+
+  trackEmpfehlungen: z.boolean(),
+  empfehlungenSoll: z.number().min(1).optional().nullable(),
+
+  // Kontext & Motivation
+  wasNervtAmMeisten: z.string().optional(),
+  hauptzielEinSatz: z.string().min(5, "Bitte formuliere dein Ziel (mind. 5 Zeichen)"),
+}).refine((data) => !data.trackKontakte || (data.kontakteSoll && data.kontakteSoll > 0), {
+  message: "Bitte gib ein Ziel für Kontakte an",
+  path: ["kontakteSoll"],
+}).refine((data) => !data.trackTermine || (data.termineVereinbartSoll && data.termineVereinbartSoll > 0), {
+  message: "Bitte gib ein Ziel für Termine an",
+  path: ["termineVereinbartSoll"],
+}).refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll !== undefined && data.konvertierungTerminSoll >= 0), {
+  message: "Bitte gib ein Ziel für Konvertierung an",
+  path: ["konvertierungTerminSoll"],
+}).refine((data) => !data.trackAbschlussquote || (data.abschlussquoteSoll !== null && data.abschlussquoteSoll !== undefined && data.abschlussquoteSoll >= 0), {
+  message: "Bitte gib ein Ziel für Abschlussquote an",
+  path: ["abschlussquoteSoll"],
+}).refine((data) => !data.trackEinheiten || (data.einheitenSoll && data.einheitenSoll > 0), {
+  message: "Bitte gib ein Ziel für Einheiten an",
+  path: ["einheitenSoll"],
+}).refine((data) => !data.trackEmpfehlungen || (data.empfehlungenSoll && data.empfehlungenSoll > 0), {
+  message: "Bitte gib ein Ziel für Empfehlungen an",
+  path: ["empfehlungenSoll"],
 });
 
 type KpiSetupInput = z.infer<typeof kpiSetupSchema>;
@@ -106,18 +145,23 @@ export default function MemberPortalPage() {
   } = useForm<KpiSetupInput>({
     resolver: zodResolver(kpiSetupSchema),
     defaultValues: {
-      trackKontakte: true,
-      trackTermine: true,
+      trackKontakte: false,
+      trackEntscheider: false,
+      trackTermine: false,
+      trackKonvertierung: false,
+      trackAbschluesse: false,
+      trackAbschlussquote: false,
       trackEinheiten: false,
       trackEmpfehlungen: false,
-      trackEntscheider: false,
-      trackAbschluesse: true,
     },
   });
 
   const trackKontakte = watch("trackKontakte");
+  const trackEntscheider = watch("trackEntscheider");
   const trackTermine = watch("trackTermine");
+  const trackKonvertierung = watch("trackKonvertierung");
   const trackAbschluesse = watch("trackAbschluesse");
+  const trackAbschlussquote = watch("trackAbschlussquote");
   const trackEinheiten = watch("trackEinheiten");
   const trackEmpfehlungen = watch("trackEmpfehlungen");
 
@@ -148,8 +192,7 @@ export default function MemberPortalPage() {
 
       // Pre-fill KPI setup form with monthly goal if available
       if (sessionData.member.zielMonatsumsatz) {
-        setValue("umsatzSollMonat", sessionData.member.zielMonatsumsatz);
-        setValue("umsatzSollWoche", Math.round(sessionData.member.zielMonatsumsatz / 4));
+        setValue("umsatzSollMonat", Number(sessionData.member.zielMonatsumsatz));
       }
 
       // Only fetch dashboard if KPI tracking is active
@@ -228,198 +271,324 @@ export default function MemberPortalPage() {
     );
   }
 
-  // Show KPI Setup Form if kpiTrackingActive is false
+  // Show KPI Setup Form if kpiTrackingActive is false - identical to token-based form
   if (memberInfo && !memberInfo.kpiTrackingActive) {
     return (
-      <div className="min-h-screen bg-gray-100 py-6 px-4 sm:py-8">
-        <div className="max-w-lg mx-auto">
+      <div className="min-h-screen bg-muted/30 py-6 px-4 sm:py-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Banner */}
+          <div className="rounded-xl overflow-hidden mb-6 shadow-lg">
+            <img
+              src="/kpitracking_banner.jpeg"
+              alt="NF Mentoring KPI-Tracking"
+              className="w-full h-auto object-cover"
+            />
+          </div>
+
           {/* Header */}
           <div className="text-center mb-6 sm:mb-8">
-            <div className="flex justify-center mb-4">
-              <img src="/nf-logo.png" alt="NF Mentoring" className="h-12 sm:h-16 w-auto" />
-            </div>
-            <h1 className="text-xl sm:text-2xl font-bold">Starte dein persönliches KPI-Tracking</h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              {memberInfo.firstName}, lege deine Ziele und die KPIs fest, die du tracken möchtest.
+            <h1 className="text-xl sm:text-2xl font-bold">
+              Hey {memberInfo.firstName}! Starte dein KPI-Tracking
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base max-w-2xl mx-auto">
+              Lege fest, welche Kennzahlen du ab jetzt wöchentlich messen möchtest.
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onKpiSetupSubmit)} className="space-y-4 sm:space-y-6">
-            {/* Hauptziel */}
+          <form onSubmit={handleSubmit(onKpiSetupSubmit)} className="space-y-6">
+            {/* Dein Ziel */}
             <Card>
-              <CardHeader className="pb-4">
+              <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-red-600" />
-                  <CardTitle className="text-lg">Dein Hauptziel</CardTitle>
+                  <Euro className="h-5 w-5 text-primary" />
+                  <CardTitle>Dein Ziel</CardTitle>
                 </div>
-                <CardDescription>Formuliere dein wichtigstes Ziel in einem Satz.</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="hauptzielEinSatz">Mein Ziel ist... *</Label>
+                  <Label htmlFor="umsatzSollMonat">Dein monatliches Umsatzziel *</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Welchen Umsatz möchtest du aktuell pro Monat erreichen?
+                  </p>
                   <Input
-                    id="hauptzielEinSatz"
-                    placeholder="z.B. 30.000€ Monatsumsatz bis Ende des Jahres"
-                    {...register("hauptzielEinSatz")}
-                    className={`h-12 ${errors.hauptzielEinSatz ? "border-red-500" : ""}`}
+                    id="umsatzSollMonat"
+                    type="number"
+                    inputMode="numeric"
+                    {...register("umsatzSollMonat", { valueAsNumber: true })}
+                    placeholder="z.B. 20000"
+                    className={errors.umsatzSollMonat ? "border-destructive" : ""}
                   />
-                  {errors.hauptzielEinSatz && (
-                    <p className="text-xs text-red-500">{errors.hauptzielEinSatz.message}</p>
+                  {errors.umsatzSollMonat && (
+                    <p className="text-xs text-destructive">{errors.umsatzSollMonat.message}</p>
                   )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Umsatzziele */}
+            {/* KPIs */}
             <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-red-600" />
-                  <CardTitle className="text-lg">Umsatzziele</CardTitle>
-                </div>
+              <CardHeader>
+                <CardTitle>Welche KPIs möchtest du tracken?</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="umsatzSollMonat">Monatliches Umsatzziel (€) *</Label>
-                  <Input
-                    id="umsatzSollMonat"
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="z.B. 20000"
-                    {...register("umsatzSollMonat", { valueAsNumber: true })}
-                    className={`h-12 ${errors.umsatzSollMonat ? "border-red-500" : ""}`}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="umsatzSollWoche">Wöchentliches Umsatzziel (€) *</Label>
-                  <Input
-                    id="umsatzSollWoche"
-                    type="number"
-                    inputMode="numeric"
-                    placeholder="z.B. 5000"
-                    {...register("umsatzSollWoche", { valueAsNumber: true })}
-                    className={`h-12 ${errors.umsatzSollWoche ? "border-red-500" : ""}`}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+              <CardContent className="space-y-6">
+                <p className="text-sm text-muted-foreground">
+                  Bitte suche die für dich richtigen KPIs aus und befülle das Formular. Felder die
+                  du leer lässt werden im künftigen Tracking nicht berücksichtigt. Sollte sich deine
+                  Situation ändern oder du deine KPI's anpassen wollen, dann fülle dieses Formular
+                  einfach erneut aus. Ab diesem Zeitpunkt greifen dann die aktualisierten
+                  Ziel-KPI's
+                </p>
 
-            {/* KPIs auswählen */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-red-600" />
-                  <CardTitle className="text-lg">Welche KPIs möchtest du tracken?</CardTitle>
-                </div>
-                <CardDescription>Wähle die Kennzahlen, die für dein Business relevant sind.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
                 {/* Kontakte */}
-                <div className="flex items-start space-x-3 p-3 rounded-lg border bg-white">
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
                   <Checkbox
                     id="trackKontakte"
                     checked={trackKontakte}
-                    onCheckedChange={(checked) => setValue("trackKontakte", !!checked)}
-                    className="mt-0.5"
+                    onCheckedChange={(checked) => {
+                      setValue("trackKontakte", !!checked);
+                      if (!checked) setValue("trackEntscheider", false);
+                    }}
+                    className="mt-1"
                   />
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="trackKontakte" className="font-medium cursor-pointer">
-                      Kontakte / Gespräche
-                    </Label>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Phone className="h-5 w-5 text-red-500" />
+                      <Label htmlFor="trackKontakte" className="font-semibold cursor-pointer">
+                        Kontakte / Calls pro Woche tracken
+                      </Label>
+                    </div>
                     {trackKontakte && (
-                      <div>
-                        <Label htmlFor="kontakteSoll" className="text-xs text-gray-500">Wochenziel</Label>
-                        <Input
-                          id="kontakteSoll"
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="z.B. 20"
-                          {...register("kontakteSoll", { valueAsNumber: true })}
-                          className="h-10 mt-1"
-                        />
-                      </div>
+                      <>
+                        <div className="space-y-2">
+                          <Label htmlFor="kontakteSoll" className="text-sm">
+                            Ziel - Kontakte pro Woche (Calls, Anschreiben etc.) *
+                          </Label>
+                          <p className="text-xs text-muted-foreground">
+                            Setze dir ein realistisches aber ambitioniertes Ziel. Beispiel: 20 Calls/Tag
+                            x 5 Tage = 100 Calls/Woche.
+                          </p>
+                          <Input
+                            id="kontakteSoll"
+                            type="number"
+                            inputMode="numeric"
+                            {...register("kontakteSoll", { valueAsNumber: true })}
+                            placeholder="z.B. 100"
+                            className={errors.kontakteSoll ? "border-destructive" : ""}
+                          />
+                          {errors.kontakteSoll && (
+                            <p className="text-xs text-destructive">{errors.kontakteSoll.message}</p>
+                          )}
+                        </div>
+                        {/* Sub-option: Entscheider */}
+                        <div className="flex items-center gap-2 pl-2 pt-2 border-t">
+                          <Checkbox
+                            id="trackEntscheider"
+                            checked={trackEntscheider}
+                            onCheckedChange={(checked) => setValue("trackEntscheider", !!checked)}
+                          />
+                          <Label htmlFor="trackEntscheider" className="text-sm cursor-pointer">
+                            Davon Entscheider separat tracken
+                          </Label>
+                        </div>
+                      </>
                     )}
                   </div>
                 </div>
 
-                {/* Termine */}
-                <div className="flex items-start space-x-3 p-3 rounded-lg border bg-white">
+                {/* Gesamttermine */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
                   <Checkbox
                     id="trackTermine"
                     checked={trackTermine}
                     onCheckedChange={(checked) => setValue("trackTermine", !!checked)}
-                    className="mt-0.5"
+                    className="mt-1"
                   />
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="trackTermine" className="font-medium cursor-pointer">
-                      Termine (vereinbart & stattgefunden)
-                    </Label>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-5 w-5 text-primary" />
+                      <Label htmlFor="trackTermine" className="font-semibold cursor-pointer">
+                        Gesamttermine tracken
+                      </Label>
+                    </div>
                     {trackTermine && (
-                      <div>
-                        <Label htmlFor="termineVereinbartSoll" className="text-xs text-gray-500">Wochenziel vereinbarte Termine</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="termineVereinbartSoll" className="text-sm">
+                          Ziel: Termine pro Woche *
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Bitte gib ein für dich realistisches aber ambitioniertes Ziel an. Die Terminanzahl umfasst alle Arten von Terminen (Ersttermin, Abschlusstermin, Service-Termin etc.)
+                        </p>
                         <Input
                           id="termineVereinbartSoll"
                           type="number"
                           inputMode="numeric"
-                          placeholder="z.B. 10"
                           {...register("termineVereinbartSoll", { valueAsNumber: true })}
-                          className="h-10 mt-1"
+                          placeholder="z.B. 15"
+                          className={errors.termineVereinbartSoll ? "border-destructive" : ""}
+                        />
+                        {errors.termineVereinbartSoll && (
+                          <p className="text-xs text-destructive">{errors.termineVereinbartSoll.message}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Konvertierung (Kontakt → Termin %) */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
+                  <Checkbox
+                    id="trackKonvertierung"
+                    checked={trackKonvertierung}
+                    onCheckedChange={(checked) => setValue("trackKonvertierung", !!checked)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-5 w-5 text-purple-500" />
+                      <Label htmlFor="trackKonvertierung" className="font-semibold cursor-pointer">
+                        Konvertierung tracken (Kontakt → Termin)
+                      </Label>
+                    </div>
+                    {trackKonvertierung && (
+                      <div className="space-y-2">
+                        <Label htmlFor="konvertierungTerminSoll" className="text-sm">
+                          Ziel: Konvertierungsquote in % *
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Wie viel Prozent deiner Kontakte sollen zu einem Termin führen?
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="konvertierungTerminSoll"
+                            type="number"
+                            inputMode="decimal"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            {...register("konvertierungTerminSoll", { valueAsNumber: true })}
+                            placeholder="z.B. 15"
+                            className={`max-w-[120px] ${errors.konvertierungTerminSoll ? "border-destructive" : ""}`}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                        {errors.konvertierungTerminSoll && (
+                          <p className="text-xs text-destructive">{errors.konvertierungTerminSoll.message}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Abschluss-Termine */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
+                  <Checkbox
+                    id="trackAbschluesse"
+                    checked={trackAbschluesse}
+                    onCheckedChange={(checked) => setValue("trackAbschluesse", !!checked)}
+                    className="mt-1"
+                  />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Handshake className="h-5 w-5 text-green-600" />
+                      <Label htmlFor="trackAbschluesse" className="font-semibold cursor-pointer">
+                        Abschluss-Termine & No-Shows tracken
+                      </Label>
+                    </div>
+                    {trackAbschluesse && (
+                      <div className="space-y-2">
+                        <Label htmlFor="termineAbschlussSoll" className="text-sm">
+                          Ziel: Abschluss-Termine pro Woche
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Wie viele Abschluss-Termine planst du pro Woche? No-Shows werden automatisch
+                          mit erfasst.
+                        </p>
+                        <Input
+                          id="termineAbschlussSoll"
+                          type="number"
+                          inputMode="numeric"
+                          {...register("termineAbschlussSoll", { valueAsNumber: true })}
+                          placeholder="z.B. 5"
                         />
                       </div>
                     )}
                   </div>
                 </div>
 
-                {/* Abschlüsse */}
-                <div className="flex items-start space-x-3 p-3 rounded-lg border bg-white">
+                {/* Abschlussquote (Termin → Abschluss %) */}
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
                   <Checkbox
-                    id="trackAbschluesse"
-                    checked={trackAbschluesse}
-                    onCheckedChange={(checked) => setValue("trackAbschluesse", !!checked)}
-                    className="mt-0.5"
+                    id="trackAbschlussquote"
+                    checked={trackAbschlussquote}
+                    onCheckedChange={(checked) => setValue("trackAbschlussquote", !!checked)}
+                    className="mt-1"
                   />
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="trackAbschluesse" className="font-medium cursor-pointer">
-                      Abschluss-Termine & No-Shows
-                    </Label>
-                    {trackAbschluesse && (
-                      <div>
-                        <Label htmlFor="termineAbschlussSoll" className="text-xs text-gray-500">Wochenziel Abschluss-Termine</Label>
-                        <Input
-                          id="termineAbschlussSoll"
-                          type="number"
-                          inputMode="numeric"
-                          placeholder="z.B. 5"
-                          {...register("termineAbschlussSoll", { valueAsNumber: true })}
-                          className="h-10 mt-1"
-                        />
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Percent className="h-5 w-5 text-orange-500" />
+                      <Label htmlFor="trackAbschlussquote" className="font-semibold cursor-pointer">
+                        Abschlussquote tracken (Termin → Abschluss)
+                      </Label>
+                    </div>
+                    {trackAbschlussquote && (
+                      <div className="space-y-2">
+                        <Label htmlFor="abschlussquoteSoll" className="text-sm">
+                          Ziel: Abschlussquote in % *
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Wie viel Prozent deiner Termine sollen zu einem Abschluss führen?
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Input
+                            id="abschlussquoteSoll"
+                            type="number"
+                            inputMode="decimal"
+                            step="0.1"
+                            min="0"
+                            max="100"
+                            {...register("abschlussquoteSoll", { valueAsNumber: true })}
+                            placeholder="z.B. 30"
+                            className={`max-w-[120px] ${errors.abschlussquoteSoll ? "border-destructive" : ""}`}
+                          />
+                          <span className="text-muted-foreground">%</span>
+                        </div>
+                        {errors.abschlussquoteSoll && (
+                          <p className="text-xs text-destructive">{errors.abschlussquoteSoll.message}</p>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
 
                 {/* Einheiten */}
-                <div className="flex items-start space-x-3 p-3 rounded-lg border bg-white">
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
                   <Checkbox
                     id="trackEinheiten"
                     checked={trackEinheiten}
                     onCheckedChange={(checked) => setValue("trackEinheiten", !!checked)}
-                    className="mt-0.5"
+                    className="mt-1"
                   />
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="trackEinheiten" className="font-medium cursor-pointer">
-                      Verkaufte Einheiten
-                    </Label>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-5 w-5 text-blue-500" />
+                      <Label htmlFor="trackEinheiten" className="font-semibold cursor-pointer">
+                        Einheiten / Punkte tracken
+                      </Label>
+                    </div>
                     {trackEinheiten && (
-                      <div>
-                        <Label htmlFor="einheitenSoll" className="text-xs text-gray-500">Wochenziel</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="einheitenSoll" className="text-sm">
+                          Ziel: Einheiten / Punkte pro Woche
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Falls du Punkte/Einheiten für dein Unternehmen trackst.
+                        </p>
                         <Input
                           id="einheitenSoll"
                           type="number"
                           inputMode="numeric"
-                          placeholder="z.B. 10"
                           {...register("einheitenSoll", { valueAsNumber: true })}
-                          className="h-10 mt-1"
+                          placeholder="z.B. 10"
                         />
                       </div>
                     )}
@@ -427,67 +596,92 @@ export default function MemberPortalPage() {
                 </div>
 
                 {/* Empfehlungen */}
-                <div className="flex items-start space-x-3 p-3 rounded-lg border bg-white">
+                <div className="flex items-start gap-3 p-4 rounded-lg border">
                   <Checkbox
                     id="trackEmpfehlungen"
                     checked={trackEmpfehlungen}
                     onCheckedChange={(checked) => setValue("trackEmpfehlungen", !!checked)}
-                    className="mt-0.5"
+                    className="mt-1"
                   />
-                  <div className="flex-1 space-y-2">
-                    <Label htmlFor="trackEmpfehlungen" className="font-medium cursor-pointer">
-                      Erhaltene Empfehlungen
-                    </Label>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-5 w-5 text-amber-500" />
+                      <Label htmlFor="trackEmpfehlungen" className="font-semibold cursor-pointer">
+                        Empfehlungen tracken
+                      </Label>
+                    </div>
                     {trackEmpfehlungen && (
-                      <div>
-                        <Label htmlFor="empfehlungenSoll" className="text-xs text-gray-500">Wochenziel</Label>
+                      <div className="space-y-2">
+                        <Label htmlFor="empfehlungenSoll" className="text-sm">
+                          Ziel: Empfehlungen pro Woche
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Wie viele Empfehlungen willst du pro Woche generieren?
+                        </p>
                         <Input
                           id="empfehlungenSoll"
                           type="number"
                           inputMode="numeric"
-                          placeholder="z.B. 3"
                           {...register("empfehlungenSoll", { valueAsNumber: true })}
-                          className="h-10 mt-1"
+                          placeholder="z.B. 3"
                         />
                       </div>
                     )}
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                {/* Entscheider */}
-                <div className="flex items-start space-x-3 p-3 rounded-lg border bg-white">
-                  <Checkbox
-                    id="trackEntscheider"
-                    {...register("trackEntscheider")}
-                    className="mt-0.5"
+            {/* Kontext & Motivation */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Settings className="h-5 w-5 text-gray-500" />
+                  <CardTitle>Kontext & Motivation</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="wasNervtAmMeisten">Was nervt dich aktuell am meisten?</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Womit kämpfst du derzeit am meisten oder was bremst dich?
+                  </p>
+                  <Textarea
+                    id="wasNervtAmMeisten"
+                    {...register("wasNervtAmMeisten")}
+                    placeholder="Beschreibe deine größten Herausforderungen..."
+                    rows={4}
                   />
-                  <div className="flex-1">
-                    <Label htmlFor="trackEntscheider" className="font-medium cursor-pointer">
-                      Entscheider-Quote (von Kontakten)
-                    </Label>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Tracke, wie viele deiner Kontakte Entscheider sind.
-                    </p>
-                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="hauptzielEinSatz">
+                    Dein Hauptziel in einem Satz <span className="text-red-500">*</span>
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Formuliere dein Hauptziel kurz und klar.
+                  </p>
+                  <Textarea
+                    id="hauptzielEinSatz"
+                    {...register("hauptzielEinSatz")}
+                    placeholder="z.B. 30.000€ Monatsumsatz bis Ende des Jahres"
+                    rows={3}
+                    className={errors.hauptzielEinSatz ? "border-destructive" : ""}
+                  />
+                  {errors.hauptzielEinSatz && (
+                    <p className="text-xs text-destructive">{errors.hauptzielEinSatz.message}</p>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            <Button
-              type="submit"
-              className="w-full h-12 bg-red-600 hover:bg-red-700"
-              disabled={submittingSetup}
-            >
+            <Button type="submit" className="w-full h-12" disabled={submittingSetup}>
               {submittingSetup ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Wird gespeichert...
                 </>
               ) : (
-                <>
-                  <Calendar className="mr-2 h-4 w-4" />
-                  KPI-Tracking starten
-                </>
+                "KPI-Tracking starten"
               )}
             </Button>
           </form>
