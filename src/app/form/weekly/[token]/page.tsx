@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, DollarSign, Phone, Calendar, Target, Award, Heart, MessageSquare, Handshake } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Euro, Phone, Calendar, Target, Gift, Heart, MessageSquare, Handshake } from "lucide-react";
 
 interface MemberData {
   id: string;
@@ -131,7 +131,7 @@ export default function WeeklyKpiFormPage({
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Vielen Dank, {memberData?.vorname}! 🎉</h2>
+            <h2 className="text-xl font-semibold mb-2">Vielen Dank, {memberData?.vorname}!</h2>
             <p className="text-muted-foreground">
               Deine KPIs wurden erfolgreich gespeichert. Du erhältst in Kürze
               dein persönliches Feedback.
@@ -164,7 +164,7 @@ export default function WeeklyKpiFormPage({
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-bold">
-            Hey {memberData?.vorname}! 👋
+            Hey {memberData?.vorname}!
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             Zeit für dein Weekly Update – trage deine Zahlen für diese Woche ein.
@@ -179,12 +179,12 @@ export default function WeeklyKpiFormPage({
             </div>
           )}
 
-          {/* 💰 Umsatz (Required) */}
+          {/* Umsatz (Required) */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                <CardTitle className="text-base">💰 Umsatz</CardTitle>
+                <Euro className="h-5 w-5 text-green-600" />
+                <CardTitle className="text-base">Umsatz</CardTitle>
               </div>
               <CardDescription>
                 {memberData?.umsatzSollWoche ? (
@@ -224,13 +224,13 @@ export default function WeeklyKpiFormPage({
             </CardContent>
           </Card>
 
-          {/* 📞 Kontakte Section */}
+          {/* Kontakte Section */}
           {memberData?.trackKontakte && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Phone className="h-5 w-5 text-red-500" />
-                  <CardTitle className="text-base">📞 Kontakte</CardTitle>
+                  <CardTitle className="text-base">Kontakte</CardTitle>
                 </div>
                 <CardDescription>
                   {memberData?.kontakteSoll ? (
@@ -276,13 +276,13 @@ export default function WeeklyKpiFormPage({
             </Card>
           )}
 
-          {/* 📅 Termine Section */}
+          {/* Termine Section */}
           {memberData?.trackTermine && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-primary" />
-                  <CardTitle className="text-base">📅 Termine</CardTitle>
+                  <CardTitle className="text-base">Termine</CardTitle>
                 </div>
                 <CardDescription>
                   {memberData?.termineVereinbartSoll ? (
@@ -350,13 +350,13 @@ export default function WeeklyKpiFormPage({
             </Card>
           )}
 
-          {/* 🤝 Abschlüsse Section */}
+          {/* Abschlüsse Section */}
           {memberData?.trackAbschluesse && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Handshake className="h-5 w-5 text-green-600" />
-                  <CardTitle className="text-base">🤝 Abschlüsse</CardTitle>
+                  <CardTitle className="text-base">Abschlüsse</CardTitle>
                 </div>
                 <CardDescription>
                   {memberData?.termineAbschlussSoll ? (
@@ -400,13 +400,13 @@ export default function WeeklyKpiFormPage({
             </Card>
           )}
 
-          {/* 📊 Weitere KPIs */}
+          {/* Weitere KPIs */}
           {(memberData?.trackEinheiten || memberData?.trackEmpfehlungen) && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-blue-500" />
-                  <CardTitle className="text-base">📊 Weitere KPIs</CardTitle>
+                  <CardTitle className="text-base">Weitere KPIs</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -435,7 +435,7 @@ export default function WeeklyKpiFormPage({
                     <div className="space-y-2">
                       <Label htmlFor="empfehlungenIst">
                         <div className="flex items-center gap-1">
-                          <Award className="h-4 w-4 text-amber-500" />
+                          <Gift className="h-4 w-4 text-amber-500" />
                           Empfehlungen
                           {memberData?.empfehlungenSoll && (
                             <span className="text-muted-foreground font-normal ml-1">
@@ -459,12 +459,12 @@ export default function WeeklyKpiFormPage({
             </Card>
           )}
 
-          {/* 💪 Feeling Score */}
+          {/* Feeling Score */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Heart className="h-5 w-5 text-pink-500" />
-                <CardTitle className="text-base">💪 Wie fühlst du dich?</CardTitle>
+                <CardTitle className="text-base">Wie fühlst du dich?</CardTitle>
               </div>
               <CardDescription>
                 Bewerte deine Woche auf einer Skala von 1 (schlecht) bis 10
@@ -482,22 +482,22 @@ export default function WeeklyKpiFormPage({
                   className="w-full"
                 />
                 <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>😞 1</span>
+                  <span>1</span>
                   <span className="text-2xl font-bold text-foreground">
                     {feelingScore}
                   </span>
-                  <span>🚀 10</span>
+                  <span>10</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* 💭 Reflexion */}
+          {/* Reflexion */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-purple-500" />
-                <CardTitle className="text-base">💭 Reflexion</CardTitle>
+                <CardTitle className="text-base">Reflexion</CardTitle>
               </div>
               <CardDescription>
                 Nimm dir einen Moment, um über deine Woche nachzudenken
@@ -506,7 +506,7 @@ export default function WeeklyKpiFormPage({
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="heldentat">
-                  🏆 Was war deine Heldentat diese Woche?
+                  Was war deine Heldentat diese Woche?
                 </Label>
                 <Textarea
                   id="heldentat"
@@ -517,7 +517,7 @@ export default function WeeklyKpiFormPage({
 
               <div className="space-y-2">
                 <Label htmlFor="blockiert">
-                  🚧 Was hat dich diese Woche blockiert?
+                  Was hat dich diese Woche blockiert?
                 </Label>
                 <Textarea
                   id="blockiert"
@@ -528,7 +528,7 @@ export default function WeeklyKpiFormPage({
 
               <div className="space-y-2">
                 <Label htmlFor="herausforderung">
-                  🎯 Was ist deine größte Herausforderung für nächste Woche?
+                  Was ist deine größte Herausforderung für nächste Woche?
                 </Label>
                 <Textarea
                   id="herausforderung"
@@ -548,7 +548,7 @@ export default function WeeklyKpiFormPage({
             ) : isPreview ? (
               "Vorschau-Modus"
             ) : (
-              "KPIs absenden 🚀"
+              "KPIs absenden"
             )}
           </Button>
         </form>

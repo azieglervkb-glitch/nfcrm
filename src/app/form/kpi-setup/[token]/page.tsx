@@ -10,38 +10,56 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, Trophy, DollarSign, Phone, Calendar, Handshake, Target, Award, Settings, Percent, TrendingUp } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Trophy, Euro, Phone, Calendar, Handshake, Target, Gift, Settings, Percent, TrendingUp, Package } from "lucide-react";
 
 const kpiSetupSchema = z.object({
   // Ziel
-  umsatzSollMonat: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
+  umsatzSollMonat: z.number().min(1, "Bitte gib ein gültiges Ziel an"),
 
   // KPIs
   trackKontakte: z.boolean(),
-  kontakteSoll: z.number().optional(),
-  trackEntscheider: z.boolean(), // Sub-option: "Davon Entscheider" im Weekly
+  kontakteSoll: z.number().min(1).optional().nullable(),
+  trackEntscheider: z.boolean(),
 
   trackTermine: z.boolean(),
-  termineVereinbartSoll: z.number().optional(),
+  termineVereinbartSoll: z.number().min(1).optional().nullable(),
 
-  trackKonvertierung: z.boolean(), // Kontakt → Termin %
-  konvertierungTerminSoll: z.number().min(0).max(100).optional(),
+  trackKonvertierung: z.boolean(),
+  konvertierungTerminSoll: z.number().min(0).max(100).optional().nullable(),
 
-  trackAbschluesse: z.boolean(), // Abschluss-Termine & No-Shows
-  termineAbschlussSoll: z.number().optional(),
+  trackAbschluesse: z.boolean(),
+  termineAbschlussSoll: z.number().min(1).optional().nullable(),
 
-  trackAbschlussquote: z.boolean(), // Termin → Abschluss %
-  abschlussquoteSoll: z.number().min(0).max(100).optional(),
+  trackAbschlussquote: z.boolean(),
+  abschlussquoteSoll: z.number().min(0).max(100).optional().nullable(),
 
   trackEinheiten: z.boolean(),
-  einheitenSoll: z.number().optional(),
+  einheitenSoll: z.number().min(1).optional().nullable(),
 
   trackEmpfehlungen: z.boolean(),
-  empfehlungenSoll: z.number().optional(),
+  empfehlungenSoll: z.number().min(1).optional().nullable(),
 
   // Kontext & Motivation
   wasNervtAmMeisten: z.string().optional(),
   hauptzielEinSatz: z.string().min(5, "Bitte formuliere dein Ziel (mind. 5 Zeichen)"),
+}).refine((data) => !data.trackKontakte || (data.kontakteSoll && data.kontakteSoll > 0), {
+  message: "Bitte gib ein Ziel für Kontakte an",
+  path: ["kontakteSoll"],
+}).refine((data) => !data.trackTermine || (data.termineVereinbartSoll && data.termineVereinbartSoll > 0), {
+  message: "Bitte gib ein Ziel für Termine an",
+  path: ["termineVereinbartSoll"],
+}).refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll !== undefined && data.konvertierungTerminSoll >= 0), {
+  message: "Bitte gib ein Ziel für Konvertierung an",
+  path: ["konvertierungTerminSoll"],
+}).refine((data) => !data.trackAbschlussquote || (data.abschlussquoteSoll !== null && data.abschlussquoteSoll !== undefined && data.abschlussquoteSoll >= 0), {
+  message: "Bitte gib ein Ziel für Abschlussquote an",
+  path: ["abschlussquoteSoll"],
+}).refine((data) => !data.trackEinheiten || (data.einheitenSoll && data.einheitenSoll > 0), {
+  message: "Bitte gib ein Ziel für Einheiten an",
+  path: ["einheitenSoll"],
+}).refine((data) => !data.trackEmpfehlungen || (data.empfehlungenSoll && data.empfehlungenSoll > 0), {
+  message: "Bitte gib ein Ziel für Empfehlungen an",
+  path: ["empfehlungenSoll"],
 });
 
 type KpiSetupInput = z.infer<typeof kpiSetupSchema>;
@@ -178,7 +196,7 @@ export default function KpiSetupFormPage({
         <Card className="w-full max-w-md">
           <CardContent className="pt-6 text-center">
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">KPI-Tracking aktiviert! 🚀</h2>
+            <h2 className="text-xl font-semibold mb-2">KPI-Tracking aktiviert!</h2>
             <p className="text-muted-foreground mb-4">
               Super, {memberData?.vorname}! Dein persönliches KPI-Tracking ist jetzt eingerichtet.
             </p>
@@ -206,7 +224,7 @@ export default function KpiSetupFormPage({
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-bold">
-            Hey {memberData?.vorname}! Starte dein KPI-Tracking 🚀
+            Hey {memberData?.vorname}! Starte dein KPI-Tracking
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base max-w-2xl mx-auto">
             Lege fest, welche Kennzahlen du ab jetzt wöchentlich messen möchtest.
@@ -221,36 +239,17 @@ export default function KpiSetupFormPage({
             </div>
           )}
 
-          {/* Member Info (nur Anzeige, keine Eingabe) */}
-          {memberData && (
-            <Card className="bg-muted/50">
-              <CardContent className="pt-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Trophy className="h-6 w-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-lg">
-                      {memberData.vorname} {memberData.nachname}
-                    </p>
-                    <p className="text-sm text-muted-foreground">{memberData.email}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
           {/* Dein Ziel */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-primary" />
+                <Euro className="h-5 w-5 text-primary" />
                 <CardTitle>Dein Ziel</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="umsatzSollMonat">Dein monatliches Umsatzziel</Label>
+                <Label htmlFor="umsatzSollMonat">Dein monatliches Umsatzziel *</Label>
                 <p className="text-xs text-muted-foreground">
                   Welchen Umsatz möchtest du aktuell pro Monat erreichen?
                 </p>
@@ -305,11 +304,11 @@ export default function KpiSetupFormPage({
                     <>
                       <div className="space-y-2">
                         <Label htmlFor="kontakteSoll" className="text-sm">
-                          Ziel - Kontakte pro Woche (Calls, Anschreiben etc.)
+                          Ziel - Kontakte pro Woche (Calls, Anschreiben etc.) *
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           Setze dir ein realistisches aber ambitioniertes Ziel. Beispiel: 20 Calls/Tag
-                          * 5 Tage = 100 Calls/Woche.
+                          x 5 Tage = 100 Calls/Woche.
                         </p>
                         <Input
                           id="kontakteSoll"
@@ -317,7 +316,11 @@ export default function KpiSetupFormPage({
                           inputMode="numeric"
                           {...register("kontakteSoll", { valueAsNumber: true })}
                           placeholder="z.B. 100"
+                          className={errors.kontakteSoll ? "border-destructive" : ""}
                         />
+                        {errors.kontakteSoll && (
+                          <p className="text-xs text-destructive">{errors.kontakteSoll.message}</p>
+                        )}
                       </div>
                       {/* Sub-option: Entscheider */}
                       <div className="flex items-center gap-2 pl-2 pt-2 border-t">
@@ -347,16 +350,16 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-primary" />
                     <Label htmlFor="trackTermine" className="font-semibold cursor-pointer">
-                      Termine tracken
+                      Gesamttermine tracken
                     </Label>
                   </div>
                   {trackTermine && (
                     <div className="space-y-2">
                       <Label htmlFor="termineVereinbartSoll" className="text-sm">
-                        Ziel: Termine pro Woche
+                        Ziel: Termine pro Woche *
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Alle Termine die du wöchentlich vereinbaren möchtest.
+                        Bitte gib ein für dich realistisches aber ambitioniertes Ziel an. Die Terminanzahl umfasst alle Arten von Terminen (Ersttermin, Abschlusstermin, Service-Termin etc.)
                       </p>
                       <Input
                         id="termineVereinbartSoll"
@@ -364,7 +367,11 @@ export default function KpiSetupFormPage({
                         inputMode="numeric"
                         {...register("termineVereinbartSoll", { valueAsNumber: true })}
                         placeholder="z.B. 15"
+                        className={errors.termineVereinbartSoll ? "border-destructive" : ""}
                       />
+                      {errors.termineVereinbartSoll && (
+                        <p className="text-xs text-destructive">{errors.termineVereinbartSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -388,7 +395,7 @@ export default function KpiSetupFormPage({
                   {trackKonvertierung && (
                     <div className="space-y-2">
                       <Label htmlFor="konvertierungTerminSoll" className="text-sm">
-                        Ziel: Konvertierungsquote in %
+                        Ziel: Konvertierungsquote in % *
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Wie viel Prozent deiner Kontakte sollen zu einem Termin führen?
@@ -403,10 +410,13 @@ export default function KpiSetupFormPage({
                           max="100"
                           {...register("konvertierungTerminSoll", { valueAsNumber: true })}
                           placeholder="z.B. 15"
-                          className="max-w-[120px]"
+                          className={`max-w-[120px] ${errors.konvertierungTerminSoll ? "border-destructive" : ""}`}
                         />
                         <span className="text-muted-foreground">%</span>
                       </div>
+                      {errors.konvertierungTerminSoll && (
+                        <p className="text-xs text-destructive">{errors.konvertierungTerminSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -466,7 +476,7 @@ export default function KpiSetupFormPage({
                   {trackAbschlussquote && (
                     <div className="space-y-2">
                       <Label htmlFor="abschlussquoteSoll" className="text-sm">
-                        Ziel: Abschlussquote in %
+                        Ziel: Abschlussquote in % *
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Wie viel Prozent deiner Termine sollen zu einem Abschluss führen?
@@ -481,10 +491,13 @@ export default function KpiSetupFormPage({
                           max="100"
                           {...register("abschlussquoteSoll", { valueAsNumber: true })}
                           placeholder="z.B. 30"
-                          className="max-w-[120px]"
+                          className={`max-w-[120px] ${errors.abschlussquoteSoll ? "border-destructive" : ""}`}
                         />
                         <span className="text-muted-foreground">%</span>
                       </div>
+                      {errors.abschlussquoteSoll && (
+                        <p className="text-xs text-destructive">{errors.abschlussquoteSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -535,7 +548,7 @@ export default function KpiSetupFormPage({
                 />
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-amber-500" />
+                    <Gift className="h-5 w-5 text-amber-500" />
                     <Label htmlFor="trackEmpfehlungen" className="font-semibold cursor-pointer">
                       Empfehlungen tracken
                     </Label>

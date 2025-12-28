@@ -362,6 +362,8 @@ export default async function MemberDetailPage({
                 kpiWeeks={member.kpiWeeks.map((kpi) => ({
                   ...kpi,
                   umsatzIst: kpi.umsatzIst ? Number(kpi.umsatzIst) : null,
+                  konvertierungTerminIst: kpi.konvertierungTerminIst ? Number(kpi.konvertierungTerminIst) : null,
+                  abschlussquoteIst: kpi.abschlussquoteIst ? Number(kpi.abschlussquoteIst) : null,
                 }))}
                 memberTracking={{
                   trackKontakte: member.trackKontakte,
