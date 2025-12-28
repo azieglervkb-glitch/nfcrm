@@ -96,7 +96,8 @@ interface MemberInfo {
   id: string;
   firstName: string;
   lastName: string;
-  kpiTrackingActive: boolean;
+  kpiTrackingEnabled: boolean;
+  kpiSetupCompleted: boolean;
   onboardingCompleted: boolean;
   zielMonatsumsatz: number | null;
 }
@@ -195,8 +196,8 @@ export default function MemberPortalPage() {
         setValue("umsatzSollMonat", Number(sessionData.member.zielMonatsumsatz));
       }
 
-      // Only fetch dashboard if KPI tracking is active
-      if (sessionData.member.kpiTrackingActive) {
+      // Only fetch dashboard if KPI setup is completed
+      if (sessionData.member.kpiSetupCompleted) {
         const dashboardResponse = await fetch(`/api/member/dashboard?memberId=${memberId}`);
         if (dashboardResponse.ok) {
           const result = await dashboardResponse.json();
@@ -271,8 +272,8 @@ export default function MemberPortalPage() {
     );
   }
 
-  // Show KPI Setup Form if kpiTrackingActive is false - identical to token-based form
-  if (memberInfo && !memberInfo.kpiTrackingActive) {
+  // Show KPI Setup Form if kpiSetupCompleted is false - identical to token-based form
+  if (memberInfo && !memberInfo.kpiSetupCompleted) {
     return (
       <div className="min-h-screen bg-muted/30 py-6 px-4 sm:py-8">
         <div className="max-w-4xl mx-auto">
