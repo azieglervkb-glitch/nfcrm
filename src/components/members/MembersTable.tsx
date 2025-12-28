@@ -167,12 +167,7 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
           <TableRow>
             <TableHead className="w-[50px]">
               <Checkbox
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) {
-                    el.indeterminate = someSelected;
-                  }
-                }}
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
                 onCheckedChange={toggleSelectAll}
               />
             </TableHead>
