@@ -1008,7 +1008,7 @@ export default function LeadsPage() {
                   <SelectContent>
                     <SelectItem value="VPMC">VPMC</SelectItem>
                     <SelectItem value="NFM">NF Mentoring</SelectItem>
-                    <SelectItem value="PREMIUM">Premium</SelectItem>
+                    <SelectItem value="MM">Mastermind</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

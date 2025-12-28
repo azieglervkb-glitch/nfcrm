@@ -96,7 +96,7 @@ async function main() {
       nachname: "Schmidt",
       telefon: "+49 172 9876543",
       whatsappNummer: "+491729876543",
-      produkte: ["PREMIUM"],
+      produkte: ["MM"],
       status: "AKTIV",
       unternehmen: "Schmidt & Partner",
       position: "Beraterin",
@@ -282,7 +282,7 @@ async function main() {
       triggerReason: "3x 20k+ Umsatz in Folge",
       triggerRuleId: "P1",
       status: "IDENTIFIED",
-      produkt: "PREMIUM Plus Coaching",
+      produkt: "Mastermind Plus Coaching",
       wert: 5000,
     },
   });

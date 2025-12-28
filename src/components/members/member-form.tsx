@@ -24,7 +24,7 @@ interface MemberFormProps {
   initialData?: any;
 }
 
-const PRODUKTE = ["NFM", "PREMIUM", "VPMC"];
+const PRODUKTE = ["NFM", "MM", "VPMC"];
 const STATUSES = ["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"];
 
 interface TeamMember {

@@ -22,6 +22,7 @@ export async function GET() {
       vorname: true,
       nachname: true,
       role: true,
+      avatarUrl: true,
       isActive: true,
       lastLogin: true,
       createdAt: true,

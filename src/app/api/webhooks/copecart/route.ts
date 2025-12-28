@@ -16,11 +16,11 @@ function verifySignature(body: string, signature: string | null): boolean {
 }
 
 // Map Copecart product IDs to our ProductType
-function getProductType(productId: string): "VPMC" | "NFM" | "PREMIUM" | null {
-  const productMap: Record<string, "VPMC" | "NFM" | "PREMIUM"> = {
+function getProductType(productId: string): "VPMC" | "NFM" | "MM" | null {
+  const productMap: Record<string, "VPMC" | "NFM" | "MM"> = {
     [process.env.COPECART_PRODUCT_VPMC || ""]: "VPMC",
     [process.env.COPECART_PRODUCT_NFM || ""]: "NFM",
-    [process.env.COPECART_PRODUCT_PREMIUM || ""]: "PREMIUM",
+    [process.env.COPECART_PRODUCT_MM || process.env.COPECART_PRODUCT_PREMIUM || ""]: "MM",
   };
 
   return productMap[productId] || null;

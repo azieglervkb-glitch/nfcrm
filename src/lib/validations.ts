@@ -32,7 +32,7 @@ export const createMemberSchema = z.object({
   whatsappNummer: z.string().optional().nullable(),
   unternehmen: z.string().optional().nullable(),
   position: z.string().optional().nullable(),
-  produkte: z.array(z.enum(["VPMC", "NFM", "PREMIUM"])).default([]),
+  produkte: z.array(z.enum(["VPMC", "NFM", "MM"])).default([]),
   status: z.enum(["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"]).default("AKTIV"),
   // Goals
   hauptzielEinSatz: z.string().optional().nullable(),
@@ -65,7 +65,7 @@ export const updateMemberSchema = z.object({
   telefon: z.string().optional(),
   whatsappNummer: z.string().optional(),
   status: z.enum(["AKTIV", "PAUSIERT", "GEKUENDIGT", "INAKTIV"]).optional(),
-  produkte: z.array(z.enum(["VPMC", "NFM", "PREMIUM"])).optional(),
+  produkte: z.array(z.enum(["VPMC", "NFM", "MM"])).optional(),
 
   // Flags
   reviewFlag: z.boolean().optional(),

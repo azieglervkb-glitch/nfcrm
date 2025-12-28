@@ -27,7 +27,7 @@ enum MemberStatus {
 enum ProductType {
   VPMC
   NFM
-  PREMIUM
+  MM // Mastermind (previously PREMIUM)
 }
 
 enum TaskPriority {
@@ -269,6 +269,7 @@ model Member {
   nachname       String
   telefon        String?
   whatsappNummer String? // Format: +49XXXXXXXXXXX
+  avatarUrl      String?
 
   // Membership
   produkte          ProductType[]
