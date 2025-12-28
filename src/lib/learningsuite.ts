@@ -7,7 +7,7 @@
  */
 
 const LEARNINGSUITE_API_BASE = "https://api.learningsuite.io/api/v1";
-const LEARNINGSUITE_API_KEY = process.env.LEARNINSUITE_API_KEY || "";
+const LEARNINGSUITE_API_KEY = process.env.LEARNINGSUITE_API_KEY || "";
 
 // ============================================================================
 // Types
@@ -73,7 +73,7 @@ async function apiRequest<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   if (!LEARNINGSUITE_API_KEY) {
-    console.warn("LEARNINSUITE_API_KEY not configured");
+    console.warn("LEARNINGSUITE_API_KEY not configured");
     return {
       success: false,
       error: "API key not configured",

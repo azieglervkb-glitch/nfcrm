@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
         success: false,
         message: "LearningSuite API not configured",
         apiKeyConfigured: false,
-        hint: "Set LEARNINSUITE_API_KEY in environment variables",
+        hint: "Set LEARNINGSUITE_API_KEY in environment variables",
       });
     }
 

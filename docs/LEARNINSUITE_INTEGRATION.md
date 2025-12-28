@@ -42,7 +42,7 @@ Course-ID + Member-ID → GET /courses/{id}/modules?memberId={id} → Module
 ### Environment Variables
 
 ```env
-LEARNINSUITE_API_KEY=dein_api_key_hier
+LEARNINGSUITE_API_KEY=dein_api_key_hier
 ```
 
 **API Key generieren:**

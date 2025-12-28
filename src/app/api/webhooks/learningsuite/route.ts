@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { event, user, module: moduleNumber, completedAt } = body;
 
     // Verify webhook signature if configured
-    const webhookSecret = process.env.LEARNINSUITE_WEBHOOK_SECRET;
+    const webhookSecret = process.env.LEARNINGSUITE_WEBHOOK_SECRET;
     if (webhookSecret) {
       const signature = request.headers.get("x-learningsuite-signature");
       // TODO: Implement signature verification
