@@ -40,6 +40,8 @@ export async function POST(
             termineAbschlussSoll: true,
             einheitenSoll: true,
             empfehlungenSoll: true,
+            konvertierungTerminSoll: true,
+            abschlussquoteSoll: true,
           },
         },
       },

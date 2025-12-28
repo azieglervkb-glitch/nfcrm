@@ -39,6 +39,8 @@ export async function POST(request: NextRequest) {
         termineAbschlussSoll: true,
         einheitenSoll: true,
         empfehlungenSoll: true,
+        konvertierungTerminSoll: true,
+        abschlussquoteSoll: true,
       },
     });
 
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
           termineAbschlussIst: true,
           einheitenIst: true,
           empfehlungenIst: true,
+          konvertierungTerminIst: true,
+          abschlussquoteIst: true,
         },
       });
     } else {
@@ -92,6 +96,8 @@ export async function POST(request: NextRequest) {
           termineAbschlussIst: true,
           einheitenIst: true,
           empfehlungenIst: true,
+          konvertierungTerminIst: true,
+          abschlussquoteIst: true,
         },
       });
     }

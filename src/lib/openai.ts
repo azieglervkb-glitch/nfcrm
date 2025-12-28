@@ -33,7 +33,7 @@ ALLGEMEINE REGELN
 - Wenn Soll = 0, keine Prozentrechnung, keine „0%“-Ausgabe. Optional: erwähne „kein Soll definiert“ nur, wenn IST > 0 und du daraus einen sinnvollen Next Step ableiten kannst.
 - Nutze Heldentat, Blockaden und Herausforderungen für emotionale Tiefe (1 Satz Anerkennung oder Empathie).
 - Verarbeite höchstens drei Punkte: zwei Schwächen, eine Stärke.
-- Priorisiere bei vielen Abweichungen: Umsatz → Abschlüsse → Termine → Entscheider → Kontakte → Empfehlungen → Einheiten.
+- Priorisiere bei vielen Abweichungen: Umsatz → Abschlussquote → Konvertierung → Termine → Entscheider → Kontakte → Empfehlungen → Einheiten.
 - Bei unplausiblen Daten (Teilmengen > Gesamt): neutral erwähnen und trotzdem konstruktiv sein.
 
 STRUKTUR DER NACHRICHT:
@@ -57,8 +57,8 @@ AUSGABE:
 Gib NUR den Nachrichtentext aus, keine Einleitung oder Erklärung.`;
 
 function buildUserPrompt(
-  member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll">,
-  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst">,
+  member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll" | "konvertierungTerminSoll" | "abschlussquoteSoll">,
+  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst" | "konvertierungTerminIst" | "abschlussquoteIst">,
   userPromptTemplate?: string
 ): string {
   // Use template from database if provided, otherwise use default
@@ -78,6 +78,8 @@ ZIELWERTE (SOLL):
 - termine_abschluss_soll: {{termine_abschluss_soll}}
 - einheiten_soll: {{einheiten_soll}}
 - empfehlungen_soll: {{empfehlungen_soll}}
+- konvertierung_termin_soll: {{konvertierung_termin_soll}} (%)
+- abschlussquote_soll: {{abschlussquote_soll}} (%)
 
 IST-WERTE (diese Woche):
 - umsatz_ist: {{umsatz_ist}}
@@ -88,6 +90,8 @@ IST-WERTE (diese Woche):
 - termine_abschluss_ist: {{termine_abschluss_ist}}
 - einheiten_ist: {{einheiten_ist}}
 - empfehlungen_ist: {{empfehlungen_ist}}
+- konvertierung_termin_ist: {{konvertierung_termin_ist}} (%)
+- abschlussquote_ist: {{abschlussquote_ist}} (%)
 
 AUFGABE:
 1. Vergleiche alle IST- mit den SOLL-Werten.
@@ -109,6 +113,8 @@ AUFGABE:
     .replace(/\{\{termine_abschluss_soll\}\}/g, String(member.termineAbschlussSoll || 0))
     .replace(/\{\{einheiten_soll\}\}/g, String(member.einheitenSoll || 0))
     .replace(/\{\{empfehlungen_soll\}\}/g, String(member.empfehlungenSoll || 0))
+    .replace(/\{\{konvertierung_termin_soll\}\}/g, String(member.konvertierungTerminSoll || 0))
+    .replace(/\{\{abschlussquote_soll\}\}/g, String(member.abschlussquoteSoll || 0))
     .replace(/\{\{umsatz_ist\}\}/g, String(kpiWeek.umsatzIst || 0))
     .replace(/\{\{kontakte_ist\}\}/g, String(kpiWeek.kontakteIst || 0))
     .replace(/\{\{entscheider_ist\}\}/g, String(kpiWeek.entscheiderIst || 0))
@@ -116,7 +122,9 @@ AUFGABE:
     .replace(/\{\{termine_stattgefunden_ist\}\}/g, String(kpiWeek.termineStattgefundenIst || 0))
     .replace(/\{\{termine_abschluss_ist\}\}/g, String(kpiWeek.termineAbschlussIst || 0))
     .replace(/\{\{einheiten_ist\}\}/g, String(kpiWeek.einheitenIst || 0))
-    .replace(/\{\{empfehlungen_ist\}\}/g, String(kpiWeek.empfehlungenIst || 0));
+    .replace(/\{\{empfehlungen_ist\}\}/g, String(kpiWeek.empfehlungenIst || 0))
+    .replace(/\{\{konvertierung_termin_ist\}\}/g, String(kpiWeek.konvertierungTerminIst || 0))
+    .replace(/\{\{abschlussquote_ist\}\}/g, String(kpiWeek.abschlussquoteIst || 0));
 }
 
 export type FeedbackStyle = "standard" | "locker" | "coachend";
@@ -127,8 +135,8 @@ export interface GenerateFeedbackResult {
 }
 
 export async function generateKpiFeedback(
-  member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll">,
-  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst">
+  member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll" | "konvertierungTerminSoll" | "abschlussquoteSoll">,
+  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst" | "konvertierungTerminIst" | "abschlussquoteIst">
 ): Promise<GenerateFeedbackResult> {
   // Load prompts from database (or use defaults)
   let systemPromptContent = SYSTEM_PROMPT;
@@ -185,7 +193,7 @@ Gewählte Stilvariante für diese Nachricht: ${style}`;
   };
 }
 
-// Check for data anomalies that should block AI feedback
+  // Check for data anomalies that should block AI feedback
 export function hasDataAnomaly(kpiWeek: KpiWeek): { hasAnomaly: boolean; reason?: string } {
   // Negative values
   const numericFields = [
@@ -197,6 +205,8 @@ export function hasDataAnomaly(kpiWeek: KpiWeek): { hasAnomaly: boolean; reason?
     "termineAbschlussIst",
     "einheitenIst",
     "empfehlungenIst",
+    "konvertierungTerminIst",
+    "abschlussquoteIst",
   ] as const;
 
   for (const field of numericFields) {

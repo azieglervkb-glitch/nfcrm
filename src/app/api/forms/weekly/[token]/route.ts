@@ -123,6 +123,26 @@ export async function POST(
       }
     }
 
+    // Calculate konvertierungTerminIst (Kontakt → Termin %)
+    let konvertierungTerminIst = null;
+    if (
+      validatedData.kontakteIst &&
+      validatedData.termineVereinbartIst &&
+      validatedData.kontakteIst > 0
+    ) {
+      konvertierungTerminIst = (validatedData.termineVereinbartIst / validatedData.kontakteIst) * 100;
+    }
+
+    // Calculate abschlussquoteIst (Termin → Abschluss %)
+    let abschlussquoteIst = null;
+    if (
+      validatedData.termineStattgefundenIst &&
+      validatedData.termineAbschlussIst &&
+      validatedData.termineStattgefundenIst > 0
+    ) {
+      abschlussquoteIst = (validatedData.termineAbschlussIst / validatedData.termineStattgefundenIst) * 100;
+    }
+
     // Create or update KPI week
     const kpiWeek = await prisma.kpiWeek.upsert({
       where: {
@@ -138,11 +158,15 @@ export async function POST(
         year,
         ...validatedData,
         noshowQuote,
+        konvertierungTerminIst,
+        abschlussquoteIst,
         submittedAt: new Date(),
       },
       update: {
         ...validatedData,
         noshowQuote,
+        konvertierungTerminIst,
+        abschlussquoteIst,
         submittedAt: new Date(),
       },
     });

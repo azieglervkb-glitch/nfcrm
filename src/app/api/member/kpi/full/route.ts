@@ -181,6 +181,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calculate konvertierungTerminIst and abschlussquoteIst
+    let konvertierungTerminIst = null;
+    if (kontakteIst && termineVereinbartIst && kontakteIst > 0) {
+      konvertierungTerminIst = (termineVereinbartIst / kontakteIst) * 100;
+    }
+
+    let abschlussquoteIst = null;
+    if (termineStattgefundenIst && termineAbschlussIst && termineStattgefundenIst > 0) {
+      abschlussquoteIst = (termineAbschlussIst / termineStattgefundenIst) * 100;
+    }
+
     // Create KPI entry (no updates allowed)
     const kpiWeek = await prisma.kpiWeek.create({
       data: {
@@ -197,6 +208,8 @@ export async function POST(request: NextRequest) {
         termineNoshowIst,
         einheitenIst,
         empfehlungenIst,
+        konvertierungTerminIst,
+        abschlussquoteIst,
         feelingScore,
         heldentat,
         blockiert,

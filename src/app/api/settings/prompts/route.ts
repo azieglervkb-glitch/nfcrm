@@ -76,6 +76,8 @@ ZIELWERTE (SOLL):
 - termine_abschluss_soll: {{termine_abschluss_soll}}
 - einheiten_soll: {{einheiten_soll}}
 - empfehlungen_soll: {{empfehlungen_soll}}
+- konvertierung_termin_soll: {{konvertierung_termin_soll}} (%)
+- abschlussquote_soll: {{abschlussquote_soll}} (%)
 
 IST-WERTE (diese Woche):
 - umsatz_ist: {{umsatz_ist}}
@@ -86,6 +88,8 @@ IST-WERTE (diese Woche):
 - termine_abschluss_ist: {{termine_abschluss_ist}}
 - einheiten_ist: {{einheiten_ist}}
 - empfehlungen_ist: {{empfehlungen_ist}}
+- konvertierung_termin_ist: {{konvertierung_termin_ist}} (%)
+- abschlussquote_ist: {{abschlussquote_ist}} (%)
 
 AUFGABE:
 1. Vergleiche alle IST- mit den SOLL-Werten.

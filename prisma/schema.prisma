@@ -391,7 +391,9 @@ model KpiWeek {
   empfehlungenIst         Int?
 
   // Berechnete Werte
-  noshowQuote Decimal? @db.Decimal(5, 4) // z.B. 0.3000 = 30%
+  noshowQuote            Decimal? @db.Decimal(5, 4) // z.B. 0.3000 = 30%
+  konvertierungTerminIst Decimal? @db.Decimal(5, 2)  // Kontakt → Termin (%) (berechnet)
+  abschlussquoteIst      Decimal? @db.Decimal(5, 2)  // Termin → Abschluss (%) (berechnet)
 
   // Reflexion & Motivation
   feelingScore    Int? // 1-10

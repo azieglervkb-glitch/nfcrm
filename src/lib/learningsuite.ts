@@ -97,29 +97,50 @@ async function apiRequest<T>(
 
 /**
  * Find user by email and get their progress
+ * Tries multiple API endpoints to find the user
  */
 export async function getUserProgressByEmail(
   email: string
 ): Promise<LearninSuiteUser | null> {
-  const result = await apiRequest<LearninSuiteUser[]>(`/users?email=${encodeURIComponent(email)}`);
+  // Try different endpoint variations
+  const endpoints = [
+    `/users?email=${encodeURIComponent(email)}`,
+    `/users/search?email=${encodeURIComponent(email)}`,
+    `/users/find?email=${encodeURIComponent(email)}`,
+  ];
 
-  if (!result.success || !result.data || result.data.length === 0) {
-    return null;
+  for (const endpoint of endpoints) {
+    const result = await apiRequest<LearninSuiteUser | LearninSuiteUser[]>(endpoint);
+
+    if (result.success && result.data) {
+      let user: LearninSuiteUser;
+
+      // Handle both array and single object responses
+      if (Array.isArray(result.data)) {
+        if (result.data.length === 0) continue;
+        user = result.data[0];
+      } else {
+        user = result.data;
+      }
+
+      // Try to fetch detailed progress
+      try {
+        const progressResult = await apiRequest<LearninSuiteUser>(
+          `/users/${user.id}/progress`
+        );
+        if (progressResult.success && progressResult.data) {
+          return progressResult.data;
+        }
+      } catch (error) {
+        // Progress endpoint might not exist, return basic user data
+        console.log("Progress endpoint not available, using basic user data");
+      }
+
+      return user;
+    }
   }
 
-  // Get first user (should be unique by email)
-  const user = result.data[0];
-
-  // Fetch detailed progress if needed
-  const progressResult = await apiRequest<LearninSuiteUser>(
-    `/users/${user.id}/progress`
-  );
-
-  if (progressResult.success && progressResult.data) {
-    return progressResult.data;
-  }
-
-  return user;
+  return null;
 }
 
 /**
