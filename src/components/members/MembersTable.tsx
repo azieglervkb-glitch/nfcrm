@@ -23,6 +23,7 @@ import { StatusBadge, getMemberStatusType, FeelingEmoji } from "@/components/com
 import { Eye, MoreHorizontal, TrendingUp, Square } from "lucide-react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { InfoTooltip } from "@/components/ui/info-tooltip";
 
 interface Member {
   id: string;
@@ -177,10 +178,30 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
             <TableHead>Mitglied</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Produkte</TableHead>
-            <TableHead>Feeling (Woche)</TableHead>
-            <TableHead>Ø Feeling</TableHead>
-            <TableHead>Umsatz (Woche)</TableHead>
-            <TableHead>KPI-Tracking</TableHead>
+            <TableHead>
+              <span className="flex items-center">
+                Feeling
+                <InfoTooltip content="Aktuelle Stimmung des Mitglieds diese Woche (1-5 Sterne)" />
+              </span>
+            </TableHead>
+            <TableHead>
+              <span className="flex items-center">
+                Ø Feeling
+                <InfoTooltip content="Durchschnittliche Stimmung über alle erfassten Wochen" />
+              </span>
+            </TableHead>
+            <TableHead>
+              <span className="flex items-center">
+                Umsatz
+                <InfoTooltip content="Umsatz der aktuellen Woche laut KPI-Eintrag" />
+              </span>
+            </TableHead>
+            <TableHead>
+              <span className="flex items-center">
+                KPI
+                <InfoTooltip content="Ist das wöchentliche KPI-Tracking für dieses Mitglied aktiviert?" />
+              </span>
+            </TableHead>
             <TableHead className="w-[100px]">Aktionen</TableHead>
           </TableRow>
         </TableHeader>

@@ -30,6 +30,7 @@ import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { AddNoteDialog } from "@/components/member/AddNoteDialog";
 import { SyncLearningSuiteButton } from "@/components/member/SyncLearningSuiteButton";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
+import { DefinedTooltip } from "@/components/ui/info-tooltip";
 
 async function getMember(id: string) {
   const member = await prisma.member.findUnique({
@@ -305,7 +306,10 @@ export default async function MemberDetailPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Churn Risk</span>
+                  <span className="text-sm flex items-center">
+                    Churn Risk
+                    <DefinedTooltip term="churnRisk" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.churnRisk ? "text-danger" : "text-muted-foreground"
@@ -315,7 +319,10 @@ export default async function MemberDetailPage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Review Flag</span>
+                  <span className="text-sm flex items-center">
+                    Review Flag
+                    <DefinedTooltip term="reviewFlag" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.reviewFlag
@@ -327,7 +334,10 @@ export default async function MemberDetailPage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Upsell Kandidat</span>
+                  <span className="text-sm flex items-center">
+                    Upsell Kandidat
+                    <DefinedTooltip term="upsellCandidate" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.upsellCandidate
@@ -339,7 +349,10 @@ export default async function MemberDetailPage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Danger Zone</span>
+                  <span className="text-sm flex items-center">
+                    Danger Zone
+                    <DefinedTooltip term="dangerZone" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.dangerZone ? "text-danger" : "text-muted-foreground"
@@ -362,7 +375,10 @@ export default async function MemberDetailPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Aktuelles Modul</span>
+                  <span className="text-sm flex items-center">
+                    Aktuelles Modul
+                    <DefinedTooltip term="currentModule" />
+                  </span>
                   <span className="text-sm font-medium text-primary">
                     {member.currentModule ? getModuleName(member.currentModule) : "—"}
                   </span>

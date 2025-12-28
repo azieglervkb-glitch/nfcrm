@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Bot, Shield, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { InfoTooltip, DefinedTooltip } from "@/components/ui/info-tooltip";
 
 interface SystemSettings {
   id: string;
@@ -312,7 +313,10 @@ export function SettingsForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <Label>Ruhezeiten aktiviert</Label>
+              <Label className="flex items-center">
+                Ruhezeiten aktiviert
+                <DefinedTooltip term="quietHours" />
+              </Label>
               <Switch
                 checked={settings.quietHoursEnabled}
                 onCheckedChange={(v) => updateSetting("quietHoursEnabled", v)}
@@ -643,7 +647,10 @@ export function SettingsForm() {
 
             {settings.kpiTriggerSource !== "manual" && (
               <div className="space-y-2">
-                <Label>Ab Modul aktivieren</Label>
+                <Label className="flex items-center">
+                  Ab Modul aktivieren
+                  <DefinedTooltip term="kpiTriggerModule" />
+                </Label>
                 <Select
                   value={String(settings.kpiTriggerModule || 2)}
                   onValueChange={(v) => updateSetting("kpiTriggerModule", parseInt(v))}
@@ -740,7 +747,10 @@ export function SettingsForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Churn-Risiko (Wochen ohne KPI)</Label>
+              <Label className="flex items-center">
+                Churn-Risiko (Wochen ohne KPI)
+                <DefinedTooltip term="churnRisk" />
+              </Label>
               <Input
                 type="number"
                 min="1"
@@ -754,7 +764,10 @@ export function SettingsForm() {
             </div>
 
             <div className="space-y-2">
-              <Label>Danger Zone (Wochen ohne KPI)</Label>
+              <Label className="flex items-center">
+                Danger Zone (Wochen ohne KPI)
+                <DefinedTooltip term="dangerZone" />
+              </Label>
               <Input
                 type="number"
                 min="1"
@@ -782,7 +795,10 @@ export function SettingsForm() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label>Monatsumsatz-Schwelle (EUR)</Label>
+              <Label className="flex items-center">
+                Monatsumsatz-Schwelle (EUR)
+                <DefinedTooltip term="upsellCandidate" />
+              </Label>
               <Input
                 type="number"
                 min="0"
