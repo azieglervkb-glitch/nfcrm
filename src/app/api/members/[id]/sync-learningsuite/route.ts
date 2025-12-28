@@ -44,13 +44,18 @@ export async function POST(
     }
 
     // Sync with LearningSuite
+    console.log(`[Sync] Starting LearningSuite sync for member: ${member.email}`);
     const syncResult = await syncMemberWithLearninSuite(member.email);
+    console.log(`[Sync] Result:`, JSON.stringify(syncResult, null, 2));
 
     if (!syncResult.synced) {
       return NextResponse.json({
         success: false,
         message: "Member not found in LearningSuite",
         email: member.email,
+        debug: {
+          hint: "Check server logs for detailed API response. The email might not exist in LearningSuite or API format is different.",
+        },
       });
     }
 

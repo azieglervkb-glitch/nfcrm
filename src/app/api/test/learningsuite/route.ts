@@ -46,6 +46,9 @@ export async function GET(request: NextRequest) {
         connected: false,
         error: connectionTest.error,
         hint: "Check if API key is valid and has correct permissions",
+        debug: {
+          apiKeyPrefix: process.env.LEARNINGSUITE_API_KEY?.substring(0, 8) + "...",
+        },
       });
     }
 

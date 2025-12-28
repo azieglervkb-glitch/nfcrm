@@ -124,21 +124,70 @@ async function apiRequest<T>(
 
 /**
  * Get member by email address
- * Endpoint: GET /members?email={email}
+ * Tries multiple endpoint formats as LearningSuite API may vary
  */
 export async function getMemberByEmail(
   email: string
 ): Promise<LearningSuiteMember | null> {
-  const result = await apiRequest<LearningSuiteMember>(
+  console.log(`[LearningSuite] Looking up member by email: ${email}`);
+
+  // Try 1: Direct email query parameter
+  let result = await apiRequest<LearningSuiteMember | { data: LearningSuiteMember } | { data: LearningSuiteMember[] } | LearningSuiteMember[]>(
     `/members?email=${encodeURIComponent(email)}`
   );
 
-  if (!result.success || !result.data) {
-    console.log(`Member not found in LearningSuite: ${email}`);
-    return null;
+  console.log(`[LearningSuite] /members?email= response:`, JSON.stringify(result, null, 2));
+
+  if (result.success && result.data) {
+    // Handle various response formats
+    const data = result.data;
+
+    // Format: { data: { id, email, ... } }
+    if ('data' in data && data.data && !Array.isArray(data.data)) {
+      console.log(`[LearningSuite] Found member (nested object format)`);
+      return data.data as LearningSuiteMember;
+    }
+
+    // Format: { data: [{ id, email, ... }] }
+    if ('data' in data && Array.isArray(data.data) && data.data.length > 0) {
+      console.log(`[LearningSuite] Found member (nested array format)`);
+      return data.data[0] as LearningSuiteMember;
+    }
+
+    // Format: [{ id, email, ... }]
+    if (Array.isArray(data) && data.length > 0) {
+      console.log(`[LearningSuite] Found member (array format)`);
+      return data[0] as LearningSuiteMember;
+    }
+
+    // Format: { id, email, ... } directly
+    if ('id' in data && 'email' in data) {
+      console.log(`[LearningSuite] Found member (direct object format)`);
+      return data as LearningSuiteMember;
+    }
   }
 
-  return result.data;
+  // Try 2: Get all members and filter by email
+  console.log(`[LearningSuite] Trying to list all members and filter by email...`);
+  const listResult = await apiRequest<{ data: LearningSuiteMember[] } | LearningSuiteMember[]>(`/members`);
+  console.log(`[LearningSuite] /members response success: ${listResult.success}, has data: ${!!listResult.data}`);
+
+  if (listResult.success && listResult.data) {
+    const members = Array.isArray(listResult.data)
+      ? listResult.data
+      : (listResult.data as { data: LearningSuiteMember[] }).data || [];
+
+    console.log(`[LearningSuite] Total members in list: ${members.length}`);
+
+    const member = members.find(m => m.email?.toLowerCase() === email.toLowerCase());
+    if (member) {
+      console.log(`[LearningSuite] Found member by filtering: ${member.id}`);
+      return member;
+    }
+  }
+
+  console.log(`[LearningSuite] Member not found in LearningSuite: ${email}`);
+  return null;
 }
 
 /**
@@ -164,16 +213,22 @@ export async function getMemberById(
 export async function getMemberCourses(
   memberId: string
 ): Promise<LearningSuiteCourse[]> {
+  console.log(`[LearningSuite] Getting courses for member: ${memberId}`);
+
   const result = await apiRequest<{ data: LearningSuiteCourse[] } | LearningSuiteCourse[]>(
     `/members/${memberId}/courses`
   );
 
+  console.log(`[LearningSuite] /members/${memberId}/courses response:`, JSON.stringify(result, null, 2));
+
   if (!result.success || !result.data) {
+    console.log(`[LearningSuite] No courses found for member`);
     return [];
   }
 
   // Handle both array and { data: [...] } response formats
   const courses = Array.isArray(result.data) ? result.data : result.data.data || [];
+  console.log(`[LearningSuite] Found ${courses.length} courses`);
   return courses;
 }
 
