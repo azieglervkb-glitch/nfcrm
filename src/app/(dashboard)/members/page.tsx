@@ -1,31 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import {
-  SectionHeader,
-  StatusBadge,
-  getMemberStatusType,
-  FeelingEmoji,
-} from "@/components/common";
+import { SectionHeader } from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Plus, Search, Eye, MoreHorizontal } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { getCurrentWeekStart } from "@/lib/date-utils";
+import { MembersTable } from "@/components/members/MembersTable";
 
 interface SearchParams {
   status?: string;
@@ -102,7 +83,7 @@ async function getMembers(searchParams: SearchParams) {
     return {
       ...member,
       currentFeeling: currentWeekKpi?.feelingScore ?? null,
-      currentUmsatz: currentWeekKpi?.umsatzIst ?? null,
+      currentUmsatz: currentWeekKpi?.umsatzIst ? Number(currentWeekKpi.umsatzIst) : null,
       avgFeeling: avgFeeling ? Math.round(avgFeeling * 10) / 10 : null,
       totalKpis: feelingsWithScore.length,
     };
@@ -183,155 +164,9 @@ export default async function MembersPage({
         </div>
       </Card>
 
-      {/* Members Table */}
+      {/* Members Table with Bulk Actions */}
       <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Mitglied</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Produkte</TableHead>
-              <TableHead>Feeling (Woche)</TableHead>
-              <TableHead>Ø Feeling</TableHead>
-              <TableHead>Umsatz (Woche)</TableHead>
-              <TableHead className="w-[100px]">Aktionen</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {members.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="text-center py-8">
-                  <p className="text-muted-foreground">
-                    Keine Mitglieder gefunden
-                  </p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              members.map((member) => {
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <Link
-                        href={`/members/${member.id}`}
-                        className="flex items-center gap-3 hover:underline"
-                      >
-                        <Avatar className="h-10 w-10">
-                          <AvatarFallback className="bg-primary/10 text-primary font-semibold text-sm">
-                            {member.vorname.charAt(0)}
-                            {member.nachname.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">
-                            {member.vorname} {member.nachname}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {member.email}
-                          </p>
-                        </div>
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <StatusBadge
-                          status={getMemberStatusType(member.status)}
-                          label={member.status}
-                        />
-                        {member.churnRisk && (
-                          <span className="text-xs text-danger font-medium">
-                            Churn Risk
-                          </span>
-                        )}
-                        {member.upsellCandidate && (
-                          <span className="text-xs text-success font-medium">
-                            Upsell Ready
-                          </span>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {member.produkte.map((product) => (
-                          <span
-                            key={product}
-                            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground"
-                          >
-                            {product}
-                          </span>
-                        ))}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {member.currentFeeling ? (
-                        <FeelingEmoji score={member.currentFeeling} size="sm" />
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {member.avgFeeling ? (
-                        <div className="flex items-center gap-1">
-                          <FeelingEmoji score={Math.round(member.avgFeeling)} size="sm" />
-                          <span className="text-xs text-muted-foreground">
-                            ({member.avgFeeling.toFixed(1)})
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {member.currentUmsatz ? (
-                        <span className="font-medium">
-                          {Number(member.currentUmsatz).toLocaleString("de-DE", {
-                            style: "currency",
-                            currency: "EUR",
-                            minimumFractionDigits: 0,
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" asChild>
-                          <Link href={`/members/${member.id}`}>
-                            <Eye className="h-4 w-4" />
-                          </Link>
-                        </Button>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/members/${member.id}`}>
-                                Profil ansehen
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/members/${member.id}/edit`}>
-                                Bearbeiten
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <a href={`mailto:${member.email}`}>
-                                E-Mail senden
-                              </a>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
+        <MembersTable members={members} />
 
         {/* Pagination */}
         {totalPages > 1 && (
