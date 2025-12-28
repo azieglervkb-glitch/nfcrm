@@ -52,17 +52,13 @@ async function cleanup() {
   const upsells = await prisma.upsellPipeline.deleteMany({});
   console.log(`   ✅ Deleted ${upsells.count} upsell pipeline entries`);
 
-  // 8. Delete all communications
-  const comms = await prisma.communication.deleteMany({});
-  console.log(`   ✅ Deleted ${comms.count} communications`);
+  // 8. Delete all communication logs
+  const comms = await prisma.communicationLog.deleteMany({});
+  console.log(`   ✅ Deleted ${comms.count} communication logs`);
 
-  // 9. Delete all member auth tokens
-  const authTokens = await prisma.memberAuthToken.deleteMany({});
-  console.log(`   ✅ Deleted ${authTokens.count} member auth tokens`);
-
-  // 10. Delete all member tokens (password reset etc)
-  const memberTokens = await prisma.memberToken.deleteMany({});
-  console.log(`   ✅ Deleted ${memberTokens.count} member tokens`);
+  // 9. Delete all member sessions
+  const sessions = await prisma.memberSession.deleteMany({});
+  console.log(`   ✅ Deleted ${sessions.count} member sessions`);
 
   // 11. Delete all members
   const members = await prisma.member.deleteMany({});
