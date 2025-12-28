@@ -23,6 +23,13 @@ import {
   Loader2,
   CheckCircle,
   TrendingUp,
+  Euro,
+  Phone,
+  Calendar,
+  Handshake,
+  Gift,
+  Heart,
+  MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -289,7 +296,10 @@ export default function MemberKpiPage() {
             {/* Umsatz */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Umsatz</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Euro className="h-5 w-5 text-green-600" />
+                  <CardTitle className="text-base">Umsatz</CardTitle>
+                </div>
                 <CardDescription>
                   {member?.umsatzSollWoche && (
                     <>
@@ -320,131 +330,172 @@ export default function MemberKpiPage() {
               </CardContent>
             </Card>
 
-            {/* Aktivitäten */}
-            {(member?.trackKontakte || member?.trackEntscheider || member?.trackTermine || member?.trackAbschluesse) && (
+            {/* Kontakte */}
+            {member?.trackKontakte && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Aktivitäten</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Phone className="h-5 w-5 text-red-500" />
+                    <CardTitle className="text-base">Kontakte</CardTitle>
+                  </div>
+                  <CardDescription>
+                    {member?.kontakteSoll && (
+                      <>
+                        Dein Wochenziel:{" "}
+                        <span className="font-semibold text-foreground">
+                          {member.kontakteSoll} Kontakte
+                        </span>
+                      </>
+                    )}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {member?.trackKontakte && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="kontakteIst">
-                          Kontakte {member?.kontakteSoll ? `(Ziel: ${member.kontakteSoll})` : ""}
-                        </Label>
-                        <Input
-                          id="kontakteIst"
-                          type="number"
-                          inputMode="numeric"
-                          className="h-12"
-                          value={formValues.kontakteIst}
-                          onChange={(e) => setFormValues({ ...formValues, kontakteIst: e.target.value })}
-                        />
-                      </div>
-                      {member?.trackEntscheider && (
-                        <div className="space-y-2">
-                          <Label htmlFor="entscheiderIst">
-                            Davon Entscheider {member?.entscheiderSoll ? `(Ziel: ${member.entscheiderSoll})` : ""}
-                          </Label>
-                          <Input
-                            id="entscheiderIst"
-                            type="number"
-                            inputMode="numeric"
-                            className="h-12"
-                            value={formValues.entscheiderIst}
-                            onChange={(e) => setFormValues({ ...formValues, entscheiderIst: e.target.value })}
-                          />
-                        </div>
-                      )}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="kontakteIst">Kontakte gesamt</Label>
+                      <Input
+                        id="kontakteIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.kontakteIst}
+                        onChange={(e) => setFormValues({ ...formValues, kontakteIst: e.target.value })}
+                      />
                     </div>
-                  )}
-
-                  {member?.trackTermine && (
-                    <>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="termineVereinbartIst">
-                            Termine vereinbart {member?.termineVereinbartSoll ? `(Ziel: ${member.termineVereinbartSoll})` : ""}
-                          </Label>
-                          <Input
-                            id="termineVereinbartIst"
-                            type="number"
-                            inputMode="numeric"
-                            className="h-12"
-                            value={formValues.termineVereinbartIst}
-                            onChange={(e) => setFormValues({ ...formValues, termineVereinbartIst: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="termineStattgefundenIst">
-                            Termine stattgefunden {member?.termineStattgefundenSoll ? `(Ziel: ${member.termineStattgefundenSoll})` : ""}
-                          </Label>
-                          <Input
-                            id="termineStattgefundenIst"
-                            type="number"
-                            inputMode="numeric"
-                            className="h-12"
-                            value={formValues.termineStattgefundenIst}
-                            onChange={(e) => setFormValues({ ...formValues, termineStattgefundenIst: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="termineErstIst">Ersttermine</Label>
-                          <Input
-                            id="termineErstIst"
-                            type="number"
-                            inputMode="numeric"
-                            className="h-12"
-                            value={formValues.termineErstIst}
-                            onChange={(e) => setFormValues({ ...formValues, termineErstIst: e.target.value })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="termineFolgeIst">Folgetermine</Label>
-                          <Input
-                            id="termineFolgeIst"
-                            type="number"
-                            inputMode="numeric"
-                            className="h-12"
-                            value={formValues.termineFolgeIst}
-                            onChange={(e) => setFormValues({ ...formValues, termineFolgeIst: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {member?.trackAbschluesse && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {member?.trackEntscheider && (
                       <div className="space-y-2">
-                        <Label htmlFor="termineAbschlussIst">
-                          Abschluss-Termine {member?.termineAbschlussSoll ? `(Ziel: ${member.termineAbschlussSoll})` : ""}
-                        </Label>
+                        <Label htmlFor="entscheiderIst">Davon Entscheider</Label>
                         <Input
-                          id="termineAbschlussIst"
+                          id="entscheiderIst"
                           type="number"
                           inputMode="numeric"
                           className="h-12"
-                          value={formValues.termineAbschlussIst}
-                          onChange={(e) => setFormValues({ ...formValues, termineAbschlussIst: e.target.value })}
+                          value={formValues.entscheiderIst}
+                          onChange={(e) => setFormValues({ ...formValues, entscheiderIst: e.target.value })}
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="termineNoshowIst">No-Shows</Label>
-                        <Input
-                          id="termineNoshowIst"
-                          type="number"
-                          inputMode="numeric"
-                          className="h-12"
-                          value={formValues.termineNoshowIst}
-                          onChange={(e) => setFormValues({ ...formValues, termineNoshowIst: e.target.value })}
-                        />
-                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Termine */}
+            {member?.trackTermine && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    <CardTitle className="text-base">Termine</CardTitle>
+                  </div>
+                  <CardDescription>
+                    {member?.termineVereinbartSoll && (
+                      <>
+                        Dein Wochenziel:{" "}
+                        <span className="font-semibold text-foreground">
+                          {member.termineVereinbartSoll} Termine
+                        </span>
+                      </>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="termineVereinbartIst">Termine vereinbart</Label>
+                      <Input
+                        id="termineVereinbartIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.termineVereinbartIst}
+                        onChange={(e) => setFormValues({ ...formValues, termineVereinbartIst: e.target.value })}
+                      />
                     </div>
-                  )}
+                    <div className="space-y-2">
+                      <Label htmlFor="termineStattgefundenIst">Termine stattgefunden</Label>
+                      <Input
+                        id="termineStattgefundenIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.termineStattgefundenIst}
+                        onChange={(e) => setFormValues({ ...formValues, termineStattgefundenIst: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="termineErstIst">Ersttermine</Label>
+                      <Input
+                        id="termineErstIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.termineErstIst}
+                        onChange={(e) => setFormValues({ ...formValues, termineErstIst: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="termineFolgeIst">Folgetermine</Label>
+                      <Input
+                        id="termineFolgeIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.termineFolgeIst}
+                        onChange={(e) => setFormValues({ ...formValues, termineFolgeIst: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Abschlüsse */}
+            {member?.trackAbschluesse && (
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Handshake className="h-5 w-5 text-green-600" />
+                    <CardTitle className="text-base">Abschlüsse</CardTitle>
+                  </div>
+                  <CardDescription>
+                    {member?.termineAbschlussSoll && (
+                      <>
+                        Dein Wochenziel:{" "}
+                        <span className="font-semibold text-foreground">
+                          {member.termineAbschlussSoll} Abschluss-Termine
+                        </span>
+                      </>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="termineAbschlussIst">Abschluss-Termine</Label>
+                      <Input
+                        id="termineAbschlussIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.termineAbschlussIst}
+                        onChange={(e) => setFormValues({ ...formValues, termineAbschlussIst: e.target.value })}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="termineNoshowIst">No-Shows</Label>
+                      <Input
+                        id="termineNoshowIst"
+                        type="number"
+                        inputMode="numeric"
+                        className="h-12"
+                        value={formValues.termineNoshowIst}
+                        onChange={(e) => setFormValues({ ...formValues, termineNoshowIst: e.target.value })}
+                      />
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             )}
@@ -453,7 +504,10 @@ export default function MemberKpiPage() {
             {(member?.trackEinheiten || member?.trackEmpfehlungen) && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Weitere KPIs</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-500" />
+                    <CardTitle className="text-base">Weitere KPIs</CardTitle>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -495,7 +549,10 @@ export default function MemberKpiPage() {
             {/* Feeling Score */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Wie fühlst du dich?</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-pink-500" />
+                  <CardTitle className="text-base">Wie fühlst du dich?</CardTitle>
+                </div>
                 <CardDescription>
                   Bewerte deine Woche auf einer Skala von 1 (schlecht) bis 10 (fantastisch)
                 </CardDescription>
@@ -510,10 +567,10 @@ export default function MemberKpiPage() {
                     step={1}
                     className="w-full"
                   />
-                  <div className="flex justify-between text-sm text-gray-600">
-                    <span>1 - Schlecht</span>
-                    <span className="text-2xl font-bold text-gray-900">{feelingScore}</span>
-                    <span>10 - Fantastisch</span>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>1</span>
+                    <span className="text-2xl font-bold text-foreground">{feelingScore}</span>
+                    <span>10</span>
                   </div>
                 </div>
               </CardContent>
@@ -522,7 +579,13 @@ export default function MemberKpiPage() {
             {/* Reflexion */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Reflexion</CardTitle>
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5 text-purple-500" />
+                  <CardTitle className="text-base">Reflexion</CardTitle>
+                </div>
+                <CardDescription>
+                  Nimm dir einen Moment, um über deine Woche nachzudenken
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
