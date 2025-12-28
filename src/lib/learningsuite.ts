@@ -26,29 +26,30 @@ interface LearningSuiteMember {
   lastLoginAt?: string;
 }
 
-// Raw API response for courses
+// Raw API response for courses - supports multiple field names
 interface LearningSuiteCourseRaw {
-  id: string;
-  sid?: string;
+  // ID fields
+  id?: string;
+  courseId?: string;
+  // Name fields
   name?: string;
   title?: string;
+  courseName?: string;
   summary?: string;
   description?: string;
-  // Progress fields - API may use different names
+  // Progress fields
   progress?: number;
   progressForCurrentMemberAccessibleContent?: number;
   progressShownToMember?: number;
   totalProgress?: number;
-  // Module info - may be directly on course
-  currentModule?: string | number;
-  completedLessons?: number;
-  totalLessons?: number;
+  // Access info
+  hasAccess?: boolean;
+  accessGiven?: string;
+  accessUntil?: string | null;
   // Activity
   lastVisit?: string | null;
   lastActivityAt?: string | null;
-  totalLearningTimeSeconds?: number;
   startDate?: string;
-  hasAccess?: boolean;
 }
 
 // Normalized course interface for internal use
@@ -65,16 +66,22 @@ interface LearningSuiteCourse {
 }
 
 interface LearningSuiteModule {
-  id: string;
-  title?: string;
+  // ID fields
+  id?: string;
+  moduleId?: string;
+  // Name fields
   name?: string;
-  position: number;
+  title?: string;
+  moduleName?: string;
+  // Position (may not be in API response)
+  position?: number;
   order?: number;
+  // Progress fields
+  progress?: number;
   isUnlocked?: boolean;
   isCompleted?: boolean;
   lessonsCompleted?: number;
   lessonsTotal?: number;
-  progress?: number;
 }
 
 interface ApiResponse<T> {
@@ -156,70 +163,44 @@ async function apiRequest<T>(
 // ============================================================================
 
 /**
- * Get member by email address
- * Tries multiple endpoint formats as LearningSuite API may vary
+ * Get user by email address
+ * Endpoint: GET /users?email={email}
  */
 export async function getMemberByEmail(
   email: string
 ): Promise<LearningSuiteMember | null> {
-  console.log(`[LearningSuite] Looking up member by email: ${email}`);
+  console.log(`[LearningSuite] Looking up user by email: ${email}`);
 
-  // Try 1: Direct email query parameter
-  let result = await apiRequest<LearningSuiteMember | { data: LearningSuiteMember } | { data: LearningSuiteMember[] } | LearningSuiteMember[]>(
-    `/members?email=${encodeURIComponent(email)}`
+  // Correct endpoint is /users not /members
+  const result = await apiRequest<LearningSuiteMember | { data: LearningSuiteMember } | LearningSuiteMember[]>(
+    `/users?email=${encodeURIComponent(email)}`
   );
 
-  console.log(`[LearningSuite] /members?email= response:`, JSON.stringify(result, null, 2));
+  console.log(`[LearningSuite] /users?email= response:`, JSON.stringify(result, null, 2));
 
   if (result.success && result.data) {
-    // Handle various response formats
     const data = result.data;
 
     // Format: { data: { id, email, ... } }
     if ('data' in data && data.data && !Array.isArray(data.data)) {
-      console.log(`[LearningSuite] Found member (nested object format)`);
+      console.log(`[LearningSuite] Found user (nested format): ${(data.data as LearningSuiteMember).id}`);
       return data.data as LearningSuiteMember;
-    }
-
-    // Format: { data: [{ id, email, ... }] }
-    if ('data' in data && Array.isArray(data.data) && data.data.length > 0) {
-      console.log(`[LearningSuite] Found member (nested array format)`);
-      return data.data[0] as LearningSuiteMember;
     }
 
     // Format: [{ id, email, ... }]
     if (Array.isArray(data) && data.length > 0) {
-      console.log(`[LearningSuite] Found member (array format)`);
-      return data[0] as LearningSuiteMember;
+      console.log(`[LearningSuite] Found user (array format): ${data[0].id}`);
+      return data[0];
     }
 
     // Format: { id, email, ... } directly
     if ('id' in data && 'email' in data) {
-      console.log(`[LearningSuite] Found member (direct object format)`);
+      console.log(`[LearningSuite] Found user (direct format): ${(data as LearningSuiteMember).id}`);
       return data as LearningSuiteMember;
     }
   }
 
-  // Try 2: Get all members and filter by email
-  console.log(`[LearningSuite] Trying to list all members and filter by email...`);
-  const listResult = await apiRequest<{ data: LearningSuiteMember[] } | LearningSuiteMember[]>(`/members`);
-  console.log(`[LearningSuite] /members response success: ${listResult.success}, has data: ${!!listResult.data}`);
-
-  if (listResult.success && listResult.data) {
-    const members = Array.isArray(listResult.data)
-      ? listResult.data
-      : (listResult.data as { data: LearningSuiteMember[] }).data || [];
-
-    console.log(`[LearningSuite] Total members in list: ${members.length}`);
-
-    const member = members.find(m => m.email?.toLowerCase() === email.toLowerCase());
-    if (member) {
-      console.log(`[LearningSuite] Found member by filtering: ${member.id}`);
-      return member;
-    }
-  }
-
-  console.log(`[LearningSuite] Member not found in LearningSuite: ${email}`);
+  console.log(`[LearningSuite] User not found: ${email}`);
   return null;
 }
 
@@ -243,39 +224,39 @@ export async function getMemberById(
  * Normalize raw course data from API to internal format
  */
 function normalizeCourse(raw: LearningSuiteCourseRaw): LearningSuiteCourse {
-  // Use progress field first, then fallbacks
-  const progress = raw.progress ?? raw.progressShownToMember ?? raw.totalProgress ?? raw.progressForCurrentMemberAccessibleContent ?? 0;
+  // Use progress field - API should return this directly now
+  const progress = raw.progress ?? raw.progressShownToMember ?? raw.totalProgress ?? 0;
 
   return {
-    id: raw.id,
-    title: raw.title ?? raw.name ?? "Unknown Course",
+    id: raw.courseId ?? raw.id ?? "",
+    title: raw.courseName ?? raw.title ?? raw.name ?? "Unknown Course",
     description: raw.description ?? raw.summary,
     progress: Math.round(progress),
-    completedLessons: raw.completedLessons ?? 0,
-    totalLessons: raw.totalLessons ?? 0,
-    currentModule: raw.currentModule,
+    completedLessons: 0,
+    totalLessons: 0,
     lastActivityAt: raw.lastActivityAt ?? raw.lastVisit ?? undefined,
     isCompleted: progress >= 100,
   };
 }
 
 /**
- * Get member's courses with progress
- * Endpoint: GET /members/{id}/courses
+ * Get user's courses with progress
+ * Endpoint: GET /users/{userId}/courses
  */
 export async function getMemberCourses(
-  memberId: string
+  userId: string
 ): Promise<LearningSuiteCourse[]> {
-  console.log(`[LearningSuite] Getting courses for member: ${memberId}`);
+  console.log(`[LearningSuite] Getting courses for user: ${userId}`);
 
+  // Correct endpoint is /users not /members
   const result = await apiRequest<{ data: LearningSuiteCourseRaw[] } | LearningSuiteCourseRaw[]>(
-    `/members/${memberId}/courses`
+    `/users/${userId}/courses`
   );
 
-  console.log(`[LearningSuite] /members/${memberId}/courses response:`, JSON.stringify(result, null, 2));
+  console.log(`[LearningSuite] /users/${userId}/courses response:`, JSON.stringify(result, null, 2));
 
   if (!result.success || !result.data) {
-    console.log(`[LearningSuite] No courses found for member`);
+    console.log(`[LearningSuite] No courses found for user`);
     return [];
   }
 
@@ -293,21 +274,21 @@ export async function getMemberCourses(
 }
 
 /**
- * Get detailed course info for a member
- * Endpoint: GET /members/{memberId}/courses/{courseId}
- * This may return more detailed progress info including currentModule
+ * Get detailed course info for a user
+ * Endpoint: GET /users/{userId}/courses/{courseId}
  */
 export async function getMemberCourseDetails(
-  memberId: string,
+  userId: string,
   courseId: string
 ): Promise<LearningSuiteCourse | null> {
-  console.log(`[LearningSuite] Getting course details: member=${memberId}, course=${courseId}`);
+  console.log(`[LearningSuite] Getting course details: user=${userId}, course=${courseId}`);
 
+  // Correct endpoint is /users not /members
   const result = await apiRequest<LearningSuiteCourseRaw | { data: LearningSuiteCourseRaw }>(
-    `/members/${memberId}/courses/${courseId}`
+    `/users/${userId}/courses/${courseId}`
   );
 
-  console.log(`[LearningSuite] /members/${memberId}/courses/${courseId} response:`, JSON.stringify(result, null, 2));
+  console.log(`[LearningSuite] /users/${userId}/courses/${courseId} response:`, JSON.stringify(result, null, 2));
 
   if (!result.success || !result.data) {
     console.log(`[LearningSuite] No course details found`);
@@ -318,28 +299,29 @@ export async function getMemberCourseDetails(
   const raw = 'data' in result.data && result.data.data ? result.data.data : result.data as LearningSuiteCourseRaw;
   const course = normalizeCourse(raw);
 
-  console.log(`[LearningSuite] Course details: progress=${course.progress}%, currentModule=${course.currentModule}`);
+  console.log(`[LearningSuite] Course details: progress=${course.progress}%`);
   return course;
 }
 
 /**
- * Get modules for a specific course and member
- * Endpoint: GET /courses/{courseId}/modules?memberId={memberId}
+ * Get modules for a specific course and user
+ * Endpoint: GET /courses/{courseId}/modules?userId={userId}
  */
 export async function getCourseModulesForMember(
   courseId: string,
-  memberId: string
+  userId: string
 ): Promise<LearningSuiteModule[]> {
-  console.log(`[LearningSuite] Getting modules for course: ${courseId}, member: ${memberId}`);
+  console.log(`[LearningSuite] Getting modules: course=${courseId}, user=${userId}`);
 
+  // Correct parameter is userId not memberId
   const result = await apiRequest<{ data: LearningSuiteModule[] } | LearningSuiteModule[]>(
-    `/courses/${courseId}/modules?memberId=${memberId}`
+    `/courses/${courseId}/modules?userId=${userId}`
   );
 
-  console.log(`[LearningSuite] /courses/${courseId}/modules response:`, JSON.stringify(result, null, 2));
+  console.log(`[LearningSuite] /courses/${courseId}/modules?userId= response:`, JSON.stringify(result, null, 2));
 
   if (!result.success || !result.data) {
-    console.log(`[LearningSuite] No modules found for course`);
+    console.log(`[LearningSuite] No modules found`);
     return [];
   }
 
@@ -348,9 +330,8 @@ export async function getCourseModulesForMember(
 
   // Log each module's progress
   modules.forEach((m, i) => {
-    const pos = m.position ?? m.order ?? i + 1;
-    const name = m.title ?? m.name ?? `Module ${pos}`;
-    console.log(`[LearningSuite] Module ${pos}: "${name}" - unlocked: ${m.isUnlocked}, completed: ${m.isCompleted}, progress: ${m.progress ?? 'N/A'}`);
+    const name = m.name ?? m.title ?? `Module ${i + 1}`;
+    console.log(`[LearningSuite] "${name}": ${m.progress ?? 0}% - unlocked: ${m.isUnlocked}, lessons: ${m.lessonsCompleted ?? '?'}/${m.lessonsTotal ?? '?'}`);
   });
 
   return modules;
@@ -361,65 +342,43 @@ export async function getCourseModulesForMember(
 // ============================================================================
 
 /**
- * Calculate current module based on course progress
- * Returns the highest module number that the user has started but not completed,
- * or the last completed module + 1
+ * Calculate current module based on module progress data
+ * Returns the position of the first module that is unlocked but not completed
  */
 function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
   if (modules.length === 0) {
-    console.log(`[LearningSuite] No modules found - cannot determine progress`);
+    console.log(`[LearningSuite] No modules found`);
     return null;
   }
 
-  // Check if we have ANY real progress data (not all undefined)
-  const hasRealProgressData = modules.some(m =>
-    m.isUnlocked !== undefined ||
-    m.isCompleted !== undefined ||
-    m.progress !== undefined
+  // Check if we have real progress data
+  const hasProgressData = modules.some(m =>
+    m.progress !== undefined || m.isUnlocked !== undefined
   );
 
-  if (!hasRealProgressData) {
-    console.log(`[LearningSuite] API returned modules but NO progress data - cannot determine current module`);
+  if (!hasProgressData) {
+    console.log(`[LearningSuite] No progress data in modules`);
     return null;
   }
 
-  // Normalize position - API might use 'position' or 'order' or just index
-  const normalizedModules = modules.map((m, index) => ({
-    ...m,
-    position: m.position ?? m.order ?? index + 1,
-    isUnlocked: m.isUnlocked ?? true, // Default to unlocked if not specified
-    isCompleted: m.isCompleted ?? (m.progress !== undefined && m.progress >= 100),
-  }));
+  // Find first module that is unlocked but not complete (progress < 100)
+  for (let i = 0; i < modules.length; i++) {
+    const m = modules[i];
+    const progress = m.progress ?? 0;
+    const isUnlocked = m.isUnlocked ?? true;
+    const isComplete = progress >= 100;
 
-  // Sort by position
-  const sortedModules = [...normalizedModules].sort((a, b) => a.position - b.position);
-
-  console.log(`[LearningSuite] Sorted modules: ${sortedModules.map(m => `${m.position}:${m.isCompleted ? 'done' : m.isUnlocked ? 'open' : 'locked'}`).join(', ')}`);
-
-  // Find the first unlocked but not completed module (current working module)
-  for (const module of sortedModules) {
-    if (module.isUnlocked && !module.isCompleted) {
-      console.log(`[LearningSuite] Found current module: ${module.position} (unlocked, not completed)`);
-      return module.position;
+    if (isUnlocked && !isComplete) {
+      const moduleNum = i + 1;
+      const name = m.moduleName ?? m.name ?? m.title ?? `Module ${moduleNum}`;
+      console.log(`[LearningSuite] Current module: #${moduleNum} "${name}" (${progress}%)`);
+      return moduleNum;
     }
   }
 
-  // If all modules are completed, return the last module position
-  const lastCompleted = sortedModules.filter(m => m.isCompleted).pop();
-  if (lastCompleted) {
-    console.log(`[LearningSuite] All modules completed, returning last: ${lastCompleted.position}`);
-    return lastCompleted.position;
-  }
-
-  // If we have modules but none are completed or in progress, user is at module 1
-  const firstModule = sortedModules[0];
-  if (firstModule) {
-    console.log(`[LearningSuite] No progress detected, user is at first module: ${firstModule.position}`);
-    return firstModule.position;
-  }
-
-  console.log(`[LearningSuite] Could not determine module progress`);
-  return null;
+  // All modules completed - return last one
+  console.log(`[LearningSuite] All modules completed`);
+  return modules.length;
 }
 
 /**
