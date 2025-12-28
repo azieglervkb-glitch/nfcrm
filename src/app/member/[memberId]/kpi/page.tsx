@@ -22,7 +22,7 @@ import {
   Home,
   Loader2,
   CheckCircle,
-  TrendingUp,
+  AlertCircle,
   Euro,
   Phone,
   Calendar,
@@ -86,7 +86,8 @@ export default function MemberKpiPage() {
 
   const [data, setData] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [feelingScore, setFeelingScore] = useState(5);
@@ -120,13 +121,12 @@ export default function MemberKpiPage() {
       if (response.ok) {
         const result = await response.json();
         setData(result);
-        // Check if already submitted this week
         if (result.currentWeek?.id) {
           setAlreadySubmitted(true);
         }
       }
-    } catch (error) {
-      console.error("Failed to fetch KPI data:", error);
+    } catch (err) {
+      console.error("Failed to fetch KPI data:", err);
     } finally {
       setLoading(false);
     }
@@ -134,7 +134,8 @@ export default function MemberKpiPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
+    setSubmitting(true);
+    setError(null);
 
     try {
       const response = await fetch(`/api/member/kpi/full`, {
@@ -169,14 +170,15 @@ export default function MemberKpiPage() {
       } else {
         throw new Error("Failed to save");
       }
-    } catch (error) {
+    } catch (err) {
+      setError("Beim Speichern ist ein Fehler aufgetreten.");
       toast({
         title: "Fehler",
         description: "Beim Speichern ist ein Fehler aufgetreten.",
         variant: "destructive",
       });
     } finally {
-      setSaving(false);
+      setSubmitting(false);
     }
   };
 
@@ -189,45 +191,88 @@ export default function MemberKpiPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+      <div className="min-h-screen flex items-center justify-center bg-muted/30">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   if (success || alreadySubmitted) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-lg shadow-lg border-0">
-          <CardContent className="pt-12 pb-10 px-8 text-center">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="h-10 w-10 text-green-600" />
+      <div className="min-h-screen bg-muted/30">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-8">
+                <img src="/nf-logo.png" alt="NF Mentoring" className="h-8 w-auto" />
+                <nav className="hidden md:flex items-center gap-1">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        item.href.includes("/kpi")
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">
-              {alreadySubmitted ? "Bereits eingereicht!" : "Vielen Dank!"}
-            </h2>
-            <p className="text-gray-600 mb-10 text-base leading-relaxed">
-              {alreadySubmitted ? (
-                <>
-                  Du hast deine KPIs für diese Woche bereits eingereicht.<br />
-                  Nächste Woche kannst du wieder tracken.
-                </>
-              ) : (
-                <>
-                  Deine KPIs wurden erfolgreich gespeichert.<br />
-                  Du erhältst in Kürze dein persönliches Feedback.
-                </>
-              )}
-            </p>
-            <div className="space-y-4 max-w-sm mx-auto">
-              <Link href={`/member/${memberId}`} className="block">
-                <Button className="w-full h-12 text-base font-semibold bg-red-600 hover:bg-red-700">
+          </div>
+        </header>
+
+        {/* Mobile Nav */}
+        <nav className="md:hidden bg-white border-b border-gray-200 sticky top-16 z-40">
+          <div className="flex items-center justify-around py-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium ${
+                  item.href.includes("/kpi") ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        <div className="flex items-center justify-center p-4 py-12">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6 text-center">
+              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">
+                {alreadySubmitted && !success ? "Bereits eingereicht!" : "Vielen Dank, " + data?.member?.vorname + "!"}
+              </h2>
+              <p className="text-muted-foreground mb-6">
+                {alreadySubmitted && !success ? (
+                  <>
+                    Du hast deine KPIs für diese Woche bereits eingereicht.<br />
+                    Nächste Woche kannst du wieder tracken.
+                  </>
+                ) : (
+                  <>
+                    Deine KPIs wurden erfolgreich gespeichert.<br />
+                    Du erhältst in Kürze dein persönliches Feedback.
+                  </>
+                )}
+              </p>
+              <Link href={`/member/${memberId}`}>
+                <Button className="w-full h-12">
                   Zurück zum Dashboard
                 </Button>
               </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
@@ -235,7 +280,7 @@ export default function MemberKpiPage() {
   const member = data?.member;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted/30">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -249,8 +294,8 @@ export default function MemberKpiPage() {
                     href={item.href}
                     className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                       item.href.includes("/kpi")
-                        ? "text-red-600 bg-red-50"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                        ? "text-primary bg-primary/10"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
                     }`}
                   >
                     <item.icon className="h-4 w-4" />
@@ -271,7 +316,7 @@ export default function MemberKpiPage() {
               key={item.href}
               href={item.href}
               className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium ${
-                item.href.includes("/kpi") ? "text-red-600" : "text-gray-600"
+                item.href.includes("/kpi") ? "text-primary" : "text-muted-foreground"
               }`}
             >
               <item.icon className="h-5 w-5" />
@@ -281,19 +326,37 @@ export default function MemberKpiPage() {
         </div>
       </nav>
 
-      {/* Content */}
-      <main className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="space-y-6">
+      {/* Content - Same styling as token form */}
+      <main className="py-6 px-4 sm:py-8">
+        <div className="max-w-lg mx-auto">
+          {/* Banner */}
+          <div className="rounded-xl overflow-hidden mb-6 shadow-lg">
+            <img
+              src="/kpiweeklytracking_banner.jpeg"
+              alt="NF Mentoring Weekly KPI-Tracking"
+              className="w-full h-auto object-cover"
+            />
+          </div>
+
           {/* Header */}
-          <div className="text-center">
-            <h1 className="text-xl sm:text-2xl font-bold">Dein Weekly KPI-Update</h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              Hallo {member?.vorname}! Trage deine Zahlen für diese Woche ein.
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-xl sm:text-2xl font-bold">
+              Hey {member?.vorname}!
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-base">
+              Zeit für dein Weekly Update – trage deine Zahlen für diese Woche ein.
             </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Umsatz */}
+            {error && (
+              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Umsatz (Required) */}
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -301,15 +364,19 @@ export default function MemberKpiPage() {
                   <CardTitle className="text-base">Umsatz</CardTitle>
                 </div>
                 <CardDescription>
-                  {member?.umsatzSollWoche && (
+                  {member?.umsatzSollWoche ? (
                     <>
                       Dein Wochenziel:{" "}
-                      {Number(member.umsatzSollWoche).toLocaleString("de-DE", {
-                        style: "currency",
-                        currency: "EUR",
-                        minimumFractionDigits: 0,
-                      })}
+                      <span className="font-semibold text-foreground">
+                        {Number(member.umsatzSollWoche).toLocaleString("de-DE", {
+                          style: "currency",
+                          currency: "EUR",
+                          minimumFractionDigits: 0,
+                        })}
+                      </span>
                     </>
+                  ) : (
+                    "Wie viel Umsatz hast du diese Woche gemacht?"
                   )}
                 </CardDescription>
               </CardHeader>
@@ -322,6 +389,7 @@ export default function MemberKpiPage() {
                     inputMode="decimal"
                     step="0.01"
                     className="h-12 text-lg"
+                    placeholder="0"
                     value={formValues.umsatzIst}
                     onChange={(e) => setFormValues({ ...formValues, umsatzIst: e.target.value })}
                     required
@@ -330,7 +398,7 @@ export default function MemberKpiPage() {
               </CardContent>
             </Card>
 
-            {/* Kontakte */}
+            {/* Kontakte Section */}
             {member?.trackKontakte && (
               <Card>
                 <CardHeader>
@@ -339,13 +407,15 @@ export default function MemberKpiPage() {
                     <CardTitle className="text-base">Kontakte</CardTitle>
                   </div>
                   <CardDescription>
-                    {member?.kontakteSoll && (
+                    {member?.kontakteSoll ? (
                       <>
                         Dein Wochenziel:{" "}
                         <span className="font-semibold text-foreground">
                           {member.kontakteSoll} Kontakte
                         </span>
                       </>
+                    ) : (
+                      "Wie viele Kontakte hast du diese Woche gemacht?"
                     )}
                   </CardDescription>
                 </CardHeader>
@@ -358,6 +428,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.kontakteIst}
                         onChange={(e) => setFormValues({ ...formValues, kontakteIst: e.target.value })}
                       />
@@ -370,6 +441,7 @@ export default function MemberKpiPage() {
                           type="number"
                           inputMode="numeric"
                           className="h-12"
+                          placeholder="0"
                           value={formValues.entscheiderIst}
                           onChange={(e) => setFormValues({ ...formValues, entscheiderIst: e.target.value })}
                         />
@@ -380,7 +452,7 @@ export default function MemberKpiPage() {
               </Card>
             )}
 
-            {/* Termine */}
+            {/* Termine Section */}
             {member?.trackTermine && (
               <Card>
                 <CardHeader>
@@ -389,13 +461,15 @@ export default function MemberKpiPage() {
                     <CardTitle className="text-base">Termine</CardTitle>
                   </div>
                   <CardDescription>
-                    {member?.termineVereinbartSoll && (
+                    {member?.termineVereinbartSoll ? (
                       <>
                         Dein Wochenziel:{" "}
                         <span className="font-semibold text-foreground">
                           {member.termineVereinbartSoll} Termine
                         </span>
                       </>
+                    ) : (
+                      "Wie viele Termine hattest du diese Woche?"
                     )}
                   </CardDescription>
                 </CardHeader>
@@ -408,6 +482,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.termineVereinbartIst}
                         onChange={(e) => setFormValues({ ...formValues, termineVereinbartIst: e.target.value })}
                       />
@@ -419,6 +494,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.termineStattgefundenIst}
                         onChange={(e) => setFormValues({ ...formValues, termineStattgefundenIst: e.target.value })}
                       />
@@ -432,6 +508,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.termineErstIst}
                         onChange={(e) => setFormValues({ ...formValues, termineErstIst: e.target.value })}
                       />
@@ -443,6 +520,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.termineFolgeIst}
                         onChange={(e) => setFormValues({ ...formValues, termineFolgeIst: e.target.value })}
                       />
@@ -452,7 +530,7 @@ export default function MemberKpiPage() {
               </Card>
             )}
 
-            {/* Abschlüsse */}
+            {/* Abschlüsse Section */}
             {member?.trackAbschluesse && (
               <Card>
                 <CardHeader>
@@ -461,13 +539,15 @@ export default function MemberKpiPage() {
                     <CardTitle className="text-base">Abschlüsse</CardTitle>
                   </div>
                   <CardDescription>
-                    {member?.termineAbschlussSoll && (
+                    {member?.termineAbschlussSoll ? (
                       <>
                         Dein Wochenziel:{" "}
                         <span className="font-semibold text-foreground">
                           {member.termineAbschlussSoll} Abschluss-Termine
                         </span>
                       </>
+                    ) : (
+                      "Wie viele Abschluss-Termine hattest du?"
                     )}
                   </CardDescription>
                 </CardHeader>
@@ -480,6 +560,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.termineAbschlussIst}
                         onChange={(e) => setFormValues({ ...formValues, termineAbschlussIst: e.target.value })}
                       />
@@ -491,6 +572,7 @@ export default function MemberKpiPage() {
                         type="number"
                         inputMode="numeric"
                         className="h-12"
+                        placeholder="0"
                         value={formValues.termineNoshowIst}
                         onChange={(e) => setFormValues({ ...formValues, termineNoshowIst: e.target.value })}
                       />
@@ -514,13 +596,19 @@ export default function MemberKpiPage() {
                     {member?.trackEinheiten && (
                       <div className="space-y-2">
                         <Label htmlFor="einheitenIst">
-                          Einheiten {member?.einheitenSoll ? `(Ziel: ${member.einheitenSoll})` : ""}
+                          Einheiten
+                          {member?.einheitenSoll && (
+                            <span className="text-muted-foreground font-normal ml-1">
+                              (Ziel: {member.einheitenSoll})
+                            </span>
+                          )}
                         </Label>
                         <Input
                           id="einheitenIst"
                           type="number"
                           inputMode="numeric"
                           className="h-12"
+                          placeholder="0"
                           value={formValues.einheitenIst}
                           onChange={(e) => setFormValues({ ...formValues, einheitenIst: e.target.value })}
                         />
@@ -529,13 +617,22 @@ export default function MemberKpiPage() {
                     {member?.trackEmpfehlungen && (
                       <div className="space-y-2">
                         <Label htmlFor="empfehlungenIst">
-                          Empfehlungen {member?.empfehlungenSoll ? `(Ziel: ${member.empfehlungenSoll})` : ""}
+                          <div className="flex items-center gap-1">
+                            <Gift className="h-4 w-4 text-amber-500" />
+                            Empfehlungen
+                            {member?.empfehlungenSoll && (
+                              <span className="text-muted-foreground font-normal ml-1">
+                                (Ziel: {member.empfehlungenSoll})
+                              </span>
+                            )}
+                          </div>
                         </Label>
                         <Input
                           id="empfehlungenIst"
                           type="number"
                           inputMode="numeric"
                           className="h-12"
+                          placeholder="0"
                           value={formValues.empfehlungenIst}
                           onChange={(e) => setFormValues({ ...formValues, empfehlungenIst: e.target.value })}
                         />
@@ -589,46 +686,45 @@ export default function MemberKpiPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="heldentat">Was war deine Heldentat diese Woche?</Label>
+                  <Label htmlFor="heldentat">
+                    Was war deine Heldentat diese Woche?
+                  </Label>
                   <Textarea
                     id="heldentat"
                     placeholder="Erzähl uns von deinem größten Erfolg..."
                     value={formValues.heldentat}
                     onChange={(e) => setFormValues({ ...formValues, heldentat: e.target.value })}
-                    className="min-h-[100px]"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="blockiert">Was hat dich diese Woche blockiert?</Label>
+                  <Label htmlFor="blockiert">
+                    Was hat dich diese Woche blockiert?
+                  </Label>
                   <Textarea
                     id="blockiert"
                     placeholder="Gab es Herausforderungen oder Hindernisse?"
                     value={formValues.blockiert}
                     onChange={(e) => setFormValues({ ...formValues, blockiert: e.target.value })}
-                    className="min-h-[100px]"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="herausforderung">Was ist deine größte Herausforderung für nächste Woche?</Label>
+                  <Label htmlFor="herausforderung">
+                    Was ist deine größte Herausforderung für nächste Woche?
+                  </Label>
                   <Textarea
                     id="herausforderung"
                     placeholder="Worauf möchtest du dich fokussieren?"
                     value={formValues.herausforderung}
                     onChange={(e) => setFormValues({ ...formValues, herausforderung: e.target.value })}
-                    className="min-h-[100px]"
                   />
                 </div>
               </CardContent>
             </Card>
 
-            <Button
-              type="submit"
-              className="w-full h-12 text-base bg-red-600 hover:bg-red-700"
-              disabled={saving}
-            >
-              {saving ? (
+            <Button type="submit" className="w-full h-12 text-base" disabled={submitting}>
+              {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Wird gespeichert...
@@ -640,7 +736,7 @@ export default function MemberKpiPage() {
           </form>
 
           {/* History */}
-          <Card>
+          <Card className="mt-8">
             <CardHeader>
               <CardTitle>Dein KPI-Verlauf</CardTitle>
               <CardDescription>Deine vergangenen Wochen im Überblick</CardDescription>
@@ -651,11 +747,11 @@ export default function MemberKpiPage() {
                   {data.history.map((week, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                      className="flex items-center justify-between p-4 bg-muted rounded-lg"
                     >
                       <div>
                         <p className="font-medium">KW {week.weekNumber}</p>
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-muted-foreground">
                           {new Date(week.weekStart).toLocaleDateString("de-DE")}
                         </p>
                       </div>
@@ -670,7 +766,7 @@ export default function MemberKpiPage() {
                           </span>
                         )}
                         {week.feelingScore && (
-                          <span className="text-lg font-bold text-gray-700">
+                          <span className="text-lg font-bold text-muted-foreground">
                             {week.feelingScore}/10
                           </span>
                         )}
@@ -680,9 +776,9 @@ export default function MemberKpiPage() {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <BarChart3 className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-600 font-medium">Noch kein Verlauf vorhanden</p>
-                  <p className="text-sm text-gray-500 mt-1">
+                  <BarChart3 className="h-12 w-12 text-muted-foreground/30 mx-auto mb-3" />
+                  <p className="text-muted-foreground font-medium">Noch kein Verlauf vorhanden</p>
+                  <p className="text-sm text-muted-foreground mt-1">
                     Du hast diese Woche das erste Mal getrackt.<br />
                     Nächste Woche siehst du hier deinen Verlauf.
                   </p>
