@@ -10,7 +10,7 @@ const LEARNINGSUITE_API_BASE = "https://api.learningsuite.io/api/v1";
 const LEARNINGSUITE_API_KEY = process.env.LEARNINGSUITE_API_KEY || "";
 
 // ============================================================================
-// Types
+// Types - Updated to match actual API response format
 // ============================================================================
 
 interface LearningSuiteMember {
@@ -18,11 +18,30 @@ interface LearningSuiteMember {
   email: string;
   firstName?: string;
   lastName?: string;
-  isActive: boolean;
+  fullName?: string;
+  enabled?: boolean;
+  isActive?: boolean;
   createdAt: string;
+  lastLogin?: string;
   lastLoginAt?: string;
 }
 
+// Raw API response for courses
+interface LearningSuiteCourseRaw {
+  id: string;
+  sid?: string;
+  name: string;
+  summary?: string;
+  progressForCurrentMemberAccessibleContent?: number;
+  progressShownToMember?: number;
+  totalProgress?: number;
+  lastVisit?: string | null;
+  totalLearningTimeSeconds?: number;
+  startDate?: string;
+  hasAccess?: boolean;
+}
+
+// Normalized course interface for internal use
 interface LearningSuiteCourse {
   id: string;
   title: string;
@@ -36,12 +55,15 @@ interface LearningSuiteCourse {
 
 interface LearningSuiteModule {
   id: string;
-  title: string;
+  title?: string;
+  name?: string;
   position: number;
-  isUnlocked: boolean;
-  isCompleted: boolean;
-  lessonsCompleted: number;
-  lessonsTotal: number;
+  order?: number;
+  isUnlocked?: boolean;
+  isCompleted?: boolean;
+  lessonsCompleted?: number;
+  lessonsTotal?: number;
+  progress?: number;
 }
 
 interface ApiResponse<T> {
@@ -207,6 +229,25 @@ export async function getMemberById(
 }
 
 /**
+ * Normalize raw course data from API to internal format
+ */
+function normalizeCourse(raw: LearningSuiteCourseRaw): LearningSuiteCourse {
+  // Use progressShownToMember or totalProgress, whichever is available
+  const progress = raw.progressShownToMember ?? raw.totalProgress ?? raw.progressForCurrentMemberAccessibleContent ?? 0;
+
+  return {
+    id: raw.id,
+    title: raw.name,
+    description: raw.summary,
+    progress: Math.round(progress),
+    completedLessons: 0, // Not provided by API
+    totalLessons: 0, // Not provided by API
+    lastActivityAt: raw.lastVisit ?? undefined,
+    isCompleted: progress >= 100,
+  };
+}
+
+/**
  * Get member's courses with progress
  * Endpoint: GET /members/{id}/courses
  */
@@ -215,7 +256,7 @@ export async function getMemberCourses(
 ): Promise<LearningSuiteCourse[]> {
   console.log(`[LearningSuite] Getting courses for member: ${memberId}`);
 
-  const result = await apiRequest<{ data: LearningSuiteCourse[] } | LearningSuiteCourse[]>(
+  const result = await apiRequest<{ data: LearningSuiteCourseRaw[] } | LearningSuiteCourseRaw[]>(
     `/members/${memberId}/courses`
   );
 
@@ -227,8 +268,15 @@ export async function getMemberCourses(
   }
 
   // Handle both array and { data: [...] } response formats
-  const courses = Array.isArray(result.data) ? result.data : result.data.data || [];
-  console.log(`[LearningSuite] Found ${courses.length} courses`);
+  const rawCourses = Array.isArray(result.data) ? result.data : result.data.data || [];
+  console.log(`[LearningSuite] Found ${rawCourses.length} courses`);
+
+  // Normalize to internal format
+  const courses = rawCourses.map(normalizeCourse);
+
+  // Log normalized progress
+  courses.forEach(c => console.log(`[LearningSuite] Course "${c.title}": ${c.progress}% progress`));
+
   return courses;
 }
 
@@ -240,15 +288,29 @@ export async function getCourseModulesForMember(
   courseId: string,
   memberId: string
 ): Promise<LearningSuiteModule[]> {
+  console.log(`[LearningSuite] Getting modules for course: ${courseId}, member: ${memberId}`);
+
   const result = await apiRequest<{ data: LearningSuiteModule[] } | LearningSuiteModule[]>(
     `/courses/${courseId}/modules?memberId=${memberId}`
   );
 
+  console.log(`[LearningSuite] /courses/${courseId}/modules response:`, JSON.stringify(result, null, 2));
+
   if (!result.success || !result.data) {
+    console.log(`[LearningSuite] No modules found for course`);
     return [];
   }
 
   const modules = Array.isArray(result.data) ? result.data : result.data.data || [];
+  console.log(`[LearningSuite] Found ${modules.length} modules`);
+
+  // Log each module's progress
+  modules.forEach((m, i) => {
+    const pos = m.position ?? m.order ?? i + 1;
+    const name = m.title ?? m.name ?? `Module ${pos}`;
+    console.log(`[LearningSuite] Module ${pos}: "${name}" - unlocked: ${m.isUnlocked}, completed: ${m.isCompleted}, progress: ${m.progress ?? 'N/A'}`);
+  });
+
   return modules;
 }
 
@@ -262,14 +324,28 @@ export async function getCourseModulesForMember(
  * or the last completed module + 1
  */
 function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
-  if (modules.length === 0) return null;
+  if (modules.length === 0) {
+    console.log(`[LearningSuite] No modules to calculate from, defaulting to 1`);
+    return 1;
+  }
+
+  // Normalize position - API might use 'position' or 'order' or just index
+  const normalizedModules = modules.map((m, index) => ({
+    ...m,
+    position: m.position ?? m.order ?? index + 1,
+    isUnlocked: m.isUnlocked ?? true, // Default to unlocked if not specified
+    isCompleted: m.isCompleted ?? (m.progress !== undefined && m.progress >= 100),
+  }));
 
   // Sort by position
-  const sortedModules = [...modules].sort((a, b) => a.position - b.position);
+  const sortedModules = [...normalizedModules].sort((a, b) => a.position - b.position);
 
-  // Find the first unlocked but not completed module
+  console.log(`[LearningSuite] Sorted modules: ${sortedModules.map(m => `${m.position}:${m.isCompleted ? 'done' : m.isUnlocked ? 'open' : 'locked'}`).join(', ')}`);
+
+  // Find the first unlocked but not completed module (current working module)
   for (const module of sortedModules) {
     if (module.isUnlocked && !module.isCompleted) {
+      console.log(`[LearningSuite] Found current module: ${module.position} (unlocked, not completed)`);
       return module.position;
     }
   }
@@ -277,10 +353,12 @@ function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
   // If all modules are completed, return the last module position
   const lastCompleted = sortedModules.filter(m => m.isCompleted).pop();
   if (lastCompleted) {
+    console.log(`[LearningSuite] All modules completed, returning last: ${lastCompleted.position}`);
     return lastCompleted.position;
   }
 
   // Default to first module
+  console.log(`[LearningSuite] No progress detected, defaulting to module 1`);
   return 1;
 }
 
@@ -291,29 +369,45 @@ function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
 export async function getMemberProgressByEmail(
   email: string
 ): Promise<MemberProgress | null> {
+  console.log(`[LearningSuite] ===== Getting progress for: ${email} =====`);
+
   // Step 1: Get member by email
   const member = await getMemberByEmail(email);
   if (!member) {
+    console.log(`[LearningSuite] Member not found, aborting`);
     return null;
   }
 
+  console.log(`[LearningSuite] Found member: ${member.id}`);
+
   // Step 2: Get member's courses
   const courses = await getMemberCourses(member.id);
+  console.log(`[LearningSuite] Got ${courses.length} courses`);
 
-  // Step 3: Determine current module from the primary/first course
+  // Step 3: Determine current module from the primary course (NF Mentoring)
   let currentModule: number | null = null;
+  let modules: LearningSuiteModule[] = [];
 
   if (courses.length > 0) {
-    // Get modules for the first/primary course
-    const primaryCourse = courses[0];
-    const modules = await getCourseModulesForMember(primaryCourse.id, member.id);
+    // Find "Das NF Mentoring" course, or fall back to first course
+    const nfMentoringCourse = courses.find(c => c.title.includes("NF Mentoring")) || courses[0];
+    console.log(`[LearningSuite] Using course for module detection: "${nfMentoringCourse.title}" (${nfMentoringCourse.id})`);
+
+    // Get modules for the primary course
+    modules = await getCourseModulesForMember(nfMentoringCourse.id, member.id);
+    console.log(`[LearningSuite] Got ${modules.length} modules from course`);
+
     currentModule = calculateCurrentModule(modules);
+    console.log(`[LearningSuite] Calculated current module: ${currentModule}`);
   }
 
   // Calculate total progress across all courses
   const totalProgress = courses.length > 0
     ? Math.round(courses.reduce((sum, c) => sum + (c.progress || 0), 0) / courses.length)
     : 0;
+
+  console.log(`[LearningSuite] Total progress: ${totalProgress}%`);
+  console.log(`[LearningSuite] ===== Progress sync complete =====`);
 
   return {
     memberId: member.id,

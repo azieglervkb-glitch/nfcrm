@@ -364,13 +364,7 @@ export default async function MemberDetailPage({
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Aktuelles Modul</span>
                   <span className="text-sm font-medium text-primary">
-                    {member.currentModule ? `Modul ${member.currentModule}` : "—"}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">Fortschritt</span>
-                  <span className="text-sm font-medium">
-                    {getModuleName(member.currentModule)}
+                    {member.currentModule ? getModuleName(member.currentModule) : "—"}
                   </span>
                 </div>
                 {member.learningSuiteLastSync && (
@@ -383,8 +377,10 @@ export default async function MemberDetailPage({
                 )}
                 {member.learningSuiteUserId && (
                   <div className="pt-2 border-t">
-                    <span className="text-xs text-muted-foreground">
-                      LS-ID: {member.learningSuiteUserId}
+                    <span className="text-xs text-muted-foreground font-mono">
+                      LS-ID: {member.learningSuiteUserId.length > 12
+                        ? `${member.learningSuiteUserId.substring(0, 12)}...`
+                        : member.learningSuiteUserId}
                     </span>
                   </div>
                 )}
