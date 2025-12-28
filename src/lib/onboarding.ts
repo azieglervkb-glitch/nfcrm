@@ -4,9 +4,10 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { sendOnboardingInviteEmail, sendOnboardingReminderEmail } from "@/lib/email";
+import { sendEmail, wrapEmailTemplate, renderTemplate as renderEmailTemplate } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
-import { generateFormUrl } from "@/lib/app-url";
+import { generateFormUrl, getAppUrl } from "@/lib/app-url";
+import { renderTemplate } from "@/lib/templates";
 import { randomBytes } from "crypto";
 
 interface MemberForOnboarding {
@@ -39,23 +40,61 @@ export async function sendOnboardingNotification(
 
   const onboardingUrl = generateFormUrl("onboarding", token);
 
-  // Send Email using template
-  const emailSent = await sendOnboardingInviteEmail(member, onboardingUrl);
+  // Load and render email template
+  const emailTemplate = await renderTemplate("onboarding_invite", {
+    vorname: member.vorname,
+    onboardingLink: onboardingUrl,
+  });
 
-  // Send WhatsApp (if phone number available)
+  // Send Email
+  let emailSent = false;
+  if (emailTemplate) {
+    const html = wrapEmailTemplate(emailTemplate.content);
+    const finalHtml = renderEmailTemplate(html, { appUrl: getAppUrl(), logoUrl: `${getAppUrl()}/logo.png` });
+    
+    emailSent = await sendEmail({
+      to: member.email,
+      subject: emailTemplate.subject || "Willkommen beim NF Mentoring!",
+      html: finalHtml,
+    });
+
+    if (emailSent) {
+      await prisma.communicationLog.create({
+        data: {
+          memberId: member.id,
+          channel: "EMAIL",
+          type: "MANUAL",
+          subject: emailTemplate.subject || "Willkommen beim NF Mentoring!",
+          content: "Onboarding Invite",
+          recipient: member.email,
+          sent: true,
+          sentAt: new Date(),
+        },
+      });
+    }
+  }
+
+  // Load and send WhatsApp template (if phone number available)
   let whatsappSent = false;
   if (member.whatsappNummer) {
-    try {
-      await sendWhatsApp({
-        phone: member.whatsappNummer,
-        message: `Hey ${member.vorname}! 👋\n\nWillkommen beim NF Mentoring! 🚀\n\nBitte fülle kurz dein Onboarding aus, damit wir dich besser kennenlernen können:\n\n${onboardingUrl}\n\nDauert nur 2 Minuten! 💪`,
-        memberId: member.id,
-        type: "MANUAL",
-        ruleId: "ONBOARDING",
-      });
-      whatsappSent = true;
-    } catch (error) {
-      console.error(`Failed to send onboarding WhatsApp to ${member.whatsappNummer}:`, error);
+    const whatsappTemplate = await renderTemplate("whatsapp_onboarding_invite", {
+      vorname: member.vorname,
+      onboardingLink: onboardingUrl,
+    });
+
+    if (whatsappTemplate) {
+      try {
+        await sendWhatsApp({
+          phone: member.whatsappNummer,
+          message: whatsappTemplate.content,
+          memberId: member.id,
+          type: "MANUAL",
+          ruleId: "ONBOARDING",
+        });
+        whatsappSent = true;
+      } catch (error) {
+        console.error(`Failed to send onboarding WhatsApp to ${member.whatsappNummer}:`, error);
+      }
     }
   }
 
@@ -191,20 +230,57 @@ export async function sendOnboardingReminders(): Promise<{
       const onboardingUrl = generateFormUrl("onboarding", formToken.token);
       const reminderNumber = member.onboardingReminderCount + 1;
 
-      // Send reminder email using template
-      await sendOnboardingReminderEmail(member, onboardingUrl, reminderNumber);
+      // Load and render email template
+      const emailTemplate = await renderTemplate("onboarding_reminder", {
+        vorname: member.vorname,
+        onboardingLink: onboardingUrl,
+      });
 
-      // Send WhatsApp reminder
-      if (member.whatsappNummer) {
-        await sendWhatsApp({
-          phone: member.whatsappNummer,
-          message: `Hey ${member.vorname}! 👋\n\nKurze Erinnerung: Du hast dein Onboarding noch nicht abgeschlossen. Dauert nur 2 Min:\n\n${onboardingUrl}`,
-          memberId: member.id,
-          type: "REMINDER",
-          ruleId: "ONBOARDING_REMINDER",
-        }).catch((error) => {
-          console.error(`Failed to send onboarding reminder WhatsApp:`, error);
+      // Send reminder email
+      if (emailTemplate) {
+        const html = wrapEmailTemplate(emailTemplate.content);
+        const finalHtml = renderEmailTemplate(html, { appUrl: getAppUrl(), logoUrl: `${getAppUrl()}/logo.png` });
+        
+        const emailSent = await sendEmail({
+          to: member.email,
+          subject: emailTemplate.subject || "Erinnerung: Dein NF Mentoring Onboarding",
+          html: finalHtml,
         });
+
+        if (emailSent) {
+          await prisma.communicationLog.create({
+            data: {
+              memberId: member.id,
+              channel: "EMAIL",
+              type: "REMINDER",
+              subject: emailTemplate.subject || "Erinnerung: Dein NF Mentoring Onboarding",
+              content: "Onboarding Reminder",
+              recipient: member.email,
+              sent: true,
+              sentAt: new Date(),
+            },
+          });
+        }
+      }
+
+      // Load and send WhatsApp reminder
+      if (member.whatsappNummer) {
+        const whatsappTemplate = await renderTemplate("whatsapp_onboarding_reminder", {
+          vorname: member.vorname,
+          onboardingLink: onboardingUrl,
+        });
+
+        if (whatsappTemplate) {
+          await sendWhatsApp({
+            phone: member.whatsappNummer,
+            message: whatsappTemplate.content,
+            memberId: member.id,
+            type: "REMINDER",
+            ruleId: "ONBOARDING_REMINDER",
+          }).catch((error) => {
+            console.error(`Failed to send onboarding reminder WhatsApp:`, error);
+          });
+        }
       }
 
       // Update member
