@@ -1,0 +1,17 @@
+{
+  "name": "NF CRM - NF Mentoring",
+  "short_name": "NF CRM",
+  "description": "CRM-Plattform für das NF Mentoring",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ae1d2b",
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
