@@ -13,13 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Loader2, CheckCircle, AlertCircle, X, Trophy, DollarSign, Phone, Calendar, TrendingUp, Handshake, Target, Award, Lightbulb, Settings } from "lucide-react";
 
 const kpiSetupSchema = z.object({
-  // Persönliche Daten
-  id: z.string().optional(),
-  vorname: z.string().min(1, "Vorname ist erforderlich"),
-  nachname: z.string().min(1, "Nachname ist erforderlich"),
-  email: z.string().email("Ungültige E-Mail-Adresse"),
-  telefon: z.string().optional(),
-  
   // Ziel
   umsatzSollMonat: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
   
@@ -112,11 +105,6 @@ export default function KpiSetupFormPage({
 
         // Pre-fill data if available
         if (data.member) {
-          if (data.member.vorname) setValue("vorname", data.member.vorname);
-          if (data.member.nachname) setValue("nachname", data.member.nachname);
-          if (data.member.email) setValue("email", data.member.email);
-          if (data.member.telefon) setValue("telefon", data.member.telefon);
-          if (data.member.id) setValue("id", data.member.id);
           if (data.member.zielMonatsumsatz) {
             setValue("umsatzSollMonat", Number(data.member.zielMonatsumsatz));
           }
@@ -249,72 +237,24 @@ export default function KpiSetupFormPage({
             </div>
           )}
 
-          {/* Persönliche Daten */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
-                <CardTitle>Persönliche Daten</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="id">ID</Label>
-                <Input id="id" {...register("id")} placeholder="ID" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="vorname">Vorname</Label>
-                <Input
-                  id="vorname"
-                  {...register("vorname")}
-                  placeholder="Hilfetext hinzufügen"
-                  className={errors.vorname ? "border-destructive" : ""}
-                />
-                {errors.vorname && (
-                  <p className="text-xs text-destructive">{errors.vorname.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="nachname">
-                  Nachname <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nachname"
-                  {...register("nachname")}
-                  placeholder="Hilfetext hinzufügen"
-                  className={errors.nachname ? "border-destructive" : ""}
-                />
-                {errors.nachname && (
-                  <p className="text-xs text-destructive">{errors.nachname.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-Mail-Adresse</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  {...register("email")}
-                  placeholder="Hilfetext hinzufügen"
-                  className={errors.email ? "border-destructive" : ""}
-                />
-                {errors.email && (
-                  <p className="text-xs text-destructive">{errors.email.message}</p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefon">Telefonnummer</Label>
-                <p className="text-xs text-muted-foreground">
-                  Wird benötigt, um mit dir ins 1 zu 1 Sparring zu gehen. Bitte achte darauf,
-                  dass du eine WhatsApp fähige Nummer im Format +49XXXXXXXXXX angibst.
-                </p>
-                <Input
-                  id="telefon"
-                  {...register("telefon")}
-                  placeholder="+49XXXXXXXXXX"
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Member Info (nur Anzeige, keine Eingabe) */}
+          {memberData && (
+            <Card className="bg-muted/50">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Trophy className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-lg">
+                      {memberData.vorname} {memberData.nachname}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{memberData.email}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Dein Ziel */}
           <Card>

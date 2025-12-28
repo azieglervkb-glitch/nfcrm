@@ -274,38 +274,36 @@ export async function sendWeeklyFeedbackEmail(
 
 /**
  * Welcome Email - Sent after successful onboarding
+ * NOTE: This does NOT include KPI setup - that comes later when KPI tracking is activated
  */
 export async function sendWelcomeEmail(
-  member: { id: string; email: string; vorname: string; nachname: string },
-  kpiSetupLink: string
+  member: { id: string; email: string; vorname: string; nachname: string }
 ): Promise<boolean> {
   const content = `
     <div class="content">
       <p class="greeting">Willkommen im NF Mentoring, ${member.vorname}! 🚀</p>
 
       <p class="text">
-        Wir freuen uns riesig, dich an Bord zu haben! Du hast den ersten wichtigen Schritt gemacht
-        – jetzt geht's richtig los.
+        Wir freuen uns riesig, dich an Bord zu haben! Du hast dein Onboarding erfolgreich abgeschlossen
+        – jetzt bist du offiziell Teil der NF Mentoring Familie!
       </p>
 
       <div class="highlight-box">
         <p style="margin: 0;">
-          <strong>Dein nächster Schritt:</strong><br>
-          Richte dein persönliches KPI-Tracking ein, damit wir deine Fortschritte optimal begleiten können.
+          <strong>Was passiert jetzt?</strong><br>
+          Starte mit deinen Trainings auf der LearninSuite Plattform. 
+          Sobald du bereit bist, aktivieren wir dein persönliches KPI-Tracking, 
+          um deine Fortschritte optimal zu begleiten.
         </p>
-      </div>
-
-      <div style="text-align: center;">
-        <a href="${kpiSetupLink}" class="button">KPI-Tracking einrichten →</a>
       </div>
 
       <div class="divider"></div>
 
       <p class="text"><strong>Was dich erwartet:</strong></p>
       <ul style="color: #4a4a4a;">
-        <li>Wöchentliches KPI-Tracking mit persönlichem Feedback</li>
+        <li>Hochwertige Trainings und Ressourcen</li>
         <li>Regelmäßige Check-ins mit deinem Coach</li>
-        <li>Zugang zu exklusiven Ressourcen und Trainings</li>
+        <li>Persönliches KPI-Tracking (wird später aktiviert)</li>
         <li>Eine Community von Gleichgesinnten</li>
       </ul>
 
