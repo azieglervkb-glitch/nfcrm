@@ -41,10 +41,14 @@ interface KpiWeek {
   entscheiderIst: number | null;
   termineVereinbartIst: number | null;
   termineStattgefundenIst: number | null;
+  termineErstIst: number | null;
+  termineFolgeIst: number | null;
   termineAbschlussIst: number | null;
   termineNoshowIst: number | null;
   einheitenIst: number | null;
   empfehlungenIst: number | null;
+  konvertierungTerminIst: number | null;
+  abschlussquoteIst: number | null;
   feelingScore: number | null;
   heldentat: string | null;
   blockiert: string | null;
@@ -262,6 +266,45 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                       </div>
                     )}
 
+                    {/* Ersttermine */}
+                    {memberTracking.trackTermine && selectedKpi.termineErstIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Ersttermine
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {formatNumber(selectedKpi.termineErstIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Folgetermine */}
+                    {memberTracking.trackTermine && selectedKpi.termineFolgeIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Folgetermine
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {formatNumber(selectedKpi.termineFolgeIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Konvertierung (calculated) */}
+                    {selectedKpi.konvertierungTerminIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Konvertierung
+                        </p>
+                        <p className="text-lg font-semibold text-purple-600">
+                          {Number(selectedKpi.konvertierungTerminIst).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Kontakt → Termin
+                        </p>
+                      </div>
+                    )}
+
                     {/* Termine Abschluss */}
                     {memberTracking.trackAbschluesse && (
                       <div className="p-3 rounded-lg bg-muted/50">
@@ -287,6 +330,21 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-lg font-semibold text-orange-600">
                           {formatNumber(selectedKpi.termineNoshowIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Abschlussquote (calculated) */}
+                    {selectedKpi.abschlussquoteIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Abschlussquote
+                        </p>
+                        <p className="text-lg font-semibold text-green-600">
+                          {Number(selectedKpi.abschlussquoteIst).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Termin → Abschluss
                         </p>
                       </div>
                     )}

@@ -90,6 +90,8 @@ export default function MemberKpiPage() {
     entscheiderIst: "",
     termineVereinbartIst: "",
     termineStattgefundenIst: "",
+    termineErstIst: "",
+    termineFolgeIst: "",
     termineAbschlussIst: "",
     termineNoshowIst: "",
     einheitenIst: "",
@@ -138,6 +140,8 @@ export default function MemberKpiPage() {
           entscheiderIst: formValues.entscheiderIst ? parseInt(formValues.entscheiderIst) : null,
           termineVereinbartIst: formValues.termineVereinbartIst ? parseInt(formValues.termineVereinbartIst) : null,
           termineStattgefundenIst: formValues.termineStattgefundenIst ? parseInt(formValues.termineStattgefundenIst) : null,
+          termineErstIst: formValues.termineErstIst ? parseInt(formValues.termineErstIst) : null,
+          termineFolgeIst: formValues.termineFolgeIst ? parseInt(formValues.termineFolgeIst) : null,
           termineAbschlussIst: formValues.termineAbschlussIst ? parseInt(formValues.termineAbschlussIst) : null,
           termineNoshowIst: formValues.termineNoshowIst ? parseInt(formValues.termineNoshowIst) : null,
           einheitenIst: formValues.einheitenIst ? parseInt(formValues.einheitenIst) : null,
@@ -357,34 +361,60 @@ export default function MemberKpiPage() {
                   )}
 
                   {member?.trackTermine && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="termineVereinbartIst">
-                          Termine vereinbart {member?.termineVereinbartSoll ? `(Ziel: ${member.termineVereinbartSoll})` : ""}
-                        </Label>
-                        <Input
-                          id="termineVereinbartIst"
-                          type="number"
-                          inputMode="numeric"
-                          className="h-12"
-                          value={formValues.termineVereinbartIst}
-                          onChange={(e) => setFormValues({ ...formValues, termineVereinbartIst: e.target.value })}
-                        />
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="termineVereinbartIst">
+                            Termine vereinbart {member?.termineVereinbartSoll ? `(Ziel: ${member.termineVereinbartSoll})` : ""}
+                          </Label>
+                          <Input
+                            id="termineVereinbartIst"
+                            type="number"
+                            inputMode="numeric"
+                            className="h-12"
+                            value={formValues.termineVereinbartIst}
+                            onChange={(e) => setFormValues({ ...formValues, termineVereinbartIst: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="termineStattgefundenIst">
+                            Termine stattgefunden {member?.termineStattgefundenSoll ? `(Ziel: ${member.termineStattgefundenSoll})` : ""}
+                          </Label>
+                          <Input
+                            id="termineStattgefundenIst"
+                            type="number"
+                            inputMode="numeric"
+                            className="h-12"
+                            value={formValues.termineStattgefundenIst}
+                            onChange={(e) => setFormValues({ ...formValues, termineStattgefundenIst: e.target.value })}
+                          />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="termineStattgefundenIst">
-                          Termine stattgefunden {member?.termineStattgefundenSoll ? `(Ziel: ${member.termineStattgefundenSoll})` : ""}
-                        </Label>
-                        <Input
-                          id="termineStattgefundenIst"
-                          type="number"
-                          inputMode="numeric"
-                          className="h-12"
-                          value={formValues.termineStattgefundenIst}
-                          onChange={(e) => setFormValues({ ...formValues, termineStattgefundenIst: e.target.value })}
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="termineErstIst">Ersttermine</Label>
+                          <Input
+                            id="termineErstIst"
+                            type="number"
+                            inputMode="numeric"
+                            className="h-12"
+                            value={formValues.termineErstIst}
+                            onChange={(e) => setFormValues({ ...formValues, termineErstIst: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="termineFolgeIst">Folgetermine</Label>
+                          <Input
+                            id="termineFolgeIst"
+                            type="number"
+                            inputMode="numeric"
+                            className="h-12"
+                            value={formValues.termineFolgeIst}
+                            onChange={(e) => setFormValues({ ...formValues, termineFolgeIst: e.target.value })}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
                   {member?.trackAbschluesse && (
