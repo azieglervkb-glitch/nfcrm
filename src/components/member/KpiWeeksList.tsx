@@ -68,6 +68,8 @@ interface MemberTracking {
   trackEmpfehlungen: boolean;
   trackEntscheider: boolean;
   trackAbschluesse: boolean;
+  trackKonvertierung?: boolean;
+  trackAbschlussquote?: boolean;
   umsatzSollWoche: number | null;
   kontakteSoll: number | null;
   entscheiderSoll: number | null;
@@ -76,6 +78,8 @@ interface MemberTracking {
   termineAbschlussSoll: number | null;
   einheitenSoll: number | null;
   empfehlungenSoll: number | null;
+  konvertierungTerminSoll?: number | null;
+  abschlussquoteSoll?: number | null;
 }
 
 interface KpiWeeksListProps {
@@ -301,6 +305,9 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Kontakt → Termin
+                          {memberTracking.konvertierungTerminSoll && (
+                            <> (Ziel: {memberTracking.konvertierungTerminSoll}%)</>
+                          )}
                         </p>
                       </div>
                     )}
@@ -345,6 +352,9 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Termin → Abschluss
+                          {memberTracking.abschlussquoteSoll && (
+                            <> (Ziel: {memberTracking.abschlussquoteSoll}%)</>
+                          )}
                         </p>
                       </div>
                     )}

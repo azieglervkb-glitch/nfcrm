@@ -372,6 +372,8 @@ export default async function MemberDetailPage({
                   trackEmpfehlungen: member.trackEmpfehlungen,
                   trackEntscheider: member.trackEntscheider,
                   trackAbschluesse: member.trackAbschluesse,
+                  trackKonvertierung: member.trackKonvertierung,
+                  trackAbschlussquote: member.trackAbschlussquote,
                   umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
                   kontakteSoll: member.kontakteSoll,
                   entscheiderSoll: member.entscheiderSoll,
@@ -380,6 +382,8 @@ export default async function MemberDetailPage({
                   termineAbschlussSoll: member.termineAbschlussSoll,
                   einheitenSoll: member.einheitenSoll,
                   empfehlungenSoll: member.empfehlungenSoll,
+                  konvertierungTerminSoll: member.konvertierungTerminSoll ? Number(member.konvertierungTerminSoll) : null,
+                  abschlussquoteSoll: member.abschlussquoteSoll ? Number(member.abschlussquoteSoll) : null,
                 }}
               />
             </CardContent>

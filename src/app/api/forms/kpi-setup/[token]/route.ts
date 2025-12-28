@@ -161,6 +161,8 @@ export async function POST(
       trackEmpfehlungen: body.trackEmpfehlungen ?? false,
       trackEntscheider: body.trackEntscheider ?? false,
       trackAbschluesse: body.trackAbschluesse ?? false,
+      trackKonvertierung: body.trackKonvertierung ?? false,
+      trackAbschlussquote: body.trackAbschlussquote ?? false,
       // SOLL-Werte
       kontakteSoll: body.kontakteSoll ? parseInt(String(body.kontakteSoll)) : null,
       termineVereinbartSoll: body.termineVereinbartSoll

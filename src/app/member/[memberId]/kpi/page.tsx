@@ -42,6 +42,8 @@ interface MemberData {
   trackEmpfehlungen: boolean;
   trackEntscheider: boolean;
   trackAbschluesse: boolean;
+  trackKonvertierung: boolean;
+  trackAbschlussquote: boolean;
   umsatzSollWoche: number | null;
   kontakteSoll: number | null;
   termineVereinbartSoll: number | null;
@@ -50,6 +52,8 @@ interface MemberData {
   einheitenSoll: number | null;
   empfehlungenSoll: number | null;
   entscheiderSoll: number | null;
+  konvertierungTerminSoll: number | null;
+  abschlussquoteSoll: number | null;
 }
 
 interface KpiData {
@@ -75,6 +79,17 @@ interface KpiData {
     weekNumber: number;
     umsatzIst: number | null;
     kontakteIst: number | null;
+    entscheiderIst: number | null;
+    termineVereinbartIst: number | null;
+    termineStattgefundenIst: number | null;
+    termineErstIst: number | null;
+    termineFolgeIst: number | null;
+    termineAbschlussIst: number | null;
+    termineNoshowIst: number | null;
+    einheitenIst: number | null;
+    empfehlungenIst: number | null;
+    konvertierungTerminIst: number | null;
+    abschlussquoteIst: number | null;
     feelingScore: number | null;
   }>;
 }
@@ -747,28 +762,67 @@ export default function MemberKpiPage() {
                   {data.history.map((week, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-between p-4 bg-muted rounded-lg"
+                      className="p-4 bg-muted rounded-lg space-y-3"
                     >
-                      <div>
-                        <p className="font-medium">KW {week.weekNumber}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(week.weekStart).toLocaleDateString("de-DE")}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        {week.umsatzIst !== null && (
-                          <span className="font-medium">
-                            {Number(week.umsatzIst).toLocaleString("de-DE", {
-                              style: "currency",
-                              currency: "EUR",
-                              minimumFractionDigits: 0,
-                            })}
-                          </span>
-                        )}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium">KW {week.weekNumber}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(week.weekStart).toLocaleDateString("de-DE")}
+                          </p>
+                        </div>
                         {week.feelingScore && (
                           <span className="text-lg font-bold text-muted-foreground">
                             {week.feelingScore}/10
                           </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                        {week.umsatzIst !== null && (
+                          <div className="flex items-center gap-1">
+                            <Euro className="h-3 w-3 text-green-600" />
+                            <span>{Number(week.umsatzIst).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0 })}</span>
+                          </div>
+                        )}
+                        {member?.trackKontakte && week.kontakteIst !== null && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3 w-3 text-red-500" />
+                            <span>{week.kontakteIst} Kontakte</span>
+                          </div>
+                        )}
+                        {member?.trackTermine && week.termineVereinbartIst !== null && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-primary" />
+                            <span>{week.termineVereinbartIst} Termine</span>
+                          </div>
+                        )}
+                        {member?.trackAbschluesse && week.termineAbschlussIst !== null && (
+                          <div className="flex items-center gap-1">
+                            <Handshake className="h-3 w-3 text-green-600" />
+                            <span>{week.termineAbschlussIst} Abschlüsse</span>
+                          </div>
+                        )}
+                        {member?.trackEinheiten && week.einheitenIst !== null && (
+                          <div className="flex items-center gap-1">
+                            <Target className="h-3 w-3 text-blue-500" />
+                            <span>{week.einheitenIst} Einheiten</span>
+                          </div>
+                        )}
+                        {member?.trackEmpfehlungen && week.empfehlungenIst !== null && (
+                          <div className="flex items-center gap-1">
+                            <Gift className="h-3 w-3 text-amber-500" />
+                            <span>{week.empfehlungenIst} Empf.</span>
+                          </div>
+                        )}
+                        {week.konvertierungTerminIst !== null && (
+                          <div className="flex items-center gap-1 text-purple-600">
+                            <span>{week.konvertierungTerminIst.toFixed(1)}% Konv.</span>
+                          </div>
+                        )}
+                        {week.abschlussquoteIst !== null && (
+                          <div className="flex items-center gap-1 text-green-600">
+                            <span>{week.abschlussquoteIst.toFixed(1)}% Abschl.</span>
+                          </div>
                         )}
                       </div>
                     </div>

@@ -319,13 +319,15 @@ model Member {
   currentModule         Int?
 
   // Welche KPIs werden getrackt (Checkboxen)
-  trackKontakte    Boolean @default(false)
-  trackTermine     Boolean @default(false)
-  trackEinheiten   Boolean @default(false)
-  trackEmpfehlungen Boolean @default(false)
-  trackEntscheider Boolean @default(false)
-  trackAbschluesse Boolean @default(false)
-  trackUmsatz      Boolean @default(true) // Immer aktiv
+  trackKontakte       Boolean @default(false)
+  trackTermine        Boolean @default(false)
+  trackEinheiten      Boolean @default(false)
+  trackEmpfehlungen   Boolean @default(false)
+  trackEntscheider    Boolean @default(false)
+  trackAbschluesse    Boolean @default(false)
+  trackKonvertierung  Boolean @default(false) // Kontakt → Termin %
+  trackAbschlussquote Boolean @default(false) // Termin → Abschluss %
+  trackUmsatz         Boolean @default(true)  // Immer aktiv
 
   // SOLL-Werte (Ziele)
   umsatzSollWoche          Decimal? @db.Decimal(12, 2)

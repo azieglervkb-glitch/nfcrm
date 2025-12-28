@@ -40,6 +40,8 @@ export async function GET(request: NextRequest) {
         trackEmpfehlungen: true,
         trackEntscheider: true,
         trackAbschluesse: true,
+        trackKonvertierung: true,
+        trackAbschlussquote: true,
         umsatzSollWoche: true,
         kontakteSoll: true,
         entscheiderSoll: true,
@@ -48,6 +50,8 @@ export async function GET(request: NextRequest) {
         termineAbschlussSoll: true,
         einheitenSoll: true,
         empfehlungenSoll: true,
+        konvertierungTerminSoll: true,
+        abschlussquoteSoll: true,
         kpiWeeks: {
           orderBy: { weekStart: "desc" },
           take: 12,
@@ -66,7 +70,7 @@ export async function GET(request: NextRequest) {
       return entryWeek.getTime() === weekStart.getTime();
     });
 
-    // History (exclude current week)
+    // History (exclude current week) - return all tracked values
     const history = member.kpiWeeks
       .filter((entry) => {
         const entryWeek = new Date(entry.weekStart);
@@ -77,6 +81,17 @@ export async function GET(request: NextRequest) {
         weekNumber: entry.weekNumber,
         umsatzIst: entry.umsatzIst ? Number(entry.umsatzIst) : null,
         kontakteIst: entry.kontakteIst,
+        entscheiderIst: entry.entscheiderIst,
+        termineVereinbartIst: entry.termineVereinbartIst,
+        termineStattgefundenIst: entry.termineStattgefundenIst,
+        termineErstIst: entry.termineErstIst,
+        termineFolgeIst: entry.termineFolgeIst,
+        termineAbschlussIst: entry.termineAbschlussIst,
+        termineNoshowIst: entry.termineNoshowIst,
+        einheitenIst: entry.einheitenIst,
+        empfehlungenIst: entry.empfehlungenIst,
+        konvertierungTerminIst: entry.konvertierungTerminIst ? Number(entry.konvertierungTerminIst) : null,
+        abschlussquoteIst: entry.abschlussquoteIst ? Number(entry.abschlussquoteIst) : null,
         feelingScore: entry.feelingScore,
       }));
 
@@ -90,6 +105,8 @@ export async function GET(request: NextRequest) {
         trackEmpfehlungen: member.trackEmpfehlungen,
         trackEntscheider: member.trackEntscheider,
         trackAbschluesse: member.trackAbschluesse,
+        trackKonvertierung: member.trackKonvertierung,
+        trackAbschlussquote: member.trackAbschlussquote,
         umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
         kontakteSoll: member.kontakteSoll,
         entscheiderSoll: member.entscheiderSoll,
@@ -98,6 +115,8 @@ export async function GET(request: NextRequest) {
         termineAbschlussSoll: member.termineAbschlussSoll,
         einheitenSoll: member.einheitenSoll,
         empfehlungenSoll: member.empfehlungenSoll,
+        konvertierungTerminSoll: member.konvertierungTerminSoll ? Number(member.konvertierungTerminSoll) : null,
+        abschlussquoteSoll: member.abschlussquoteSoll ? Number(member.abschlussquoteSoll) : null,
       },
       currentWeek: currentWeek
         ? {
