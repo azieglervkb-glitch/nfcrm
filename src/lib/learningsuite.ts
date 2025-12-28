@@ -325,8 +325,8 @@ export async function getCourseModulesForMember(
  */
 function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
   if (modules.length === 0) {
-    console.log(`[LearningSuite] No modules to calculate from, defaulting to 1`);
-    return 1;
+    console.log(`[LearningSuite] No modules found - cannot determine progress`);
+    return null;
   }
 
   // Normalize position - API might use 'position' or 'order' or just index
@@ -357,9 +357,15 @@ function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
     return lastCompleted.position;
   }
 
-  // Default to first module
-  console.log(`[LearningSuite] No progress detected, defaulting to module 1`);
-  return 1;
+  // If we have modules but none are completed or in progress, user is at module 1
+  const firstModule = sortedModules[0];
+  if (firstModule) {
+    console.log(`[LearningSuite] No progress detected, user is at first module: ${firstModule.position}`);
+    return firstModule.position;
+  }
+
+  console.log(`[LearningSuite] Could not determine module progress`);
+  return null;
 }
 
 /**
