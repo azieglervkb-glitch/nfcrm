@@ -94,7 +94,28 @@ interface MemberData {
   nachname: string;
   email?: string;
   telefon?: string;
-  zielMonatsumsatz: number | null;
+  // Revenue goal
+  umsatzSollMonat: number | null;
+  // KPI tracking flags
+  trackKontakte: boolean;
+  trackEntscheider: boolean;
+  trackTermine: boolean;
+  trackKonvertierung: boolean;
+  trackAbschluesse: boolean;
+  trackAbschlussquote: boolean;
+  trackEinheiten: boolean;
+  trackEmpfehlungen: boolean;
+  // KPI target values
+  kontakteSoll: number | null;
+  termineVereinbartSoll: number | null;
+  termineAbschlussSoll: number | null;
+  konvertierungTerminSoll: number | null;
+  abschlussquoteSoll: number | null;
+  einheitenSoll: number | null;
+  empfehlungenSoll: number | null;
+  // Context fields
+  hauptzielEinSatz: string | null;
+  wasNervtAmMeisten: string | null;
 }
 
 export default function KpiSetupFormPage({
@@ -153,11 +174,42 @@ export default function KpiSetupFormPage({
         setMemberData(data.member);
         setIsPreview(data.isPreview || false);
 
-        // Pre-fill data if available
+        // Pre-fill data if available (with validation to ensure form recognizes the values)
         if (data.member) {
-          if (data.member.zielMonatsumsatz) {
-            setValue("umsatzSollMonat", Number(data.member.zielMonatsumsatz));
+          const m = data.member;
+          const opts = { shouldValidate: true, shouldDirty: true };
+
+          // Revenue goal (required field)
+          if (m.umsatzSollMonat) {
+            setValue("umsatzSollMonat", Number(m.umsatzSollMonat), opts);
           }
+
+          // KPI tracking flags
+          if (m.trackKontakte) setValue("trackKontakte", true, opts);
+          if (m.trackEntscheider) setValue("trackEntscheider", true, opts);
+          if (m.trackTermine) setValue("trackTermine", true, opts);
+          if (m.trackKonvertierung) setValue("trackKonvertierung", true, opts);
+          if (m.trackAbschluesse) setValue("trackAbschluesse", true, opts);
+          if (m.trackAbschlussquote) setValue("trackAbschlussquote", true, opts);
+          if (m.trackEinheiten) setValue("trackEinheiten", true, opts);
+          if (m.trackEmpfehlungen) setValue("trackEmpfehlungen", true, opts);
+
+          // KPI target values
+          if (m.kontakteSoll) setValue("kontakteSoll", Number(m.kontakteSoll), opts);
+          if (m.termineVereinbartSoll) setValue("termineVereinbartSoll", Number(m.termineVereinbartSoll), opts);
+          if (m.termineAbschlussSoll) setValue("termineAbschlussSoll", Number(m.termineAbschlussSoll), opts);
+          if (m.konvertierungTerminSoll !== null && m.konvertierungTerminSoll !== undefined) {
+            setValue("konvertierungTerminSoll", Number(m.konvertierungTerminSoll), opts);
+          }
+          if (m.abschlussquoteSoll !== null && m.abschlussquoteSoll !== undefined) {
+            setValue("abschlussquoteSoll", Number(m.abschlussquoteSoll), opts);
+          }
+          if (m.einheitenSoll) setValue("einheitenSoll", Number(m.einheitenSoll), opts);
+          if (m.empfehlungenSoll) setValue("empfehlungenSoll", Number(m.empfehlungenSoll), opts);
+
+          // Context fields (hauptzielEinSatz is required)
+          if (m.hauptzielEinSatz) setValue("hauptzielEinSatz", m.hauptzielEinSatz, opts);
+          if (m.wasNervtAmMeisten) setValue("wasNervtAmMeisten", m.wasNervtAmMeisten, opts);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");

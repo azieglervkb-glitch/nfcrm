@@ -18,8 +18,29 @@ export async function GET(
             vorname: true,
             nachname: true,
             zielMonatsumsatz: true,
+            umsatzSollMonat: true,
             kpiTrackingEnabled: true,
             kpiSetupCompleted: true,
+            // KPI tracking flags
+            trackKontakte: true,
+            trackEntscheider: true,
+            trackTermine: true,
+            trackKonvertierung: true,
+            trackAbschluesse: true,
+            trackAbschlussquote: true,
+            trackEinheiten: true,
+            trackEmpfehlungen: true,
+            // KPI target values
+            kontakteSoll: true,
+            termineVereinbartSoll: true,
+            termineAbschlussSoll: true,
+            konvertierungTerminSoll: true,
+            abschlussquoteSoll: true,
+            einheitenSoll: true,
+            empfehlungenSoll: true,
+            // Context fields
+            hauptzielEinSatz: true,
+            wasNervtAmMeisten: true,
           },
         },
       },
@@ -42,11 +63,33 @@ export async function GET(
         return NextResponse.json({ error: "KPI-Setup bereits abgeschlossen" }, { status: 400 });
       }
 
+      const m = formToken.member;
       return NextResponse.json({
         member: {
-          vorname: formToken.member.vorname,
-          nachname: formToken.member.nachname,
-          zielMonatsumsatz: formToken.member.zielMonatsumsatz,
+          vorname: m.vorname,
+          nachname: m.nachname,
+          // Use umsatzSollMonat if set, otherwise fall back to zielMonatsumsatz
+          umsatzSollMonat: m.umsatzSollMonat ?? m.zielMonatsumsatz,
+          // KPI tracking flags
+          trackKontakte: m.trackKontakte ?? false,
+          trackEntscheider: m.trackEntscheider ?? false,
+          trackTermine: m.trackTermine ?? false,
+          trackKonvertierung: m.trackKonvertierung ?? false,
+          trackAbschluesse: m.trackAbschluesse ?? false,
+          trackAbschlussquote: m.trackAbschlussquote ?? false,
+          trackEinheiten: m.trackEinheiten ?? false,
+          trackEmpfehlungen: m.trackEmpfehlungen ?? false,
+          // KPI target values
+          kontakteSoll: m.kontakteSoll,
+          termineVereinbartSoll: m.termineVereinbartSoll,
+          termineAbschlussSoll: m.termineAbschlussSoll,
+          konvertierungTerminSoll: m.konvertierungTerminSoll,
+          abschlussquoteSoll: m.abschlussquoteSoll,
+          einheitenSoll: m.einheitenSoll,
+          empfehlungenSoll: m.empfehlungenSoll,
+          // Context fields
+          hauptzielEinSatz: m.hauptzielEinSatz,
+          wasNervtAmMeisten: m.wasNervtAmMeisten,
         },
         isPreview: false,
       });
@@ -60,7 +103,28 @@ export async function GET(
         vorname: true,
         nachname: true,
         zielMonatsumsatz: true,
+        umsatzSollMonat: true,
         kpiTrackingActive: true,
+        // KPI tracking flags
+        trackKontakte: true,
+        trackEntscheider: true,
+        trackTermine: true,
+        trackKonvertierung: true,
+        trackAbschluesse: true,
+        trackAbschlussquote: true,
+        trackEinheiten: true,
+        trackEmpfehlungen: true,
+        // KPI target values
+        kontakteSoll: true,
+        termineVereinbartSoll: true,
+        termineAbschlussSoll: true,
+        konvertierungTerminSoll: true,
+        abschlussquoteSoll: true,
+        einheitenSoll: true,
+        empfehlungenSoll: true,
+        // Context fields
+        hauptzielEinSatz: true,
+        wasNervtAmMeisten: true,
       },
     });
 
@@ -69,7 +133,27 @@ export async function GET(
         member: {
           vorname: member.vorname,
           nachname: member.nachname,
-          zielMonatsumsatz: member.zielMonatsumsatz,
+          umsatzSollMonat: member.umsatzSollMonat ?? member.zielMonatsumsatz,
+          // KPI tracking flags
+          trackKontakte: member.trackKontakte ?? false,
+          trackEntscheider: member.trackEntscheider ?? false,
+          trackTermine: member.trackTermine ?? false,
+          trackKonvertierung: member.trackKonvertierung ?? false,
+          trackAbschluesse: member.trackAbschluesse ?? false,
+          trackAbschlussquote: member.trackAbschlussquote ?? false,
+          trackEinheiten: member.trackEinheiten ?? false,
+          trackEmpfehlungen: member.trackEmpfehlungen ?? false,
+          // KPI target values
+          kontakteSoll: member.kontakteSoll,
+          termineVereinbartSoll: member.termineVereinbartSoll,
+          termineAbschlussSoll: member.termineAbschlussSoll,
+          konvertierungTerminSoll: member.konvertierungTerminSoll,
+          abschlussquoteSoll: member.abschlussquoteSoll,
+          einheitenSoll: member.einheitenSoll,
+          empfehlungenSoll: member.empfehlungenSoll,
+          // Context fields
+          hauptzielEinSatz: member.hauptzielEinSatz,
+          wasNervtAmMeisten: member.wasNervtAmMeisten,
         },
         isPreview: true,
       });

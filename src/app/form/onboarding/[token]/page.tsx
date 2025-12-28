@@ -35,6 +35,15 @@ type OnboardingInput = z.infer<typeof onboardingSchema>;
 interface MemberData {
   vorname: string;
   nachname: string;
+  // Pre-fill data
+  unternehmen?: string | null;
+  position?: string | null;
+  aktuellerMonatsumsatz?: number | null;
+  wasNervtAmMeisten?: string | null;
+  groessetesProblem?: string | null;
+  zielMonatsumsatz?: number | null;
+  groessteZielWarum?: string | null;
+  wieAufmerksam?: string | null;
 }
 
 export default function OnboardingFormPage({
@@ -55,6 +64,7 @@ export default function OnboardingFormPage({
     register,
     handleSubmit,
     trigger,
+    setValue,
     formState: { errors },
   } = useForm<OnboardingInput>({
     resolver: zodResolver(onboardingSchema),
@@ -73,6 +83,30 @@ export default function OnboardingFormPage({
         const data = await response.json();
         setMemberData(data.member);
         setIsPreview(data.isPreview || false);
+
+        // Pre-fill data if available (with validation to ensure form recognizes the values)
+        if (data.member) {
+          const m = data.member;
+          const opts = { shouldValidate: true, shouldDirty: true };
+
+          // Step 1 fields
+          if (m.unternehmen) setValue("unternehmen", m.unternehmen, opts);
+          if (m.position) setValue("position", m.position, opts);
+          if (m.aktuellerMonatsumsatz !== null && m.aktuellerMonatsumsatz !== undefined) {
+            setValue("aktuellerMonatsumsatz", Number(m.aktuellerMonatsumsatz), opts);
+          }
+
+          // Step 2 fields
+          if (m.wasNervtAmMeisten) setValue("wasNervtAmMeisten", m.wasNervtAmMeisten, opts);
+          if (m.groessetesProblem) setValue("groessetesProblem", m.groessetesProblem, opts);
+
+          // Step 3 fields (the problematic ones on the last page)
+          if (m.zielMonatsumsatz !== null && m.zielMonatsumsatz !== undefined) {
+            setValue("zielMonatsumsatz", Number(m.zielMonatsumsatz), opts);
+          }
+          if (m.groessteZielWarum) setValue("groessteZielWarum", m.groessteZielWarum, opts);
+          if (m.wieAufmerksam) setValue("wieAufmerksam", m.wieAufmerksam, opts);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
       } finally {
@@ -80,7 +114,7 @@ export default function OnboardingFormPage({
       }
     }
     loadData();
-  }, [params]);
+  }, [params, setValue]);
 
   const nextStep = async () => {
     let fieldsToValidate: (keyof OnboardingInput)[] = [];

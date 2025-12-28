@@ -19,6 +19,15 @@ export async function GET(
             vorname: true,
             nachname: true,
             onboardingCompleted: true,
+            // All onboarding fields for pre-filling
+            unternehmen: true,
+            position: true,
+            aktuellerMonatsumsatz: true,
+            wasNervtAmMeisten: true,
+            groessetesProblem: true,
+            zielMonatsumsatz: true,
+            groessteZielWarum: true,
+            wieAufmerksam: true,
           },
         },
       },
@@ -41,10 +50,20 @@ export async function GET(
         return NextResponse.json({ error: "Onboarding bereits abgeschlossen" }, { status: 400 });
       }
 
+      const m = formToken.member;
       return NextResponse.json({
         member: {
-          vorname: formToken.member.vorname,
-          nachname: formToken.member.nachname,
+          vorname: m.vorname,
+          nachname: m.nachname,
+          // Pre-fill existing data
+          unternehmen: m.unternehmen,
+          position: m.position,
+          aktuellerMonatsumsatz: m.aktuellerMonatsumsatz,
+          wasNervtAmMeisten: m.wasNervtAmMeisten,
+          groessetesProblem: m.groessetesProblem,
+          zielMonatsumsatz: m.zielMonatsumsatz,
+          groessteZielWarum: m.groessteZielWarum,
+          wieAufmerksam: m.wieAufmerksam,
         },
         isPreview: false,
       });
@@ -58,6 +77,15 @@ export async function GET(
         vorname: true,
         nachname: true,
         onboardingCompleted: true,
+        // All onboarding fields for pre-filling
+        unternehmen: true,
+        position: true,
+        aktuellerMonatsumsatz: true,
+        wasNervtAmMeisten: true,
+        groessetesProblem: true,
+        zielMonatsumsatz: true,
+        groessteZielWarum: true,
+        wieAufmerksam: true,
       },
     });
 
@@ -66,6 +94,15 @@ export async function GET(
         member: {
           vorname: member.vorname,
           nachname: member.nachname,
+          // Pre-fill existing data
+          unternehmen: member.unternehmen,
+          position: member.position,
+          aktuellerMonatsumsatz: member.aktuellerMonatsumsatz,
+          wasNervtAmMeisten: member.wasNervtAmMeisten,
+          groessetesProblem: member.groessetesProblem,
+          zielMonatsumsatz: member.zielMonatsumsatz,
+          groessteZielWarum: member.groessteZielWarum,
+          wieAufmerksam: member.wieAufmerksam,
         },
         isPreview: true,
       });
