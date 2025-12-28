@@ -4,7 +4,7 @@ async function deleteAllMembers() {
   console.log("Lösche alle Member und zugehörige Daten...\n");
 
   // Delete related records first (foreign keys)
-  const kpiWeeks = await prisma.kPIWeek.deleteMany({});
+  const kpiWeeks = await prisma.kpiWeek.deleteMany({});
   console.log(`Gelöscht: ${kpiWeeks.count} KPI-Wochen`);
 
   const notes = await prisma.memberNote.deleteMany({});
