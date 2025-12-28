@@ -15,7 +15,7 @@ import { Loader2, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from "lucide
 const numericField = (minValue: number, errorMessage: string) =>
   z.preprocess(
     (val) => (typeof val === 'number' && Number.isNaN(val) ? undefined : val),
-    z.number({ required_error: errorMessage, invalid_type_error: errorMessage }).min(minValue, errorMessage)
+    z.number({ message: errorMessage }).min(minValue, errorMessage)
   );
 
 const onboardingSchema = z.object({
