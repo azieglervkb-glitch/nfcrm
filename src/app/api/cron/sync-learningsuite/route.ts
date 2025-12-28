@@ -34,16 +34,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Find active members who:
-    // 1. Have completed onboarding (Grundvoraussetzung)
-    // 2. Don't have KPI tracking enabled yet
-    // 3. Have an email (required for LearninSuite lookup)
+    // Find ALL active members who have completed onboarding
+    // We need to sync LearningSuite progress for everyone, not just those waiting for KPI setup
     const eligibleMembers = await prisma.member.findMany({
       where: {
         status: "AKTIV",
         onboardingCompleted: true,
-        kpiTrackingEnabled: false,
-        kpiSetupCompleted: false,
       },
       select: {
         id: true,
@@ -51,6 +47,8 @@ export async function GET(request: NextRequest) {
         vorname: true,
         learningSuiteUserId: true,
         currentModule: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true,
       },
     });
 
@@ -75,8 +73,13 @@ export async function GET(request: NextRequest) {
           });
           synced++;
 
-          // Check if module requirement is met
-          if (syncResult.currentModule && syncResult.currentModule >= triggerModule) {
+          // Check if module requirement is met AND KPI tracking not yet enabled
+          if (
+            syncResult.currentModule &&
+            syncResult.currentModule >= triggerModule &&
+            !member.kpiTrackingEnabled &&
+            !member.kpiSetupCompleted
+          ) {
             // Try to activate KPI tracking
             const activationResult = await activateKpiTracking(member.id, "learningsuite_api");
 

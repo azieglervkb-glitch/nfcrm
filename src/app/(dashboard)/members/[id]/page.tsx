@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { AddNoteDialog } from "@/components/member/AddNoteDialog";
+import { SyncLearningSuiteButton } from "@/components/member/SyncLearningSuiteButton";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
 
 async function getMember(id: string) {
@@ -352,11 +353,12 @@ export default async function MemberDetailPage({
 
             {/* LearningSuite Progress */}
             <Card>
-              <CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-base flex items-center gap-2">
                   <GraduationCap className="h-4 w-4" />
                   LearningSuite
                 </CardTitle>
+                <SyncLearningSuiteButton memberId={member.id} />
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
