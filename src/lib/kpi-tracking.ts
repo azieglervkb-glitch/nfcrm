@@ -10,14 +10,22 @@ import { generateFormUrl } from "@/lib/app-url";
 import { syncMemberWithLearninSuite, hasCompletedModule } from "@/lib/learningsuite";
 import { randomBytes } from "crypto";
 
+interface ActivateKpiOptions {
+  /** Skip onboarding and module checks (for admin bulk actions) */
+  force?: boolean;
+}
+
 /**
  * Activate KPI tracking for a member
  * Creates KPI setup token and sends email/WhatsApp
  */
 export async function activateKpiTracking(
   memberId: string,
-  source: "manual" | "learningsuite_api" = "manual"
+  source: "manual" | "learningsuite_api" = "manual",
+  options: ActivateKpiOptions = {}
 ): Promise<{ activated: boolean; reason?: string }> {
+  const { force = false } = options;
+
   const member = await prisma.member.findUnique({
     where: { id: memberId },
     select: {
@@ -38,14 +46,6 @@ export async function activateKpiTracking(
     throw new Error(`Member ${memberId} not found`);
   }
 
-  // CRITICAL: Onboarding must be completed first (Grundvoraussetzung)
-  if (!member.onboardingCompleted) {
-    return {
-      activated: false,
-      reason: "Onboarding nicht abgeschlossen - Grundvoraussetzung fehlt",
-    };
-  }
-
   // Don't activate if already enabled
   if (member.kpiTrackingEnabled) {
     return { activated: false, reason: "KPI-Tracking bereits aktiviert" };
@@ -56,41 +56,51 @@ export async function activateKpiTracking(
     return { activated: false, reason: "KPI-Setup bereits abgeschlossen" };
   }
 
-  // Check LearninSuite requirements if API is enabled
-  const settings = await prisma.systemSettings.findFirst({
-    where: { id: "default" },
-  });
+  // Check onboarding (skip if force=true for admin bulk actions)
+  if (!force && !member.onboardingCompleted) {
+    return {
+      activated: false,
+      reason: "Onboarding nicht abgeschlossen - Grundvoraussetzung fehlt",
+    };
+  }
 
-  const triggerSource = settings?.kpiTriggerSource || "manual";
-  const triggerModule = settings?.kpiTriggerModule || 2;
+  // Check LearninSuite requirements if API is enabled (skip if force=true)
+  if (!force) {
+    const settings = await prisma.systemSettings.findFirst({
+      where: { id: "default" },
+    });
 
-  // If LearninSuite is enabled (either "learningsuite_api" or "both")
-  if (triggerSource !== "manual") {
-    // Sync with LearninSuite first
-    const syncResult = await syncMemberWithLearninSuite(member.email);
-    
-    if (syncResult.synced && syncResult.learningSuiteUserId) {
-      // Update member with LearninSuite data
-      await prisma.member.update({
-        where: { id: memberId },
-        data: {
-          learningSuiteUserId: syncResult.learningSuiteUserId,
-          currentModule: syncResult.currentModule,
-          learningSuiteLastSync: new Date(),
-        },
-      });
-    }
+    const triggerSource = settings?.kpiTriggerSource || "manual";
+    const triggerModule = settings?.kpiTriggerModule || 2;
 
-    // Check if module requirement is met
-    const hasReachedModule = syncResult.currentModule
-      ? syncResult.currentModule >= triggerModule
-      : false;
+    // If LearninSuite is enabled (either "learningsuite_api" or "both")
+    if (triggerSource !== "manual") {
+      // Sync with LearninSuite first
+      const syncResult = await syncMemberWithLearninSuite(member.email);
+      
+      if (syncResult.synced && syncResult.learningSuiteUserId) {
+        // Update member with LearninSuite data
+        await prisma.member.update({
+          where: { id: memberId },
+          data: {
+            learningSuiteUserId: syncResult.learningSuiteUserId,
+            currentModule: syncResult.currentModule,
+            learningSuiteLastSync: new Date(),
+          },
+        });
+      }
 
-    if (!hasReachedModule) {
-      return {
-        activated: false,
-        reason: `Modul ${triggerModule} noch nicht erreicht (aktuell: ${syncResult.currentModule || "unbekannt"})`,
-      };
+      // Check if module requirement is met
+      const hasReachedModule = syncResult.currentModule
+        ? syncResult.currentModule >= triggerModule
+        : false;
+
+      if (!hasReachedModule) {
+        return {
+          activated: false,
+          reason: `Modul ${triggerModule} noch nicht erreicht (aktuell: ${syncResult.currentModule || "unbekannt"})`,
+        };
+      }
     }
   }
 

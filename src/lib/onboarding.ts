@@ -4,9 +4,9 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { sendOnboardingInviteEmail, sendOnboardingReminderEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
-import { generateFormUrl, getAppUrl } from "@/lib/app-url";
+import { generateFormUrl } from "@/lib/app-url";
 import { randomBytes } from "crypto";
 
 interface MemberForOnboarding {
@@ -39,39 +39,8 @@ export async function sendOnboardingNotification(
 
   const onboardingUrl = generateFormUrl("onboarding", token);
 
-  // Send Email
-  const emailSent = await sendEmail({
-    to: member.email,
-    subject: "🚀 Willkommen beim NF Mentoring!",
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #ae1d2b 0%, #8a1722 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Willkommen beim NF Mentoring!</h1>
-        </div>
-        <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 18px; color: #111827;">Hallo ${member.vorname}! 👋</p>
-          <p style="color: #6b7280; line-height: 1.6;">
-            Vielen Dank für deine Anmeldung zum NF Mentoring. Wir freuen uns riesig, dich auf deinem Weg zu unterstützen!
-          </p>
-          <p style="color: #6b7280; line-height: 1.6;">
-            <strong>Dein erster Schritt:</strong> Fülle bitte das kurze Onboarding-Formular aus, damit wir dich besser kennenlernen können.
-          </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${onboardingUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-              Onboarding starten →
-            </a>
-          </div>
-          <p style="color: #9ca3af; font-size: 14px;">
-            Dauert nur 2 Minuten! Der Link ist 7 Tage gültig.
-          </p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          <p style="color: #9ca3af; font-size: 14px; text-align: center;">
-            NF Mentoring | <a href="${getAppUrl()}" style="color: #ae1d2b;">nf-mentoring.de</a>
-          </p>
-        </div>
-      </div>
-    `,
-  });
+  // Send Email using template
+  const emailSent = await sendOnboardingInviteEmail(member, onboardingUrl);
 
   // Send WhatsApp (if phone number available)
   let whatsappSent = false;
@@ -222,33 +191,8 @@ export async function sendOnboardingReminders(): Promise<{
       const onboardingUrl = generateFormUrl("onboarding", formToken.token);
       const reminderNumber = member.onboardingReminderCount + 1;
 
-      // Send reminder email
-      await sendEmail({
-        to: member.email,
-        subject: `⏰ Erinnerung: Dein NF Mentoring Onboarding wartet!`,
-        html: `
-          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-              <p style="font-size: 18px; color: #111827;">Hey ${member.vorname}! 👋</p>
-              <p style="color: #6b7280; line-height: 1.6;">
-                Kurze Erinnerung: Du hast dein Onboarding noch nicht abgeschlossen.
-              </p>
-              <p style="color: #6b7280; line-height: 1.6;">
-                Das dauert nur 2 Minuten und hilft uns, dich optimal zu unterstützen!
-              </p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${onboardingUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-                  Jetzt Onboarding abschließen →
-                </a>
-              </div>
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-              <p style="color: #9ca3af; font-size: 14px; text-align: center;">
-                NF Mentoring | <a href="${getAppUrl()}" style="color: #ae1d2b;">nf-mentoring.de</a>
-              </p>
-            </div>
-          </div>
-        `,
-      });
+      // Send reminder email using template
+      await sendOnboardingReminderEmail(member, onboardingUrl, reminderNumber);
 
       // Send WhatsApp reminder
       if (member.whatsappNummer) {

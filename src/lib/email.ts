@@ -345,6 +345,132 @@ export async function sendWelcomeEmail(
 }
 
 /**
+ * Onboarding Invite Email - Sent when member is created
+ */
+export async function sendOnboardingInviteEmail(
+  member: { id: string; email: string; vorname: string; nachname: string },
+  onboardingUrl: string
+): Promise<boolean> {
+  const content = `
+    <div class="content">
+      <p class="greeting">Willkommen beim NF Mentoring, ${member.vorname}! 🚀</p>
+
+      <p class="text">
+        Vielen Dank für deine Anmeldung! Wir freuen uns riesig, dich auf deinem Weg zu unterstützen.
+      </p>
+
+      <div class="highlight-box">
+        <p style="margin: 0;">
+          <strong>Dein erster Schritt:</strong><br>
+          Fülle bitte das kurze Onboarding-Formular aus, damit wir dich besser kennenlernen können.
+        </p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${onboardingUrl}" class="button">Onboarding starten →</a>
+      </div>
+
+      <p class="text" style="color: #9ca3af; font-size: 14px;">
+        Dauert nur 2 Minuten! Der Link ist 7 Tage gültig.
+      </p>
+
+      <div class="divider"></div>
+
+      <p class="text">
+        Bei Fragen sind wir jederzeit für dich da!
+      </p>
+
+      <p class="text">
+        Auf deinen Erfolg! 💪<br>
+        <strong>Dein NF Mentoring Team</strong>
+      </p>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  const sent = await sendEmail({
+    to: member.email,
+    subject: "🚀 Willkommen beim NF Mentoring!",
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+
+  if (sent) {
+    await prisma.communicationLog.create({
+      data: {
+        memberId: member.id,
+        channel: "EMAIL",
+        type: "MANUAL",
+        subject: "Willkommen beim NF Mentoring!",
+        content: "Onboarding Invite Email",
+        recipient: member.email,
+        sent: true,
+        sentAt: new Date(),
+      },
+    });
+  }
+
+  return sent;
+}
+
+/**
+ * Onboarding Reminder Email - Sent when member hasn't completed onboarding
+ */
+export async function sendOnboardingReminderEmail(
+  member: { id: string; email: string; vorname: string },
+  onboardingUrl: string,
+  reminderNumber: number
+): Promise<boolean> {
+  const content = `
+    <div class="content">
+      <p class="greeting">Hey ${member.vorname}! 👋</p>
+
+      <p class="text">
+        Kurze Erinnerung: Du hast dein Onboarding noch nicht abgeschlossen.
+      </p>
+
+      <p class="text">
+        Das dauert nur 2 Minuten und hilft uns, dich optimal zu unterstützen!
+      </p>
+
+      <div style="text-align: center;">
+        <a href="${onboardingUrl}" class="button">Jetzt Onboarding abschließen →</a>
+      </div>
+
+      <p class="text">
+        Auf deinen Erfolg! 💪<br>
+        <strong>Dein NF Mentoring Team</strong>
+      </p>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  const sent = await sendEmail({
+    to: member.email,
+    subject: "⏰ Erinnerung: Dein NF Mentoring Onboarding wartet!",
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+
+  if (sent) {
+    await prisma.communicationLog.create({
+      data: {
+        memberId: member.id,
+        channel: "EMAIL",
+        type: "REMINDER",
+        subject: "Erinnerung: Onboarding",
+        content: `Onboarding Reminder ${reminderNumber}`,
+        recipient: member.email,
+        sent: true,
+        sentAt: new Date(),
+      },
+    });
+  }
+
+  return sent;
+}
+
+/**
  * Churn Warning Email - Sent when member is at risk
  */
 export async function sendChurnWarningEmail(
