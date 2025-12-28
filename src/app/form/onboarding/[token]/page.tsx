@@ -11,12 +11,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from "lucide-react";
 
-// Helper to handle NaN from empty number inputs
+// Helper to handle NaN from empty number inputs (Zod 4 compatible)
 const numericField = (minValue: number, errorMessage: string) =>
-  z.preprocess(
-    (val) => (typeof val === 'number' && Number.isNaN(val) ? undefined : val),
-    z.number({ message: errorMessage }).min(minValue, errorMessage)
-  );
+  z
+    .union([z.number(), z.nan()])
+    .refine((val): val is number => typeof val === 'number' && !Number.isNaN(val), { message: errorMessage })
+    .refine((val) => val >= minValue, { message: errorMessage });
 
 const onboardingSchema = z.object({
   unternehmen: z.string().min(1, "Bitte gib dein Unternehmen an"),

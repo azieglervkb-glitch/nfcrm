@@ -12,22 +12,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, Trophy, Euro, Phone, Calendar, Handshake, Target, Gift, Settings, Percent, TrendingUp, Package } from "lucide-react";
 
-// Helper to handle NaN from empty number inputs (converts NaN to null for optional fields)
-const optionalNumericField = z.preprocess(
-  (val) => (typeof val === 'number' && Number.isNaN(val) ? null : val),
-  z.number().min(1).optional().nullable()
-);
+// Helper to handle NaN from empty number inputs
+// Using coerce + refine for Zod 4 compatibility
+const optionalNumericField = z
+  .union([z.number(), z.nan(), z.undefined(), z.null()])
+  .transform((val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null))
+  .pipe(z.number().min(1).nullable());
 
-const optionalPercentField = z.preprocess(
-  (val) => (typeof val === 'number' && Number.isNaN(val) ? null : val),
-  z.number().min(0).max(100).optional().nullable()
-);
+const optionalPercentField = z
+  .union([z.number(), z.nan(), z.undefined(), z.null()])
+  .transform((val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null))
+  .pipe(z.number().min(0).max(100).nullable());
 
 const requiredNumericField = (minValue: number, errorMessage: string) =>
-  z.preprocess(
-    (val) => (typeof val === 'number' && Number.isNaN(val) ? undefined : val),
-    z.number({ message: errorMessage }).min(minValue, errorMessage)
-  );
+  z
+    .union([z.number(), z.nan()])
+    .refine((val): val is number => typeof val === 'number' && !Number.isNaN(val), { message: errorMessage })
+    .refine((val) => val >= minValue, { message: errorMessage });
 
 const kpiSetupSchema = z.object({
   // Ziel
