@@ -302,6 +302,15 @@ model Member {
   welcomeCallCompleted      Boolean   @default(false)
   welcomeCallDate           DateTime?
 
+  // Onboarding Trigger (LearningSuite-based)
+  // waiting_for_lesson = Neukunde, wartet auf Trigger-Lesson
+  // triggered = Lesson abgeschlossen, Onboarding gestartet
+  // skipped_existing = Bestandskunde, sofort gestartet
+  onboardingTriggerStatus   String?   // "waiting_for_lesson" | "triggered" | "skipped_existing"
+  onboardingTriggeredAt     DateTime?
+  onboardingTriggeredBy     String?   // "lesson_webhook" | "existing_member" | "manual" | "cron_fallback"
+  importedWithProgress      Boolean   @default(false)
+
   // KPI Tracking Setup
   kpiTrackingActive      Boolean   @default(false)
   kpiTrackingStartDate   DateTime?
@@ -596,6 +605,13 @@ model SystemSettings {
   // KPI Tracking Trigger Settings
   kpiTriggerModule       Int     @default(2)
   kpiTriggerSource       String  @default("manual")
+
+  // Onboarding Trigger Settings (LearningSuite-based)
+  onboardingTriggerEnabled       Boolean  @default(false)
+  onboardingTriggerLessonId      String?  // LearningSuite Lesson ID that triggers onboarding
+  onboardingTriggerLessonName    String?  // For display purposes
+  onboardingTriggerCourseId      String?  // LearningSuite Course ID
+  onboardingExistingMemberModule Int      @default(2) // Members at/past this module = existing (immediate onboarding)
 
   // Reminder Settings
   kpiSetupReminderDays     Int[] @default([1, 3, 7])

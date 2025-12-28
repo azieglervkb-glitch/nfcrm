@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Bot, Shield, Sparkles } from "lucide-react";
+import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Bot, Shield, Sparkles, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { InfoTooltip, DefinedTooltip } from "@/components/ui/info-tooltip";
 
@@ -41,6 +41,12 @@ interface SystemSettings {
   kpiTriggerSource: string;
   kpiSetupReminderDays: number[];
   onboardingReminderDays: number[];
+  // Onboarding Trigger Settings
+  onboardingTriggerEnabled: boolean;
+  onboardingTriggerLessonId: string | null;
+  onboardingTriggerLessonName: string | null;
+  onboardingTriggerCourseId: string | null;
+  onboardingExistingMemberModule: number;
 }
 
 const DAYS = [
@@ -731,6 +737,108 @@ export function SettingsForm() {
                 Aktuell: {settings.kpiSetupReminderDays?.join(", ") || "1, 3, 7"}
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Onboarding Trigger Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Onboarding-Trigger (LearningSuite)
+            </CardTitle>
+            <CardDescription>
+              Verzögertes Onboarding basierend auf Kurs-Fortschritt
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>LearningSuite Onboarding-Trigger</Label>
+                <p className="text-sm text-muted-foreground">
+                  Onboarding erst nach bestimmter Lesson senden
+                </p>
+              </div>
+              <Switch
+                checked={settings.onboardingTriggerEnabled || false}
+                onCheckedChange={(v) => updateSetting("onboardingTriggerEnabled", v)}
+              />
+            </div>
+
+            {settings.onboardingTriggerEnabled && (
+              <>
+                <div className="space-y-2">
+                  <Label>Trigger-Lesson ID</Label>
+                  <Input
+                    type="text"
+                    placeholder="z.B. lesson-xyz-123"
+                    value={settings.onboardingTriggerLessonId || ""}
+                    onChange={(e) => updateSetting("onboardingTriggerLessonId", e.target.value || null)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Die LearningSuite Lesson-ID, die das Onboarding auslöst (z.B. Willkommensvideo)
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Trigger-Lesson Name (optional)</Label>
+                  <Input
+                    type="text"
+                    placeholder="z.B. Willkommensvideo"
+                    value={settings.onboardingTriggerLessonName || ""}
+                    onChange={(e) => updateSetting("onboardingTriggerLessonName", e.target.value || null)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Zur Anzeige im Admin-Bereich
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Kurs-ID (optional)</Label>
+                  <Input
+                    type="text"
+                    placeholder="z.B. course-abc-456"
+                    value={settings.onboardingTriggerCourseId || ""}
+                    onChange={(e) => updateSetting("onboardingTriggerCourseId", e.target.value || null)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Wenn leer, wird jeder Kurs akzeptiert
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bestandskunden ab Modul</Label>
+                  <Select
+                    value={String(settings.onboardingExistingMemberModule || 2)}
+                    onValueChange={(v) => updateSetting("onboardingExistingMemberModule", parseInt(v))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((mod) => (
+                        <SelectItem key={mod} value={String(mod)}>
+                          Ab Modul {mod}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Members die dieses Modul oder höher haben, erhalten Onboarding sofort (Bestandskunden).
+                    Neue Members warten auf die Trigger-Lesson.
+                  </p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-sm">
+                  <p className="font-medium mb-1">So funktioniert es:</p>
+                  <ul className="list-disc list-inside space-y-1 text-xs">
+                    <li><strong>Neue Member:</strong> Warten auf Trigger-Lesson → dann Onboarding</li>
+                    <li><strong>Bestandskunden (ab Modul {settings.onboardingExistingMemberModule || 2}):</strong> Onboarding sofort</li>
+                    <li>Webhook URL: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/api/webhooks/learningsuite</code></li>
+                  </ul>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
