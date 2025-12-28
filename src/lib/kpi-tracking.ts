@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateFormUrl } from "@/lib/app-url";
-import { syncMemberWithLearninSuite, hasCompletedModule } from "@/lib/learningsuite";
+import { syncMemberWithLearninSuite } from "@/lib/learningsuite";
 import { randomBytes } from "crypto";
 
 interface ActivateKpiOptions {
