@@ -371,6 +371,18 @@ function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
     return null;
   }
 
+  // Check if we have ANY real progress data (not all undefined)
+  const hasRealProgressData = modules.some(m =>
+    m.isUnlocked !== undefined ||
+    m.isCompleted !== undefined ||
+    m.progress !== undefined
+  );
+
+  if (!hasRealProgressData) {
+    console.log(`[LearningSuite] API returned modules but NO progress data - cannot determine current module`);
+    return null;
+  }
+
   // Normalize position - API might use 'position' or 'order' or just index
   const normalizedModules = modules.map((m, index) => ({
     ...m,
