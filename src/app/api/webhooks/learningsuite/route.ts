@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { activateKpiTracking, syncMemberWithLearninSuite } from "@/lib/kpi-tracking";
+import { activateKpiTracking } from "@/lib/kpi-tracking";
 import { syncMemberWithLearninSuite as syncLearninSuite } from "@/lib/learningsuite";
 
 /**
