@@ -3,7 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { authenticator } from "otplib";
 import crypto from "crypto";
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString("hex");
+// Use AUTH_SECRET as fallback to ensure consistent key across API calls
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.AUTH_SECRET || "";
 
 function decrypt(encryptedText: string): string {
   try {
