@@ -5,7 +5,8 @@ import { authenticator } from "otplib";
 import qrcode from "qrcode";
 import crypto from "crypto";
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString("hex");
+// Use AUTH_SECRET as fallback to ensure consistent key across API calls
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || process.env.AUTH_SECRET || "";
 
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(16);

@@ -112,12 +112,13 @@ export default function Setup2FAPage() {
       if (response.ok) {
         toast({
           title: "Erfolg!",
-          description: "2FA erfolgreich aktiviert. Du wirst weitergeleitet...",
+          description: "2FA erfolgreich aktiviert. Bitte melde dich erneut an.",
         });
 
-        // Force session refresh and redirect
-        setTimeout(() => {
-          window.location.href = "/dashboard";
+        // Sign out and redirect to login to get fresh JWT with twoFactorEnabled=true
+        setTimeout(async () => {
+          await signOut({ redirect: false });
+          window.location.href = "/login?message=2fa-setup-complete";
         }, 1500);
       } else {
         const error = await response.json();
