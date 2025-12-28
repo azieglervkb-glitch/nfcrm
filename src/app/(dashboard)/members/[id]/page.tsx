@@ -23,6 +23,8 @@ import {
   AlertTriangle,
   User,
   ExternalLink,
+  GraduationCap,
+  RefreshCw,
 } from "lucide-react";
 import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { AddNoteDialog } from "@/components/member/AddNoteDialog";
@@ -86,6 +88,20 @@ async function getMember(id: string) {
   });
 
   return member;
+}
+
+// Get module name based on number
+function getModuleName(moduleNumber: number | null): string {
+  if (!moduleNumber) return "Nicht gestartet";
+  const moduleNames: Record<number, string> = {
+    1: "Modul 1 - Grundlagen",
+    2: "Modul 2 - Aufbau",
+    3: "Modul 3 - Vertiefung",
+    4: "Modul 4 - Fortgeschritten",
+    5: "Modul 5 - Experte",
+    6: "Modul 6 - Meister",
+  };
+  return moduleNames[moduleNumber] || `Modul ${moduleNumber}`;
 }
 
 export default async function MemberDetailPage({
@@ -167,7 +183,7 @@ export default async function MemberDetailPage({
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {/* Contact Info */}
             <Card>
               <CardHeader>
@@ -331,6 +347,45 @@ export default async function MemberDetailPage({
                     {member.dangerZone ? "Ja" : "Nein"}
                   </span>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* LearningSuite Progress */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  LearningSuite
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Aktuelles Modul</span>
+                  <span className="text-sm font-medium text-primary">
+                    {member.currentModule ? `Modul ${member.currentModule}` : "—"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Fortschritt</span>
+                  <span className="text-sm font-medium">
+                    {getModuleName(member.currentModule)}
+                  </span>
+                </div>
+                {member.learningSuiteLastSync && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Letzter Sync</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelativeTime(member.learningSuiteLastSync)}
+                    </span>
+                  </div>
+                )}
+                {member.learningSuiteUserId && (
+                  <div className="pt-2 border-t">
+                    <span className="text-xs text-muted-foreground">
+                      LS-ID: {member.learningSuiteUserId}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
