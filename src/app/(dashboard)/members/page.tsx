@@ -1,11 +1,30 @@
 import { prisma } from "@/lib/prisma";
-import { SectionHeader } from "@/components/common";
+import {
+  SectionHeader,
+  StatusBadge,
+  getMemberStatusType,
+  FeelingEmoji,
+} from "@/components/common";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Plus, Search } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Plus, Search, Eye, MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import { MembersTable } from "@/components/members/MembersTable";
 import { getCurrentWeekStart } from "@/lib/date-utils";
 
 interface SearchParams {
