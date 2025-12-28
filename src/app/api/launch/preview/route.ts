@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { parseOnboardingCSV, normalizeName } from '@/lib/launch/csv-parser';
-import { getAllCourseMembers } from '@/lib/launch/learningsuite-members';
+import { getAllMembers } from '@/lib/launch/learningsuite-members';
 import { ImportPreview, ImportMemberPreview, DEFAULT_IMPORT_CONFIG } from '@/lib/launch/types';
 
 export async function POST(request: NextRequest) {
@@ -29,13 +29,13 @@ export async function POST(request: NextRequest) {
     const { index: onboardingIndex, totalRows, validRows, errors: csvErrors } = parseOnboardingCSV(csvContent);
     console.log(`[Launch Preview] Parsed ${validRows}/${totalRows} valid rows from CSV`);
 
-    // Fetch members from LearningSuite
+    // Fetch members from LearningSuite (using /members endpoint directly)
     console.log('[Launch Preview] Fetching LearningSuite members...');
-    const lsResult = await getAllCourseMembers(courseId || DEFAULT_IMPORT_CONFIG.courseId);
+    const lsResult = await getAllMembers();
 
     if (!lsResult.success) {
       return NextResponse.json({
-        error: 'Failed to fetch LearningSuite members',
+        error: 'LearningSuite API Fehler',
         details: lsResult.error,
       }, { status: 500 });
     }

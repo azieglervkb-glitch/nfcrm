@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { parseOnboardingCSV } from '@/lib/launch/csv-parser';
-import { getAllCourseMembers } from '@/lib/launch/learningsuite-members';
+import { getAllMembers } from '@/lib/launch/learningsuite-members';
 import { startImport, getImportStatus, resetImportStatus } from '@/lib/launch/import-engine';
 import { DEFAULT_IMPORT_CONFIG } from '@/lib/launch/types';
 
@@ -46,13 +46,13 @@ export async function POST(request: NextRequest) {
     const { index: onboardingIndex, validRows } = parseOnboardingCSV(csvContent);
     console.log(`[Launch Start] Parsed ${validRows} valid rows from CSV`);
 
-    // Fetch members from LearningSuite
+    // Fetch members from LearningSuite (using /members endpoint directly)
     console.log('[Launch Start] Fetching LearningSuite members...');
-    const lsResult = await getAllCourseMembers(courseId || DEFAULT_IMPORT_CONFIG.courseId);
+    const lsResult = await getAllMembers();
 
     if (!lsResult.success) {
       return NextResponse.json({
-        error: 'Failed to fetch LearningSuite members',
+        error: 'LearningSuite API Fehler',
         details: lsResult.error,
       }, { status: 500 });
     }

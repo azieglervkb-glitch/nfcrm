@@ -29,7 +29,8 @@ interface LSApiMember {
  * - accessTo is null OR in the future
  */
 function isActiveMember(member: LSApiMember): boolean {
-  if (!member.enabled) return false;
+  // If enabled field doesn't exist, assume active
+  if (member.enabled === false) return false;
 
   if (member.accessTo) {
     const accessToDate = new Date(member.accessTo);
@@ -40,10 +41,29 @@ function isActiveMember(member: LSApiMember): boolean {
 }
 
 /**
- * Get all members enrolled in a course
- * Endpoint: GET /courses/{courseId}/members
+ * Normalize member data from API response
  */
-export async function getAllCourseMembers(courseId: string): Promise<{
+function normalizeMembers(membersArray: LSApiMember[]): LSMember[] {
+  return membersArray
+    .filter(isActiveMember)
+    .map((m) => ({
+      id: String(m.id || ''),
+      email: String(m.email || '').toLowerCase().trim(),
+      firstName: String(m.firstName || '').trim(),
+      lastName: String(m.lastName || '').trim(),
+      fullName: String(m.fullName || `${m.firstName || ''} ${m.lastName || ''}`).trim(),
+      phone: m.phone,
+      createdAt: m.createdAt,
+    }))
+    .filter((m) => m.email && m.email.includes('@'));
+}
+
+/**
+ * Get all active members (from all courses/platform)
+ * Endpoint: GET /members
+ * This is the PRIMARY endpoint - works reliably
+ */
+export async function getAllMembers(): Promise<{
   success: boolean;
   members: LSMember[];
   error?: string;
@@ -52,12 +72,12 @@ export async function getAllCourseMembers(courseId: string): Promise<{
     return {
       success: false,
       members: [],
-      error: "LEARNINGSUITE_API_KEY nicht konfiguriert",
+      error: "LEARNINGSUITE_API_KEY nicht konfiguriert. Bitte in .env setzen.",
     };
   }
 
-  const url = `${LEARNINGSUITE_API_BASE}/courses/${courseId}/members`;
-  console.log(`[Launch] Fetching course members from: ${url}`);
+  const url = `${LEARNINGSUITE_API_BASE}/members`;
+  console.log(`[Launch] Fetching all members from: ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -79,31 +99,15 @@ export async function getAllCourseMembers(courseId: string): Promise<{
 
     const data = await response.json();
 
-    // The API might return an array directly or wrapped in a data property
+    // API might return array directly or wrapped
     const membersArray: LSApiMember[] = Array.isArray(data)
       ? data
       : (data.members || data.data || data.users || []);
 
-    console.log(`[Launch] Found ${membersArray.length} total members in course`);
+    console.log(`[Launch] Found ${membersArray.length} total members from API`);
 
-    // Filter for active members only
-    const activeMembers = membersArray.filter(isActiveMember);
-    console.log(`[Launch] ${activeMembers.length} active members (enabled & valid access)`);
-
-    // Normalize member data
-    const members: LSMember[] = activeMembers
-      .map((m) => ({
-        id: String(m.id || ''),
-        email: String(m.email || '').toLowerCase().trim(),
-        firstName: String(m.firstName || '').trim(),
-        lastName: String(m.lastName || '').trim(),
-        fullName: String(m.fullName || `${m.firstName || ''} ${m.lastName || ''}`).trim(),
-        phone: m.phone,
-        createdAt: m.createdAt,
-      }))
-      .filter((m) => m.email && m.email.includes('@'));
-
-    console.log(`[Launch] ${members.length} valid members with email`);
+    const members = normalizeMembers(membersArray);
+    console.log(`[Launch] ${members.length} active members with valid email`);
 
     return {
       success: true,
@@ -114,17 +118,19 @@ export async function getAllCourseMembers(courseId: string): Promise<{
     return {
       success: false,
       members: [],
-      error: error instanceof Error ? error.message : "Unbekannter Fehler beim API-Aufruf",
+      error: error instanceof Error ? error.message : "Netzwerkfehler beim API-Aufruf",
     };
   }
 }
 
 /**
- * Get all active members (from all courses/platform)
- * Endpoint: GET /members
- * Fallback if course-specific endpoint fails
+ * Get all members enrolled in a specific course
+ * Endpoint: GET /courses/{courseId}/members
+ *
+ * NOTE: The courseId might need to be a different format than the GraphQL GID.
+ * If this fails, use getAllMembers() as fallback.
  */
-export async function getAllMembers(): Promise<{
+export async function getAllCourseMembers(courseId: string): Promise<{
   success: boolean;
   members: LSMember[];
   error?: string;
@@ -137,8 +143,8 @@ export async function getAllMembers(): Promise<{
     };
   }
 
-  const url = `${LEARNINGSUITE_API_BASE}/members`;
-  console.log(`[Launch] Fetching all members from: ${url}`);
+  const url = `${LEARNINGSUITE_API_BASE}/courses/${encodeURIComponent(courseId)}/members`;
+  console.log(`[Launch] Fetching course members from: ${url}`);
 
   try {
     const response = await fetch(url, {
@@ -150,34 +156,22 @@ export async function getAllMembers(): Promise<{
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Launch] API error (${response.status}):`, errorText);
-      return {
-        success: false,
-        members: [],
-        error: `LearningSuite API Fehler: ${response.status}`,
-      };
+      console.error(`[Launch] Course API error (${response.status}):`, errorText);
+
+      // If course endpoint fails, try fallback to /members
+      console.log(`[Launch] Course endpoint failed, trying /members fallback...`);
+      return getAllMembers();
     }
 
     const data = await response.json();
-    const membersArray: LSApiMember[] = Array.isArray(data) ? data : (data.members || data.data || []);
+    const membersArray: LSApiMember[] = Array.isArray(data)
+      ? data
+      : (data.members || data.data || data.users || []);
 
-    console.log(`[Launch] Found ${membersArray.length} total members`);
+    console.log(`[Launch] Found ${membersArray.length} total members in course`);
 
-    // Filter for active members
-    const activeMembers = membersArray.filter(isActiveMember);
-    console.log(`[Launch] ${activeMembers.length} active members`);
-
-    const members: LSMember[] = activeMembers
-      .map((m) => ({
-        id: String(m.id || ''),
-        email: String(m.email || '').toLowerCase().trim(),
-        firstName: String(m.firstName || '').trim(),
-        lastName: String(m.lastName || '').trim(),
-        fullName: String(m.fullName || `${m.firstName || ''} ${m.lastName || ''}`).trim(),
-        phone: m.phone,
-        createdAt: m.createdAt,
-      }))
-      .filter((m) => m.email && m.email.includes('@'));
+    const members = normalizeMembers(membersArray);
+    console.log(`[Launch] ${members.length} active members with valid email`);
 
     return {
       success: true,
@@ -185,22 +179,53 @@ export async function getAllMembers(): Promise<{
     };
   } catch (error) {
     console.error("[Launch] API request error:", error);
-    return {
-      success: false,
-      members: [],
-      error: error instanceof Error ? error.message : "Unbekannter Fehler",
-    };
+
+    // Network error - try fallback
+    console.log(`[Launch] Network error, trying /members fallback...`);
+    return getAllMembers();
   }
 }
 
 /**
+ * Get all members - with automatic fallback
+ * Tries course-specific first, falls back to all members
+ */
+export async function getMembersWithFallback(courseId?: string): Promise<{
+  success: boolean;
+  members: LSMember[];
+  error?: string;
+  usedFallback?: boolean;
+}> {
+  // If no courseId provided, use /members directly
+  if (!courseId) {
+    const result = await getAllMembers();
+    return { ...result, usedFallback: false };
+  }
+
+  // Try course-specific first
+  console.log(`[Launch] Trying course-specific endpoint for: ${courseId}`);
+  const courseResult = await getAllCourseMembers(courseId);
+
+  // If it worked, return it
+  if (courseResult.success && courseResult.members.length > 0) {
+    return { ...courseResult, usedFallback: false };
+  }
+
+  // Fallback to /members
+  console.log(`[Launch] Falling back to /members endpoint`);
+  const allResult = await getAllMembers();
+  return { ...allResult, usedFallback: true };
+}
+
+/**
  * Get all members from NF Mentoring course
+ * Uses /members endpoint directly (more reliable)
  */
 export async function getNFMentoringMembers(): Promise<{
   success: boolean;
   members: LSMember[];
   error?: string;
 }> {
-  const courseId = 'Q291cnNISW5zdGFuY2U6Y2x4OWk2dXRsM3RiaWR5aWtzeDN3N2U3bA';
-  return getAllCourseMembers(courseId);
+  // Use /members directly since course endpoint has issues with GID format
+  return getAllMembers();
 }
