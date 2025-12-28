@@ -70,28 +70,34 @@ enum UpsellStatus {
 
 // Admin/Coach Benutzer
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  vorname       String
-  nachname      String
-  role          UserRole  @default(COACH)
-  avatarUrl     String?
-  isActive      Boolean   @default(true)
-  lastLogin     DateTime?
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  vorname        String
+  nachname       String
+  role           UserRole  @default(COACH)
+  avatarUrl      String?
+  whatsappNummer String?   // Format: +49XXXXXXXXXXX
+  isActive       Boolean   @default(true)
+  lastLogin      DateTime?
 
   // 2FA Settings
   twoFactorSecret  String?
-  twoFactorEnabled Boolean   @default(false)
+  twoFactorEnabled Boolean @default(false)
 
   // Task-Einstellungen
-  taskRuleIds   String[]  @default([])  // Welche Regel-Tasks dieser User empfangen soll (z.B. ["R1", "R3", "C2"])
-  showAllTasks  Boolean   @default(false) // Ob alle Tasks oder nur zugewiesene angezeigt werden
+  taskRuleIds         String[]  @default([])
+  showAllTasks        Boolean   @default(false)
+  taskWhatsappEnabled Boolean   @default(false)
+
+  // Berechtigungen
+  permissions String[] @default(["dashboard", "tasks"])
 
   // Relations
-  assignedMembers Member[]  @relation("CoachMembers")
-  tasks           Task[]    @relation("AssignedTasks")
-  createdTasks    Task[]    @relation("CreatedTasks")
+  assignedMembers Member[]       @relation("CoachMembers")
+  assignedLeads   Lead[]         @relation("AssignedLeads")
+  tasks           Task[]         @relation("AssignedTasks")
+  createdTasks    Task[]         @relation("CreatedTasks")
   sessions        Session[]
   accounts        Account[]
   leadActivities  LeadActivity[]
@@ -187,6 +193,10 @@ model Lead {
   convertedToMemberId String?   @unique
   convertedAt         DateTime?
 
+  // Zuweisung
+  assignedTo   User?   @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  assignedToId String?
+
   // Relations
   activities LeadActivity[]
 
@@ -197,6 +207,7 @@ model Lead {
   @@index([status])
   @@index([source])
   @@index([email])
+  @@index([assignedToId])
 }
 
 // Lead-Aktivitäten (Kontakt-Historie)
@@ -265,9 +276,9 @@ model Member {
   membershipEnd     DateTime?
   copecartCustomerId String?
 
-  // Coach Zuordnung
-  assignedCoach   User?   @relation("CoachMembers", fields: [assignedCoachId], references: [id])
-  assignedCoachId String?
+  // Coach/Team Zuordnung
+  assignedTo   User?   @relation("CoachMembers", fields: [assignedToId], references: [id])
+  assignedToId String?
 
   // Onboarding Daten (Formular 1: "Starte jetzt dein NF Mentoring")
   unternehmen           String?
@@ -280,15 +291,31 @@ model Member {
   wieAufmerksam         String? // Marketing Attribution
 
   // Onboarding Status
-  onboardingCompleted  Boolean   @default(false)
-  onboardingDate       DateTime?
-  welcomeCallCompleted Boolean   @default(false)
-  welcomeCallDate      DateTime?
+  onboardingCompleted       Boolean   @default(false)
+  onboardingDate            DateTime?
+  onboardingSentAt          DateTime?
+  onboardingReminderCount   Int       @default(0)
+  onboardingLastReminderAt  DateTime?
+  welcomeCallCompleted      Boolean   @default(false)
+  welcomeCallDate           DateTime?
 
-  // KPI Tracking Setup (Formular 2: "Starte dein persönliches KPI-Tracking")
-  kpiTrackingActive    Boolean   @default(false)
-  kpiTrackingStartDate DateTime?
-  hauptzielEinSatz     String?
+  // KPI Tracking Setup
+  kpiTrackingActive      Boolean   @default(false)
+  kpiTrackingStartDate   DateTime?
+  kpiTrackingEnabled     Boolean   @default(false)
+  kpiTrackingEnabledAt   DateTime?
+  kpiSetupCompleted      Boolean   @default(false)
+  kpiSetupCompletedAt    DateTime?
+  kpiSetupSentAt         DateTime?
+  kpiSetupReminderCount  Int       @default(0)
+  kpiSetupLastReminderAt DateTime?
+  kpiSetupData           Json?
+  hauptzielEinSatz       String?
+
+  // LearninSuite Integration
+  learningSuiteUserId   String?
+  learningSuiteLastSync DateTime?
+  currentModule         Int?
 
   // Welche KPIs werden getrackt (Checkboxen)
   trackKontakte    Boolean @default(false)
@@ -309,12 +336,14 @@ model Member {
   termineAbschlussSoll     Int?
   einheitenSoll            Int?
   empfehlungenSoll         Int?
+  konvertierungTerminSoll  Decimal? @db.Decimal(5, 2)
+  abschlussquoteSoll       Decimal? @db.Decimal(5, 2)
 
   // Flags (von Automationen gesetzt)
-  reviewFlag     Boolean @default(false)
-  churnRisk      Boolean @default(false)
+  reviewFlag      Boolean @default(false)
+  churnRisk       Boolean @default(false)
   upsellCandidate Boolean @default(false)
-  dangerZone     Boolean @default(false)
+  dangerZone      Boolean @default(false)
 
   // Relations
   kpiWeeks          KpiWeek[]
@@ -330,7 +359,7 @@ model Member {
   updatedAt DateTime @updatedAt
 
   @@index([status])
-  @@index([assignedCoachId])
+  @@index([assignedToId])
   @@index([churnRisk])
 }
 
@@ -360,7 +389,9 @@ model KpiWeek {
   empfehlungenIst          Int?
 
   // Berechnete Werte
-  noshowQuote Decimal? @db.Decimal(5, 4) // z.B. 0.3000 = 30%
+  noshowQuote            Decimal? @db.Decimal(5, 4)
+  konvertierungTerminIst Decimal? @db.Decimal(5, 2)
+  abschlussquoteIst      Decimal? @db.Decimal(5, 2)
 
   // Reflexion & Motivation
   feelingScore   Int?    // 1-10
@@ -556,6 +587,14 @@ model SystemSettings {
   automationsEnabled     Boolean @default(true)
   automationsDay         Int     @default(1) // Montag
   automationsTime        String  @default("09:00")
+
+  // KPI Tracking Trigger Settings
+  kpiTriggerModule       Int     @default(2)
+  kpiTriggerSource       String  @default("manual")
+
+  // Reminder Settings
+  kpiSetupReminderDays     Int[] @default([1, 3, 7])
+  onboardingReminderDays   Int[] @default([1, 3, 7])
 
   // Inaktivitäts-Schwellwerte
   churnRiskWeeks         Int     @default(2)
