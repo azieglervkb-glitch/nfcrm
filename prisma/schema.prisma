@@ -684,6 +684,7 @@ model FormToken {
   id        String   @id @default(cuid())
   token     String   @unique
   type      String // "onboarding", "kpi-setup", "weekly"
+  weekStart DateTime? // For weekly tokens: which week this reminder is for
   member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
   memberId  String
   expiresAt DateTime

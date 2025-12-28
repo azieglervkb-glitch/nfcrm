@@ -71,13 +71,14 @@ export async function GET(request: NextRequest) {
 
     for (const member of membersWithoutKpi) {
       try {
-        // Generate form token
+        // Generate form token with weekStart to ensure correct week on submission
         const token = randomBytes(32).toString("hex");
         await prisma.formToken.create({
           data: {
             token,
             type: "weekly",
             memberId: member.id,
+            weekStart: previousWeekStart, // Store which week this reminder is for
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           },
         });
