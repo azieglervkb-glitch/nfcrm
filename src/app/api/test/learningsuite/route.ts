@@ -1,10 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getUserProgressByEmail, syncMemberWithLearninSuite } from "@/lib/learningsuite";
+import {
+  getMemberProgressByEmail,
+  syncMemberWithLearninSuite,
+  testApiConnection,
+} from "@/lib/learningsuite";
 
 /**
- * Test endpoint for LearninSuite API
+ * Test endpoint for LearningSuite API
  * GET /api/test/learningsuite?email=test@example.com
+ *
+ * Tests:
+ * 1. API connectivity
+ * 2. Member lookup by email
+ * 3. Course progress retrieval
+ * 4. Module calculation
  */
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -16,47 +26,92 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const email = searchParams.get("email");
 
-    if (!email) {
-      return NextResponse.json(
-        { error: "email parameter required" },
-        { status: 400 }
-      );
-    }
+    // Test 1: Check API configuration and connectivity
+    const connectionTest = await testApiConnection();
 
-    // Test 1: Get user progress by email
-    console.log(`Testing LearninSuite API for email: ${email}`);
-    const userProgress = await getUserProgressByEmail(email);
-
-    if (!userProgress) {
+    if (!connectionTest.configured) {
       return NextResponse.json({
         success: false,
-        message: "User not found in LearninSuite",
-        email,
-        test: "getUserProgressByEmail",
+        message: "LearningSuite API not configured",
+        apiKeyConfigured: false,
+        hint: "Set LEARNINSUITE_API_KEY in environment variables",
       });
     }
 
-    // Test 2: Sync member data
+    if (!connectionTest.connected) {
+      return NextResponse.json({
+        success: false,
+        message: "LearningSuite API connection failed",
+        apiKeyConfigured: true,
+        connected: false,
+        error: connectionTest.error,
+        hint: "Check if API key is valid and has correct permissions",
+      });
+    }
+
+    // If no email provided, just return connection status
+    if (!email) {
+      return NextResponse.json({
+        success: true,
+        message: "LearningSuite API connection successful",
+        apiKeyConfigured: true,
+        connected: true,
+        hint: "Add ?email=user@example.com to test member lookup",
+      });
+    }
+
+    // Test 2: Get member progress by email
+    console.log(`Testing LearningSuite API for email: ${email}`);
+    const memberProgress = await getMemberProgressByEmail(email);
+
+    if (!memberProgress) {
+      return NextResponse.json({
+        success: false,
+        message: "Member not found in LearningSuite",
+        email,
+        apiKeyConfigured: true,
+        connected: true,
+        memberFound: false,
+        hint: "Verify the email address exists in LearningSuite",
+      });
+    }
+
+    // Test 3: Full sync simulation
     const syncResult = await syncMemberWithLearninSuite(email);
 
     return NextResponse.json({
       success: true,
-      message: "LearninSuite API test successful",
+      message: "LearningSuite API test successful",
       email,
-      userProgress: {
-        id: userProgress.id,
-        email: userProgress.email,
-        firstName: userProgress.firstName,
-        lastName: userProgress.lastName,
-        currentModule: userProgress.currentModule,
-        completedModules: userProgress.completedModules,
-        progress: userProgress.progress,
+      apiKeyConfigured: true,
+      connected: true,
+      memberFound: true,
+      memberProgress: {
+        memberId: memberProgress.memberId,
+        email: memberProgress.email,
+        firstName: memberProgress.firstName,
+        lastName: memberProgress.lastName,
+        currentModule: memberProgress.currentModule,
+        totalProgress: memberProgress.totalProgress,
+        coursesCount: memberProgress.courses.length,
+        courses: memberProgress.courses.map((course) => ({
+          id: course.id,
+          title: course.title,
+          progress: course.progress,
+          completedLessons: course.completedLessons,
+          totalLessons: course.totalLessons,
+          isCompleted: course.isCompleted,
+          lastActivity: course.lastActivityAt,
+        })),
       },
-      syncResult,
-      apiKeyConfigured: !!process.env.LEARNINSUITE_API_KEY,
+      syncResult: {
+        learningSuiteUserId: syncResult.learningSuiteUserId,
+        currentModule: syncResult.currentModule,
+        synced: syncResult.synced,
+      },
     });
   } catch (error) {
-    console.error("LearninSuite API test error:", error);
+    console.error("LearningSuite API test error:", error);
     return NextResponse.json(
       {
         success: false,
@@ -67,4 +122,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
