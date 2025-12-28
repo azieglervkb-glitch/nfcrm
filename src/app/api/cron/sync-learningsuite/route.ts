@@ -44,7 +44,6 @@ export async function GET(request: NextRequest) {
         onboardingCompleted: true,
         kpiTrackingEnabled: false,
         kpiSetupCompleted: false,
-        email: { not: null },
       },
       select: {
         id: true,
