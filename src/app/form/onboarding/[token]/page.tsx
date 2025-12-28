@@ -11,7 +11,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from "lucide-react";
 
-// Helper to handle NaN from empty number inputs (Zod 4 compatible)
+// Zod 4 compatible helper with explicit type predicate for correct inference
+// NaN from empty number inputs triggers validation error
 const numericField = (minValue: number, errorMessage: string) =>
   z
     .union([z.number(), z.nan()])

@@ -12,17 +12,15 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, Trophy, Euro, Phone, Calendar, Handshake, Target, Gift, Settings, Percent, TrendingUp, Package } from "lucide-react";
 
-// Helper to handle NaN from empty number inputs
-// Using coerce + refine for Zod 4 compatibility
+// Zod 4 compatible helpers with explicit type annotations to ensure correct inference
+// NaN from empty number inputs is transformed to null
 const optionalNumericField = z
-  .union([z.number(), z.nan(), z.undefined(), z.null()])
-  .transform((val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null))
-  .pipe(z.number().min(1).nullable());
+  .union([z.number(), z.nan()])
+  .transform((val): number | null => (typeof val === 'number' && !Number.isNaN(val) ? val : null));
 
 const optionalPercentField = z
-  .union([z.number(), z.nan(), z.undefined(), z.null()])
-  .transform((val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null))
-  .pipe(z.number().min(0).max(100).nullable());
+  .union([z.number(), z.nan()])
+  .transform((val): number | null => (typeof val === 'number' && !Number.isNaN(val) ? val : null));
 
 const requiredNumericField = (minValue: number, errorMessage: string) =>
   z
@@ -66,10 +64,10 @@ const kpiSetupSchema = z.object({
 }).refine((data) => !data.trackTermine || (data.termineVereinbartSoll && data.termineVereinbartSoll > 0), {
   message: "Bitte gib ein Ziel für Termine an",
   path: ["termineVereinbartSoll"],
-}).refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll !== undefined && data.konvertierungTerminSoll >= 0), {
+}).refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll >= 0), {
   message: "Bitte gib ein Ziel für Konvertierung an",
   path: ["konvertierungTerminSoll"],
-}).refine((data) => !data.trackAbschlussquote || (data.abschlussquoteSoll !== null && data.abschlussquoteSoll !== undefined && data.abschlussquoteSoll >= 0), {
+}).refine((data) => !data.trackAbschlussquote || (data.abschlussquoteSoll !== null && data.abschlussquoteSoll >= 0), {
   message: "Bitte gib ein Ziel für Abschlussquote an",
   path: ["abschlussquoteSoll"],
 }).refine((data) => !data.trackEinheiten || (data.einheitenSoll && data.einheitenSoll > 0), {

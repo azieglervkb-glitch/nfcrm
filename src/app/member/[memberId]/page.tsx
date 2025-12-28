@@ -39,16 +39,15 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
-// Helper to handle NaN from empty number inputs (Zod 4 compatible)
+// Zod 4 compatible helpers with explicit type annotations to ensure correct inference
+// NaN from empty number inputs is transformed to null
 const optionalNumericField = z
-  .union([z.number(), z.nan(), z.undefined(), z.null()])
-  .transform((val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null))
-  .pipe(z.number().min(1).nullable());
+  .union([z.number(), z.nan()])
+  .transform((val): number | null => (typeof val === 'number' && !Number.isNaN(val) ? val : null));
 
 const optionalPercentField = z
-  .union([z.number(), z.nan(), z.undefined(), z.null()])
-  .transform((val) => (typeof val === 'number' && !Number.isNaN(val) ? val : null))
-  .pipe(z.number().min(0).max(100).nullable());
+  .union([z.number(), z.nan()])
+  .transform((val): number | null => (typeof val === 'number' && !Number.isNaN(val) ? val : null));
 
 const requiredNumericField = (minValue: number, errorMessage: string) =>
   z
