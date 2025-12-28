@@ -10,31 +10,29 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, X, Trophy, DollarSign, Phone, Calendar, TrendingUp, Handshake, Target, Award, Settings } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Trophy, DollarSign, Phone, Calendar, Handshake, Target, Award, Settings } from "lucide-react";
 
 const kpiSetupSchema = z.object({
   // Ziel
   umsatzSollMonat: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
-  
+
   // KPIs
   trackKontakte: z.boolean(),
   kontakteSoll: z.number().optional(),
-  
+  trackEntscheider: z.boolean(), // Sub-option: "Davon Entscheider" im Weekly
+
   trackTermine: z.boolean(),
   termineVereinbartSoll: z.number().optional(),
-  
-  trackKonvertierung: z.boolean(),
-  konvertierungTerminSoll: z.number().min(0).max(100).optional(),
-  
-  trackAbschlussquote: z.boolean(),
-  abschlussquoteSoll: z.number().min(0).max(100).optional(),
-  
+
+  trackAbschluesse: z.boolean(), // Abschluss-Termine & No-Shows im Weekly
+  termineAbschlussSoll: z.number().optional(),
+
   trackEinheiten: z.boolean(),
   einheitenSoll: z.number().optional(),
-  
+
   trackEmpfehlungen: z.boolean(),
   empfehlungenSoll: z.number().optional(),
-  
+
   // Kontext & Motivation
   wasNervtAmMeisten: z.string().optional(),
   hauptzielEinSatz: z.string().min(5, "Bitte formuliere dein Ziel (mind. 5 Zeichen)"),
@@ -74,18 +72,18 @@ export default function KpiSetupFormPage({
     resolver: zodResolver(kpiSetupSchema),
     defaultValues: {
       trackKontakte: false,
+      trackEntscheider: false,
       trackTermine: false,
-      trackKonvertierung: false,
-      trackAbschlussquote: false,
+      trackAbschluesse: false,
       trackEinheiten: false,
       trackEmpfehlungen: false,
     },
   });
 
   const trackKontakte = watch("trackKontakte");
+  const trackEntscheider = watch("trackEntscheider");
   const trackTermine = watch("trackTermine");
-  const trackKonvertierung = watch("trackKonvertierung");
-  const trackAbschlussquote = watch("trackAbschlussquote");
+  const trackAbschluesse = watch("trackAbschluesse");
   const trackEinheiten = watch("trackEinheiten");
   const trackEmpfehlungen = watch("trackEmpfehlungen");
 
@@ -280,7 +278,10 @@ export default function KpiSetupFormPage({
                 <Checkbox
                   id="trackKontakte"
                   checked={trackKontakte}
-                  onCheckedChange={(checked) => setValue("trackKontakte", !!checked)}
+                  onCheckedChange={(checked) => {
+                    setValue("trackKontakte", !!checked);
+                    if (!checked) setValue("trackEntscheider", false);
+                  }}
                   className="mt-1"
                 />
                 <div className="flex-1 space-y-3">
@@ -290,26 +291,37 @@ export default function KpiSetupFormPage({
                       Kontakte / Calls pro Woche tracken
                     </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="kontakteSoll" className="text-sm">
-                      Ziel - Kontakte pro Woche (Calls, Anschreiben etc.){" "}
-                      <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Setze dir ein realistisches aber ambitioniertes Ziel. Beispiel: 20 Calls/Tag
-                      * 5 Tage = 100 Calls/Woche. Wenn du dir unsicher bist, frage Nino.
-                    </p>
-                    {trackKontakte && (
-                      <Input
-                        id="kontakteSoll"
-                        type="number"
-                        inputMode="numeric"
-                        {...register("kontakteSoll", { valueAsNumber: true })}
-                        placeholder="z.B. 100"
-                        className={errors.kontakteSoll ? "border-destructive" : ""}
-                      />
-                    )}
-                  </div>
+                  {trackKontakte && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="kontakteSoll" className="text-sm">
+                          Ziel - Kontakte pro Woche (Calls, Anschreiben etc.)
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Setze dir ein realistisches aber ambitioniertes Ziel. Beispiel: 20 Calls/Tag
+                          * 5 Tage = 100 Calls/Woche.
+                        </p>
+                        <Input
+                          id="kontakteSoll"
+                          type="number"
+                          inputMode="numeric"
+                          {...register("kontakteSoll", { valueAsNumber: true })}
+                          placeholder="z.B. 100"
+                        />
+                      </div>
+                      {/* Sub-option: Entscheider */}
+                      <div className="flex items-center gap-2 pl-2 pt-2 border-t">
+                        <Checkbox
+                          id="trackEntscheider"
+                          checked={trackEntscheider}
+                          onCheckedChange={(checked) => setValue("trackEntscheider", !!checked)}
+                        />
+                        <Label htmlFor="trackEntscheider" className="text-sm cursor-pointer">
+                          Davon Entscheider separat tracken
+                        </Label>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -323,107 +335,64 @@ export default function KpiSetupFormPage({
                 />
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-gray-500" />
+                    <Calendar className="h-5 w-5 text-primary" />
                     <Label htmlFor="trackTermine" className="font-semibold cursor-pointer">
-                      Gesamttermine tracken
+                      Termine tracken
                     </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="termineVereinbartSoll" className="text-sm">
-                      Ziel: Termine pro Woche <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Setze dir ein realistisches aber ambitioniertes Ziel. Terminanzahl = alle
-                      Termine (Erstgespräch, Abschluss, Service-Termine etc.)
-                    </p>
-                    {trackTermine && (
+                  {trackTermine && (
+                    <div className="space-y-2">
+                      <Label htmlFor="termineVereinbartSoll" className="text-sm">
+                        Ziel: Termine pro Woche
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Alle Termine die du wöchentlich vereinbaren möchtest.
+                      </p>
                       <Input
                         id="termineVereinbartSoll"
                         type="number"
                         inputMode="numeric"
                         {...register("termineVereinbartSoll", { valueAsNumber: true })}
                         placeholder="z.B. 15"
-                        className={errors.termineVereinbartSoll ? "border-destructive" : ""}
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Konvertierung */}
+              {/* Abschluss-Termine */}
               <div className="flex items-start gap-3 p-4 rounded-lg border">
                 <Checkbox
-                  id="trackKonvertierung"
-                  checked={trackKonvertierung}
-                  onCheckedChange={(checked) => setValue("trackKonvertierung", !!checked)}
+                  id="trackAbschluesse"
+                  checked={trackAbschluesse}
+                  onCheckedChange={(checked) => setValue("trackAbschluesse", !!checked)}
                   className="mt-1"
                 />
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-gray-500" />
-                    <Label htmlFor="trackKonvertierung" className="font-semibold cursor-pointer">
-                      Konvertierung → Termin tracken
+                    <Handshake className="h-5 w-5 text-green-600" />
+                    <Label htmlFor="trackAbschluesse" className="font-semibold cursor-pointer">
+                      Abschluss-Termine & No-Shows tracken
                     </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="konvertierungTerminSoll" className="text-sm">
-                      Ziel: Kontakt → Termin (%) <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Setze dir ein realistisches aber ambitioniertes Ziel. Bestandskunden: 30%,
-                      Kaltakquise: 10%, realistischer Durchschnitt für beides.
-                    </p>
-                    {trackKonvertierung && (
+                  {trackAbschluesse && (
+                    <div className="space-y-2">
+                      <Label htmlFor="termineAbschlussSoll" className="text-sm">
+                        Ziel: Abschluss-Termine pro Woche
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Wie viele Abschluss-Termine planst du pro Woche? No-Shows werden automatisch
+                        mit erfasst.
+                      </p>
                       <Input
-                        id="konvertierungTerminSoll"
+                        id="termineAbschlussSoll"
                         type="number"
                         inputMode="numeric"
-                        step="0.1"
-                        {...register("konvertierungTerminSoll", { valueAsNumber: true })}
-                        placeholder="z.B. 20"
-                        className={errors.konvertierungTerminSoll ? "border-destructive" : ""}
+                        {...register("termineAbschlussSoll", { valueAsNumber: true })}
+                        placeholder="z.B. 5"
                       />
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Abschlussquote */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
-                <Checkbox
-                  id="trackAbschlussquote"
-                  checked={trackAbschlussquote}
-                  onCheckedChange={(checked) => setValue("trackAbschlussquote", !!checked)}
-                  className="mt-1"
-                />
-                <div className="flex-1 space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Handshake className="h-5 w-5 text-gray-500" />
-                    <Label htmlFor="trackAbschlussquote" className="font-semibold cursor-pointer">
-                      Abschlussquote tracken
-                    </Label>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="abschlussquoteSoll" className="text-sm">
-                      Ziel: Termin → Abschluss (%) <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Wie viele deiner qualifizierten Termine sollen zu einem Abschluss führen?
-                      (inkl. Cross-Sell, Upsell) Beispiel: 15 Gesamttermine, 10 qualifiziert, 5
-                      Abschlüsse gewünscht = 50% Ziel (5/10=0.5)
-                    </p>
-                    {trackAbschlussquote && (
-                      <Input
-                        id="abschlussquoteSoll"
-                        type="number"
-                        inputMode="numeric"
-                        step="0.1"
-                        {...register("abschlussquoteSoll", { valueAsNumber: true })}
-                        placeholder="z.B. 50"
-                        className={errors.abschlussquoteSoll ? "border-destructive" : ""}
-                      />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -437,30 +406,28 @@ export default function KpiSetupFormPage({
                 />
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-gray-500" />
+                    <Target className="h-5 w-5 text-blue-500" />
                     <Label htmlFor="trackEinheiten" className="font-semibold cursor-pointer">
                       Einheiten / Punkte tracken
                     </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="einheitenSoll" className="text-sm">
-                      Ziel: Einheiten / Punkte <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Wenn du zusätzlich zum Umsatz auch Punkte/Einheiten für dein Unternehmen
-                      erreichen möchtest, finde hier ein ambitioniertes Ziel.
-                    </p>
-                    {trackEinheiten && (
+                  {trackEinheiten && (
+                    <div className="space-y-2">
+                      <Label htmlFor="einheitenSoll" className="text-sm">
+                        Ziel: Einheiten / Punkte pro Woche
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Falls du Punkte/Einheiten für dein Unternehmen trackst.
+                      </p>
                       <Input
                         id="einheitenSoll"
                         type="number"
                         inputMode="numeric"
                         {...register("einheitenSoll", { valueAsNumber: true })}
                         placeholder="z.B. 10"
-                        className={errors.einheitenSoll ? "border-destructive" : ""}
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -474,29 +441,28 @@ export default function KpiSetupFormPage({
                 />
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">
-                    <Award className="h-5 w-5 text-gray-500" />
+                    <Award className="h-5 w-5 text-amber-500" />
                     <Label htmlFor="trackEmpfehlungen" className="font-semibold cursor-pointer">
                       Empfehlungen tracken
                     </Label>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="empfehlungenSoll" className="text-sm">
-                      Ziel: Empfehlungen pro Woche <span className="text-red-500">*</span>
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Wie viele Empfehlungen willst du pro Woche generieren?
-                    </p>
-                    {trackEmpfehlungen && (
+                  {trackEmpfehlungen && (
+                    <div className="space-y-2">
+                      <Label htmlFor="empfehlungenSoll" className="text-sm">
+                        Ziel: Empfehlungen pro Woche
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Wie viele Empfehlungen willst du pro Woche generieren?
+                      </p>
                       <Input
                         id="empfehlungenSoll"
                         type="number"
                         inputMode="numeric"
                         {...register("empfehlungenSoll", { valueAsNumber: true })}
                         placeholder="z.B. 3"
-                        className={errors.empfehlungenSoll ? "border-destructive" : ""}
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
