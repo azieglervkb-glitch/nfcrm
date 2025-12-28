@@ -39,6 +39,7 @@ interface SystemSettings {
   kpiTriggerModule: number;
   kpiTriggerSource: string;
   kpiSetupReminderDays: number[];
+  onboardingReminderDays: number[];
 }
 
 const DAYS = [
@@ -665,7 +666,37 @@ export function SettingsForm() {
             )}
 
             <div className="space-y-2">
-              <Label>Reminder-Tage nach Aktivierung</Label>
+              <Label>Onboarding Reminder-Tage</Label>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5, 7, 10, 14].map((day) => {
+                  const isSelected = (settings.onboardingReminderDays || [1, 3, 7]).includes(day);
+                  return (
+                    <Button
+                      key={day}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        const currentDays = settings.onboardingReminderDays || [1, 3, 7];
+                        const newDays = isSelected
+                          ? currentDays.filter((d) => d !== day)
+                          : [...currentDays, day].sort((a, b) => a - b);
+                        updateSetting("onboardingReminderDays", newDays);
+                      }}
+                    >
+                      Tag {day}
+                    </Button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                An welchen Tagen nach Hinzufügen sollen Onboarding-Reminder gesendet werden?
+                Aktuell: {settings.onboardingReminderDays?.join(", ") || "1, 3, 7"}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>KPI-Setup Reminder-Tage</Label>
               <div className="flex flex-wrap gap-2">
                 {[1, 2, 3, 4, 5, 7, 10, 14].map((day) => {
                   const isSelected = (settings.kpiSetupReminderDays || [1, 3, 7]).includes(day);
@@ -689,7 +720,7 @@ export function SettingsForm() {
                 })}
               </div>
               <p className="text-xs text-muted-foreground">
-                An welchen Tagen nach KPI-Aktivierung sollen Reminder gesendet werden?
+                An welchen Tagen nach KPI-Aktivierung sollen KPI-Setup-Reminder gesendet werden?
                 Aktuell: {settings.kpiSetupReminderDays?.join(", ") || "1, 3, 7"}
               </p>
             </div>

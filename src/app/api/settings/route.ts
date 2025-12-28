@@ -47,6 +47,7 @@ const systemSettingsSchema = z.object({
   kpiTriggerModule: z.number().min(1).max(10).optional(),
   kpiTriggerSource: z.enum(["manual", "learningsuite_api", "both"]).optional(),
   kpiSetupReminderDays: z.array(z.number().min(0).max(30)).optional(),
+  onboardingReminderDays: z.array(z.number().min(0).max(30)).optional(),
 });
 
 export async function GET() {

@@ -126,3 +126,66 @@ export async function hasRunThisMinute(ruleId: string, ruleName: string): Promis
   return !!recentRun;
 }
 
+/**
+ * Check if current time matches onboarding reminders schedule (daily at 10:00)
+ */
+export async function shouldRunOnboardingReminders(): Promise<ScheduleMatch> {
+  const now = getBerlinTime();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  // Fixed schedule: Daily at 10:00
+  if (currentHour === 10 && currentMinute === 0) {
+    return { shouldRun: true, reason: "Daily onboarding reminders at 10:00" };
+  }
+
+  return {
+    shouldRun: false,
+    reason: `Not scheduled. Current: ${currentHour}:${currentMinute}. Expected: 10:00`,
+  };
+}
+
+/**
+ * Check if current time matches KPI setup reminders schedule (daily at 10:30)
+ */
+export async function shouldRunKpiSetupReminders(): Promise<ScheduleMatch> {
+  const now = getBerlinTime();
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+
+  // Fixed schedule: Daily at 10:30
+  if (currentHour === 10 && currentMinute === 30) {
+    return { shouldRun: true, reason: "Daily KPI setup reminders at 10:30" };
+  }
+
+  return {
+    shouldRun: false,
+    reason: `Not scheduled. Current: ${currentHour}:${currentMinute}. Expected: 10:30`,
+  };
+}
+
+interface ShouldCronRunResult extends ScheduleMatch {
+  nextRun?: string;
+}
+
+/**
+ * Generic function to check if a cron should run
+ * @param cronKey - The key identifying which cron to check
+ */
+export async function shouldCronRun(cronKey: string): Promise<ShouldCronRunResult> {
+  switch (cronKey) {
+    case "kpiReminder":
+      return shouldRunKpiReminder();
+    case "scheduledAutomations":
+      return shouldRunScheduledAutomations();
+    case "systemHealth":
+      return shouldRunSystemHealth();
+    case "onboardingReminders":
+      return shouldRunOnboardingReminders();
+    case "kpiSetupReminders":
+      return shouldRunKpiSetupReminders();
+    default:
+      return { shouldRun: false, reason: `Unknown cron key: ${cronKey}` };
+  }
+}
+
