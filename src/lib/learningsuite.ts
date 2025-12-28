@@ -82,6 +82,13 @@ interface LearningSuiteModule {
   isCompleted?: boolean;
   lessonsCompleted?: number;
   lessonsTotal?: number;
+  // ContentDrip (LearningSuite specific)
+  contentDrip?: {
+    contentDripType?: string;
+    contentDripValue?: {
+      visibility?: string; // "locked" or "unlocked"
+    };
+  };
 }
 
 interface ApiResponse<T> {
@@ -305,7 +312,7 @@ export async function getMemberCourseDetails(
 
 /**
  * Get modules for a specific course and user
- * Endpoint: GET /courses/{courseId}/modules?userId={userId}
+ * Tries multiple endpoint formats to find progress data
  */
 export async function getCourseModulesForMember(
   courseId: string,
@@ -313,15 +320,32 @@ export async function getCourseModulesForMember(
 ): Promise<LearningSuiteModule[]> {
   console.log(`[LearningSuite] Getting modules: course=${courseId}, user=${userId}`);
 
-  // Correct parameter is userId not memberId
-  const result = await apiRequest<{ data: LearningSuiteModule[] } | LearningSuiteModule[]>(
-    `/courses/${courseId}/modules?userId=${userId}`
+  // Try endpoint 1: /users/{userId}/courses/{courseId}/modules
+  console.log(`[LearningSuite] Trying: /users/${userId}/courses/${courseId}/modules`);
+  let result = await apiRequest<{ data: LearningSuiteModule[] } | LearningSuiteModule[]>(
+    `/users/${userId}/courses/${courseId}/modules`
   );
 
-  console.log(`[LearningSuite] /courses/${courseId}/modules?userId= response:`, JSON.stringify(result, null, 2));
+  if (!result.success || !result.data) {
+    // Try endpoint 2: /courses/{courseId}/modules?userId={userId}
+    console.log(`[LearningSuite] Trying: /courses/${courseId}/modules?userId=${userId}`);
+    result = await apiRequest<{ data: LearningSuiteModule[] } | LearningSuiteModule[]>(
+      `/courses/${courseId}/modules?userId=${userId}`
+    );
+  }
 
   if (!result.success || !result.data) {
-    console.log(`[LearningSuite] No modules found`);
+    // Try endpoint 3: /courses/{courseId}/topics (LearningSuite may use "topics" for modules)
+    console.log(`[LearningSuite] Trying: /courses/${courseId}/topics?userId=${userId}`);
+    result = await apiRequest<{ data: LearningSuiteModule[] } | LearningSuiteModule[]>(
+      `/courses/${courseId}/topics?userId=${userId}`
+    );
+  }
+
+  console.log(`[LearningSuite] Modules response:`, JSON.stringify(result, null, 2));
+
+  if (!result.success || !result.data) {
+    console.log(`[LearningSuite] No modules found from any endpoint`);
     return [];
   }
 
@@ -331,7 +355,7 @@ export async function getCourseModulesForMember(
   // Log each module's progress
   modules.forEach((m, i) => {
     const name = m.name ?? m.title ?? `Module ${i + 1}`;
-    console.log(`[LearningSuite] "${name}": ${m.progress ?? 0}% - unlocked: ${m.isUnlocked}, lessons: ${m.lessonsCompleted ?? '?'}/${m.lessonsTotal ?? '?'}`);
+    console.log(`[LearningSuite] Module ${i + 1}: "${name}" - unlocked: ${m.isUnlocked}, completed: ${m.isCompleted}, progress: ${m.progress ?? 'N/A'}`);
   });
 
   return modules;
@@ -351,34 +375,74 @@ function calculateCurrentModule(modules: LearningSuiteModule[]): number | null {
     return null;
   }
 
-  // Check if we have real progress data
+  // Check if we have real progress data (isUnlocked, isCompleted, or progress fields)
   const hasProgressData = modules.some(m =>
-    m.progress !== undefined || m.isUnlocked !== undefined
+    m.progress !== undefined || m.isUnlocked !== undefined || m.isCompleted !== undefined
   );
 
-  if (!hasProgressData) {
-    console.log(`[LearningSuite] No progress data in modules`);
-    return null;
+  if (hasProgressData) {
+    console.log(`[LearningSuite] Using progress data from modules`);
+    // Find first module that is unlocked but not complete (progress < 100)
+    for (let i = 0; i < modules.length; i++) {
+      const m = modules[i];
+      const progress = m.progress ?? 0;
+      const isUnlocked = m.isUnlocked ?? true;
+      const isComplete = m.isCompleted ?? (progress >= 100);
+
+      if (isUnlocked && !isComplete) {
+        const moduleNum = i + 1;
+        const name = m.moduleName ?? m.name ?? m.title ?? `Module ${moduleNum}`;
+        console.log(`[LearningSuite] Current module: #${moduleNum} "${name}" (${progress}%)`);
+        return moduleNum;
+      }
+    }
+
+    // All modules completed - return last one
+    console.log(`[LearningSuite] All modules completed`);
+    return modules.length;
   }
 
-  // Find first module that is unlocked but not complete (progress < 100)
-  for (let i = 0; i < modules.length; i++) {
-    const m = modules[i];
-    const progress = m.progress ?? 0;
-    const isUnlocked = m.isUnlocked ?? true;
-    const isComplete = progress >= 100;
-
-    if (isUnlocked && !isComplete) {
-      const moduleNum = i + 1;
-      const name = m.moduleName ?? m.name ?? m.title ?? `Module ${moduleNum}`;
-      console.log(`[LearningSuite] Current module: #${moduleNum} "${name}" (${progress}%)`);
-      return moduleNum;
+  // Check if we have contentDrip visibility info
+  const hasContentDrip = modules.some(m => m.contentDrip?.contentDripValue?.visibility);
+  if (hasContentDrip) {
+    console.log(`[LearningSuite] Using contentDrip visibility from modules`);
+    // Find last module that is not "locked" - that's likely the current one
+    let lastUnlocked = 0;
+    for (let i = 0; i < modules.length; i++) {
+      const visibility = modules[i].contentDrip?.contentDripValue?.visibility;
+      // If visibility is not "locked" or undefined (meaning accessible)
+      if (visibility !== 'locked') {
+        lastUnlocked = i + 1;
+      }
+    }
+    if (lastUnlocked > 0) {
+      const name = modules[lastUnlocked - 1].name ?? modules[lastUnlocked - 1].title ?? `Module ${lastUnlocked}`;
+      console.log(`[LearningSuite] Current module from contentDrip: #${lastUnlocked} "${name}"`);
+      return lastUnlocked;
     }
   }
 
-  // All modules completed - return last one
-  console.log(`[LearningSuite] All modules completed`);
-  return modules.length;
+  console.log(`[LearningSuite] API returned modules but NO progress data - cannot determine current module`);
+  return null;
+}
+
+/**
+ * Estimate current module from course progress percentage
+ * Used as fallback when module-level progress is not available
+ */
+function estimateModuleFromProgress(progressPercent: number, totalModules: number): number | null {
+  if (progressPercent <= 0 || totalModules <= 0) {
+    return null;
+  }
+
+  // Calculate which module the user is likely on based on progress
+  // e.g., 35% progress with 14 modules = module ~5
+  const estimatedModule = Math.ceil((progressPercent / 100) * totalModules);
+
+  // Ensure we return at least 1 and at most totalModules
+  const result = Math.max(1, Math.min(estimatedModule, totalModules));
+  console.log(`[LearningSuite] Estimated module from progress: ${progressPercent}% of ${totalModules} modules = module ${result}`);
+  return result;
 }
 
 /**
@@ -448,12 +512,21 @@ export async function getMemberProgressByEmail(
     }
 
     // Strategy 3: Fall back to modules endpoint
+    let moduleCount = 0;
     if (currentModule === null) {
       console.log(`[LearningSuite] Trying modules endpoint...`);
       const modules = await getCourseModulesForMember(nfMentoringCourse.id, member.id);
-      console.log(`[LearningSuite] Got ${modules.length} modules`);
+      moduleCount = modules.length;
+      console.log(`[LearningSuite] Got ${moduleCount} modules`);
       currentModule = calculateCurrentModule(modules);
       console.log(`[LearningSuite] Calculated from modules: ${currentModule}`);
+    }
+
+    // Strategy 4: Estimate from course progress percentage
+    if (currentModule === null && nfMentoringCourse.progress > 0 && moduleCount > 0) {
+      console.log(`[LearningSuite] Trying progress estimation fallback...`);
+      currentModule = estimateModuleFromProgress(nfMentoringCourse.progress, moduleCount);
+      console.log(`[LearningSuite] Estimated from progress: ${currentModule}`);
     }
   }
 
