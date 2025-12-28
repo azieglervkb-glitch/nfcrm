@@ -39,33 +39,50 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 
+// Helper to handle NaN from empty number inputs (converts NaN to null for optional fields)
+const optionalNumericField = z.preprocess(
+  (val) => (typeof val === 'number' && Number.isNaN(val) ? null : val),
+  z.number().min(1).optional().nullable()
+);
+
+const optionalPercentField = z.preprocess(
+  (val) => (typeof val === 'number' && Number.isNaN(val) ? null : val),
+  z.number().min(0).max(100).optional().nullable()
+);
+
+const requiredNumericField = (minValue: number, errorMessage: string) =>
+  z.preprocess(
+    (val) => (typeof val === 'number' && Number.isNaN(val) ? undefined : val),
+    z.number({ required_error: errorMessage, invalid_type_error: errorMessage }).min(minValue, errorMessage)
+  );
+
 // KPI Setup Schema - identical to token-based form
 const kpiSetupSchema = z.object({
   // Ziel
-  umsatzSollMonat: z.number().min(1, "Bitte gib ein gültiges Ziel an"),
+  umsatzSollMonat: requiredNumericField(1, "Bitte gib ein gültiges Ziel an"),
 
   // KPIs
   trackKontakte: z.boolean(),
-  kontakteSoll: z.number().min(1).optional().nullable(),
+  kontakteSoll: optionalNumericField,
   trackEntscheider: z.boolean(),
 
   trackTermine: z.boolean(),
-  termineVereinbartSoll: z.number().min(1).optional().nullable(),
+  termineVereinbartSoll: optionalNumericField,
 
   trackKonvertierung: z.boolean(),
-  konvertierungTerminSoll: z.number().min(0).max(100).optional().nullable(),
+  konvertierungTerminSoll: optionalPercentField,
 
   trackAbschluesse: z.boolean(),
-  termineAbschlussSoll: z.number().min(1).optional().nullable(),
+  termineAbschlussSoll: optionalNumericField,
 
   trackAbschlussquote: z.boolean(),
-  abschlussquoteSoll: z.number().min(0).max(100).optional().nullable(),
+  abschlussquoteSoll: optionalPercentField,
 
   trackEinheiten: z.boolean(),
-  einheitenSoll: z.number().min(1).optional().nullable(),
+  einheitenSoll: optionalNumericField,
 
   trackEmpfehlungen: z.boolean(),
-  empfehlungenSoll: z.number().min(1).optional().nullable(),
+  empfehlungenSoll: optionalNumericField,
 
   // Kontext & Motivation
   wasNervtAmMeisten: z.string().optional(),

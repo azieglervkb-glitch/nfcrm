@@ -11,13 +11,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from "lucide-react";
 
+// Helper to handle NaN from empty number inputs
+const numericField = (minValue: number, errorMessage: string) =>
+  z.preprocess(
+    (val) => (typeof val === 'number' && Number.isNaN(val) ? undefined : val),
+    z.number({ required_error: errorMessage, invalid_type_error: errorMessage }).min(minValue, errorMessage)
+  );
+
 const onboardingSchema = z.object({
   unternehmen: z.string().min(1, "Bitte gib dein Unternehmen an"),
   position: z.string().min(1, "Bitte gib deine Position an"),
-  aktuellerMonatsumsatz: z.number().min(0, "Bitte gib einen gültigen Umsatz an"),
+  aktuellerMonatsumsatz: numericField(0, "Bitte gib einen gültigen Umsatz an"),
   wasNervtAmMeisten: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
   groessetesProblem: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
-  zielMonatsumsatz: z.number().min(1, "Bitte gib ein gültiges Ziel an (mindestens 1€)"),
+  zielMonatsumsatz: numericField(1, "Bitte gib ein gültiges Ziel an (mindestens 1€)"),
   groessteZielWarum: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
   wieAufmerksam: z.string().optional(),
 });
