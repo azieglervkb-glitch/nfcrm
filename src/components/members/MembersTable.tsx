@@ -122,12 +122,7 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
         <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg border">
           <div className="flex items-center gap-2">
             <Checkbox
-              checked={allSelected}
-              ref={(el) => {
-                if (el) {
-                  el.indeterminate = someSelected;
-                }
-              }}
+              checked={allSelected ? true : someSelected ? "indeterminate" : false}
               onCheckedChange={toggleSelectAll}
             />
             <span className="text-sm font-medium">
