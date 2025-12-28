@@ -119,43 +119,46 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
     <div className="space-y-4">
       {/* Bulk Actions Bar */}
       {selectedMembers.size > 0 && (
-        <div className="flex items-center gap-2 p-4 bg-muted/50 rounded-lg border">
-          <div className="flex items-center gap-2">
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 p-4 bg-primary/5 rounded-lg border border-primary/20 shadow-sm">
+          <div className="flex items-center gap-3">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}
               onCheckedChange={toggleSelectAll}
+              className="border-primary data-[state=checked]:bg-primary"
             />
-            <span className="text-sm font-medium">
+            <span className="text-sm font-semibold text-primary">
               {selectedMembers.size} ausgewählt
             </span>
           </div>
 
-          <div className="flex items-center gap-2 ml-auto">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="outline"
+              variant="default"
               size="sm"
               onClick={() => handleBulkAction("activate_kpi_tracking")}
               disabled={processing}
+              className="gap-2"
             >
               {processing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <TrendingUp className="h-4 w-4 mr-2" />
+                <TrendingUp className="h-4 w-4" />
               )}
-              KPI-Tracking aktivieren
+              <span className="hidden sm:inline">KPI-Tracking</span> aktivieren
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => handleBulkAction("deactivate_kpi_tracking")}
               disabled={processing}
+              className="gap-2"
             >
               {processing ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                <Square className="h-4 w-4 mr-2" />
+                <Square className="h-4 w-4" />
               )}
-              KPI-Tracking deaktivieren
+              <span className="hidden sm:inline">KPI-Tracking</span> deaktivieren
             </Button>
           </div>
         </div>
