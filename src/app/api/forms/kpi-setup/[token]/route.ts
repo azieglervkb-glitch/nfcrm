@@ -120,43 +120,71 @@ export async function POST(
     // Store structured data in kpiSetupData for future extensibility
     const kpiSetupData = {
       hauptzielEinSatz: body.hauptzielEinSatz,
+      wasNervtAmMeisten: body.wasNervtAmMeisten,
+      trackKontakte: body.trackKontakte ?? false,
+      trackTermine: body.trackTermine ?? false,
+      trackKonvertierung: body.trackKonvertierung ?? false,
+      trackAbschlussquote: body.trackAbschlussquote ?? false,
+      trackEinheiten: body.trackEinheiten ?? false,
+      trackEmpfehlungen: body.trackEmpfehlungen ?? false,
+      trackEntscheider: body.trackEntscheider ?? false,
+      trackAbschluesse: body.trackAbschluesse ?? false,
+    };
+
+    // Prepare update data
+    const updateData: any = {
+      // Mark setup as completed
+      kpiSetupCompleted: true,
+      kpiSetupCompletedAt: new Date(),
+      // Ensure tracking is enabled (should already be set, but double-check)
+      kpiTrackingEnabled: true,
+      // Keep legacy fields for backward compatibility
+      kpiTrackingActive: true, // DEPRECATED but keep for now
+      kpiTrackingStartDate: new Date(), // DEPRECATED but keep for now
+      // Persönliche Daten (nur wenn gesetzt)
+      ...(body.vorname && { vorname: body.vorname }),
+      ...(body.nachname && { nachname: body.nachname }),
+      ...(body.email && { email: body.email.toLowerCase() }),
+      ...(body.telefon && { telefon: body.telefon }),
+      // Kontext & Motivation
+      hauptzielEinSatz: body.hauptzielEinSatz,
+      ...(body.wasNervtAmMeisten && { wasNervtAmMeisten: body.wasNervtAmMeisten }),
+      // Ziele
+      umsatzSollMonat: body.umsatzSollMonat ? parseFloat(String(body.umsatzSollMonat)) : null,
+      umsatzSollWoche: body.umsatzSollMonat
+        ? Math.round(parseFloat(String(body.umsatzSollMonat)) / 4)
+        : null,
+      // KPI Tracking Flags
       trackKontakte: body.trackKontakte ?? false,
       trackTermine: body.trackTermine ?? false,
       trackEinheiten: body.trackEinheiten ?? false,
       trackEmpfehlungen: body.trackEmpfehlungen ?? false,
       trackEntscheider: body.trackEntscheider ?? false,
       trackAbschluesse: body.trackAbschluesse ?? false,
-      // Add any additional fields from the form here
+      // SOLL-Werte
+      kontakteSoll: body.kontakteSoll ? parseInt(String(body.kontakteSoll)) : null,
+      termineVereinbartSoll: body.termineVereinbartSoll
+        ? parseInt(String(body.termineVereinbartSoll))
+        : null,
+      termineAbschlussSoll: body.termineAbschlussSoll
+        ? parseInt(String(body.termineAbschlussSoll))
+        : null,
+      einheitenSoll: body.einheitenSoll ? parseInt(String(body.einheitenSoll)) : null,
+      empfehlungenSoll: body.empfehlungenSoll ? parseInt(String(body.empfehlungenSoll)) : null,
+      // Neue KPI-Felder
+      konvertierungTerminSoll: body.konvertierungTerminSoll
+        ? parseFloat(String(body.konvertierungTerminSoll))
+        : null,
+      abschlussquoteSoll: body.abschlussquoteSoll
+        ? parseFloat(String(body.abschlussquoteSoll))
+        : null,
+      // Store structured data
+      kpiSetupData: kpiSetupData as any,
     };
 
     await prisma.member.update({
       where: { id: formToken.memberId },
-      data: {
-        // Mark setup as completed
-        kpiSetupCompleted: true,
-        kpiSetupCompletedAt: new Date(),
-        // Ensure tracking is enabled (should already be set, but double-check)
-        kpiTrackingEnabled: true,
-        // Keep legacy fields for backward compatibility
-        kpiTrackingActive: true, // DEPRECATED but keep for now
-        kpiTrackingStartDate: new Date(), // DEPRECATED but keep for now
-        hauptzielEinSatz: body.hauptzielEinSatz,
-        umsatzSollWoche: body.umsatzSollWoche,
-        umsatzSollMonat: body.umsatzSollMonat,
-        trackKontakte: body.trackKontakte ?? false,
-        trackTermine: body.trackTermine ?? false,
-        trackEinheiten: body.trackEinheiten ?? false,
-        trackEmpfehlungen: body.trackEmpfehlungen ?? false,
-        trackEntscheider: body.trackEntscheider ?? false,
-        trackAbschluesse: body.trackAbschluesse ?? false,
-        kontakteSoll: body.kontakteSoll ?? null,
-        termineVereinbartSoll: body.termineVereinbartSoll ?? null,
-        termineAbschlussSoll: body.termineAbschlussSoll ?? null,
-        einheitenSoll: body.einheitenSoll ?? null,
-        empfehlungenSoll: body.empfehlungenSoll ?? null,
-        // Store structured data
-        kpiSetupData: kpiSetupData as any,
-      },
+      data: updateData,
     });
 
     // Mark token as used

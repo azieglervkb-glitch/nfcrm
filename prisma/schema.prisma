@@ -334,6 +334,9 @@ model Member {
   termineAbschlussSoll     Int?
   einheitenSoll            Int?
   empfehlungenSoll         Int?
+  // Neue KPI-Felder
+  konvertierungTerminSoll  Decimal? @db.Decimal(5, 2) // Kontakt → Termin (%)
+  abschlussquoteSoll       Decimal? @db.Decimal(5, 2)   // Termin → Abschluss (%)
 
   // Flags (von Automationen gesetzt)
   reviewFlag      Boolean @default(false)
