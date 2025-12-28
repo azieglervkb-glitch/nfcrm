@@ -315,6 +315,7 @@ export default function MemberPortalPage() {
                     id="umsatzSollMonat"
                     type="number"
                     inputMode="numeric"
+                    min={1}
                     {...register("umsatzSollMonat", { valueAsNumber: true })}
                     placeholder="z.B. 20000"
                     className={errors.umsatzSollMonat ? "border-destructive" : ""}
@@ -372,6 +373,7 @@ export default function MemberPortalPage() {
                             id="kontakteSoll"
                             type="number"
                             inputMode="numeric"
+                            min={1}
                             {...register("kontakteSoll", { valueAsNumber: true })}
                             placeholder="z.B. 100"
                             className={errors.kontakteSoll ? "border-destructive" : ""}
@@ -423,6 +425,7 @@ export default function MemberPortalPage() {
                           id="termineVereinbartSoll"
                           type="number"
                           inputMode="numeric"
+                          min={1}
                           {...register("termineVereinbartSoll", { valueAsNumber: true })}
                           placeholder="z.B. 15"
                           className={errors.termineVereinbartSoll ? "border-destructive" : ""}
@@ -508,6 +511,7 @@ export default function MemberPortalPage() {
                           id="termineAbschlussSoll"
                           type="number"
                           inputMode="numeric"
+                          min={1}
                           {...register("termineAbschlussSoll", { valueAsNumber: true })}
                           placeholder="z.B. 5"
                         />
@@ -588,6 +592,7 @@ export default function MemberPortalPage() {
                           id="einheitenSoll"
                           type="number"
                           inputMode="numeric"
+                          min={1}
                           {...register("einheitenSoll", { valueAsNumber: true })}
                           placeholder="z.B. 10"
                         />
@@ -623,6 +628,7 @@ export default function MemberPortalPage() {
                           id="empfehlungenSoll"
                           type="number"
                           inputMode="numeric"
+                          min={1}
                           {...register("empfehlungenSoll", { valueAsNumber: true })}
                           placeholder="z.B. 3"
                         />

@@ -17,7 +17,7 @@ const onboardingSchema = z.object({
   aktuellerMonatsumsatz: z.number().min(0, "Bitte gib einen gültigen Umsatz an"),
   wasNervtAmMeisten: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
   groessetesProblem: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
-  zielMonatsumsatz: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
+  zielMonatsumsatz: z.number().min(1, "Bitte gib ein gültiges Ziel an (mindestens 1€)"),
   groessteZielWarum: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
   wieAufmerksam: z.string().optional(),
 });
@@ -253,6 +253,7 @@ export default function OnboardingFormPage({
                     id="aktuellerMonatsumsatz"
                     type="number"
                     inputMode="numeric"
+                    min={0}
                     placeholder="z.B. 15000"
                     {...register("aktuellerMonatsumsatz", { valueAsNumber: true })}
                     className={`h-12 ${errors.aktuellerMonatsumsatz ? "border-destructive" : ""}`}
@@ -332,6 +333,7 @@ export default function OnboardingFormPage({
                     id="zielMonatsumsatz"
                     type="number"
                     inputMode="numeric"
+                    min={1}
                     placeholder="z.B. 30000"
                     {...register("zielMonatsumsatz", { valueAsNumber: true })}
                     className={`h-12 ${errors.zielMonatsumsatz ? "border-destructive" : ""}`}
