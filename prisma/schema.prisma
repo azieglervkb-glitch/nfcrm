@@ -27,7 +27,8 @@ enum MemberStatus {
 enum ProductType {
   VPMC
   NFM
-  MM // Mastermind (previously PREMIUM)
+  MM       // Mastermind (new name)
+  PREMIUM  // @deprecated - will be migrated to MM
 }
 
 enum TaskPriority {
