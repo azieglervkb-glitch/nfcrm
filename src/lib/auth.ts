@@ -68,6 +68,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           role: user.role,
           avatarUrl: user.avatarUrl,
           permissions: user.permissions,
+          twoFactorEnabled: user.twoFactorEnabled,
         };
       },
     }),
