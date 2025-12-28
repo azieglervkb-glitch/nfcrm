@@ -44,9 +44,14 @@ export async function POST(
     }
 
     // Sync with LearningSuite
-    console.log(`[Sync] Starting LearningSuite sync for member: ${member.email}`);
+    console.log(`[Sync] ========================================`);
+    console.log(`[Sync] Member: ${member.vorname} ${member.nachname}`);
+    console.log(`[Sync] Email für LS-Lookup: ${member.email}`);
+    console.log(`[Sync] ========================================`);
+
     const syncResult = await syncMemberWithLearninSuite(member.email);
-    console.log(`[Sync] Result:`, JSON.stringify(syncResult, null, 2));
+
+    console.log(`[Sync] Ergebnis: synced=${syncResult.synced}, userId=${syncResult.learningSuiteUserId}, module=${syncResult.currentModule}`);
 
     if (!syncResult.synced) {
       return NextResponse.json({
@@ -75,6 +80,9 @@ export async function POST(
       },
     });
 
+    // Show what the API actually returned
+    const nfMentoringCourse = syncResult.courses?.find(c => c.title?.includes("NF Mentoring"));
+
     return NextResponse.json({
       success: true,
       message: "LearningSuite sync completed",
@@ -85,7 +93,13 @@ export async function POST(
         learningSuiteUserId: updatedMember.learningSuiteUserId,
         currentModule: updatedMember.currentModule,
         lastSync: updatedMember.learningSuiteLastSync,
-        courses: syncResult.courses,
+        apiReturned: {
+          coursesCount: syncResult.courses?.length ?? 0,
+          nfMentoringProgress: nfMentoringCourse?.progress ?? "nicht gefunden",
+          hinweis: syncResult.currentModule === null
+            ? "LearningSuite API liefert keine Modul-Progress-Daten"
+            : undefined,
+        },
       },
     });
   } catch (error) {
