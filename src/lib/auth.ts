@@ -40,17 +40,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
-        // Enforce 2FA for users that enabled it
-        if (user.twoFactorEnabled) {
-          if (!user.twoFactorSecret) {
-            return null;
-          }
-
+        // Check 2FA if enabled
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          // Check if 2FA was verified (cookie set by /api/auth/2fa/verify)
           const cookieHeader = request?.headers?.get?.("cookie") || "";
           const match = cookieHeader.match(/(?:^|;\s*)2fa-verified=([^;]+)/);
           const verifiedUserId = match ? decodeURIComponent(match[1]) : null;
 
           if (verifiedUserId !== user.id) {
+            // 2FA not verified yet - deny login
             return null;
           }
         }

@@ -1,22 +1,43 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { authenticator } from "otplib";
-import * as QRCode from "qrcode";
-import { encryptTotpSecret } from "@/lib/twofa";
+import qrcode from "qrcode";
+import crypto from "crypto";
 
-// Generate 2FA secret and QR code for setup
-export async function POST() {
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32).toString("hex");
+
+function encrypt(text: string): string {
+  const iv = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(
+    "aes-256-cbc",
+    Buffer.from(ENCRYPTION_KEY.slice(0, 32)),
+    iv
+  );
+  let encrypted = cipher.update(text);
+  encrypted = Buffer.concat([encrypted, cipher.final()]);
+  return iv.toString("hex") + ":" + encrypted.toString("hex");
+}
+
+/**
+ * Generate 2FA secret and QR code
+ */
+export async function POST(request: NextRequest) {
   const session = await auth();
-
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { email: true, twoFactorEnabled: true },
+      select: {
+        id: true,
+        email: true,
+        vorname: true,
+        nachname: true,
+        twoFactorEnabled: true,
+      },
     });
 
     if (!user) {
@@ -25,28 +46,31 @@ export async function POST() {
 
     if (user.twoFactorEnabled) {
       return NextResponse.json(
-        { error: "2FA is already enabled" },
+        { error: "2FA bereits aktiviert" },
         { status: 400 }
       );
     }
 
-    // Generate secret
+    // Generate new secret
     const secret = authenticator.generateSecret();
-
-    // Store secret temporarily (not enabled yet until verified)
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { twoFactorSecret: encryptTotpSecret(secret) },
-    });
-
-    // Generate QR code
-    const otpauth = authenticator.keyuri(
+    const otpauthUrl = authenticator.keyuri(
       user.email,
       "NF CRM",
       secret
     );
 
-    const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
+    // Generate QR code
+    const qrCodeDataUrl = await qrcode.toDataURL(otpauthUrl);
+
+    // Encrypt and store secret (but don't enable yet)
+    const encryptedSecret = encrypt(secret);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        twoFactorSecret: encryptedSecret,
+        twoFactorEnabled: false, // Will be enabled after verification
+      },
+    });
 
     return NextResponse.json({
       secret,
@@ -55,7 +79,7 @@ export async function POST() {
   } catch (error) {
     console.error("Error setting up 2FA:", error);
     return NextResponse.json(
-      { error: "Failed to set up 2FA" },
+      { error: "Fehler beim Einrichten von 2FA" },
       { status: 500 }
     );
   }

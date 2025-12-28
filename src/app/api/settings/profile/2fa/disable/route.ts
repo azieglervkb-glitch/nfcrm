@@ -1,59 +1,61 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { authenticator } from "otplib";
-import { decryptTotpSecret } from "@/lib/twofa";
+import bcrypt from "bcryptjs";
 
-// Disable 2FA (requires current 2FA code for security)
+/**
+ * Disable 2FA for current user
+ * Requires password confirmation
+ */
 export async function POST(request: NextRequest) {
   const session = await auth();
-
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    const { code } = await request.json();
+    const { password } = await request.json();
 
-    if (!code || typeof code !== "string" || code.length !== 6) {
+    if (!password) {
       return NextResponse.json(
-        { error: "Ungültiger Code. Bitte 6-stelligen Code eingeben." },
+        { error: "Passwort erforderlich" },
         { status: 400 }
       );
     }
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { twoFactorSecret: true, twoFactorEnabled: true },
+      select: {
+        id: true,
+        passwordHash: true,
+        twoFactorEnabled: true,
+      },
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (!user.twoFactorEnabled || !user.twoFactorSecret) {
+    if (!user.twoFactorEnabled) {
       return NextResponse.json(
-        { error: "2FA is not enabled" },
+        { error: "2FA ist nicht aktiviert" },
         { status: 400 }
       );
     }
 
-    // Verify the code before disabling
-    const isValid = authenticator.verify({
-      token: code,
-      secret: decryptTotpSecret(user.twoFactorSecret),
-    });
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, user.passwordHash);
 
-    if (!isValid) {
+    if (!passwordMatch) {
       return NextResponse.json(
-        { error: "Ungültiger Code. 2FA konnte nicht deaktiviert werden." },
-        { status: 400 }
+        { error: "Ungültiges Passwort" },
+        { status: 401 }
       );
     }
 
-    // Disable 2FA
+    // Disable 2FA and remove secret
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { id: user.id },
       data: {
         twoFactorEnabled: false,
         twoFactorSecret: null,
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Error disabling 2FA:", error);
     return NextResponse.json(
-      { error: "Failed to disable 2FA" },
+      { error: "Fehler beim Deaktivieren von 2FA" },
       { status: 500 }
     );
   }

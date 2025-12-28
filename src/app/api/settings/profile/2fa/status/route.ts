@@ -1,19 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-// Get current 2FA status
-export async function GET() {
+/**
+ * Get 2FA status for current user
+ */
+export async function GET(request: NextRequest) {
   const session = await auth();
-
-  if (!session?.user) {
+  if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { twoFactorEnabled: true },
+      select: {
+        twoFactorEnabled: true,
+      },
     });
 
     if (!user) {
@@ -26,7 +29,7 @@ export async function GET() {
   } catch (error) {
     console.error("Error getting 2FA status:", error);
     return NextResponse.json(
-      { error: "Failed to get 2FA status" },
+      { error: "Fehler beim Abrufen des 2FA-Status" },
       { status: 500 }
     );
   }
