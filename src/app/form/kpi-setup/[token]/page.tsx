@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, Trophy, DollarSign, Phone, Calendar, Handshake, Target, Award, Settings } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Trophy, DollarSign, Phone, Calendar, Handshake, Target, Award, Settings, Percent, TrendingUp } from "lucide-react";
 
 const kpiSetupSchema = z.object({
   // Ziel
@@ -24,8 +24,14 @@ const kpiSetupSchema = z.object({
   trackTermine: z.boolean(),
   termineVereinbartSoll: z.number().optional(),
 
-  trackAbschluesse: z.boolean(), // Abschluss-Termine & No-Shows im Weekly
+  trackKonvertierung: z.boolean(), // Kontakt → Termin %
+  konvertierungTerminSoll: z.number().min(0).max(100).optional(),
+
+  trackAbschluesse: z.boolean(), // Abschluss-Termine & No-Shows
   termineAbschlussSoll: z.number().optional(),
+
+  trackAbschlussquote: z.boolean(), // Termin → Abschluss %
+  abschlussquoteSoll: z.number().min(0).max(100).optional(),
 
   trackEinheiten: z.boolean(),
   einheitenSoll: z.number().optional(),
@@ -74,7 +80,9 @@ export default function KpiSetupFormPage({
       trackKontakte: false,
       trackEntscheider: false,
       trackTermine: false,
+      trackKonvertierung: false,
       trackAbschluesse: false,
+      trackAbschlussquote: false,
       trackEinheiten: false,
       trackEmpfehlungen: false,
     },
@@ -83,7 +91,9 @@ export default function KpiSetupFormPage({
   const trackKontakte = watch("trackKontakte");
   const trackEntscheider = watch("trackEntscheider");
   const trackTermine = watch("trackTermine");
+  const trackKonvertierung = watch("trackKonvertierung");
   const trackAbschluesse = watch("trackAbschluesse");
+  const trackAbschlussquote = watch("trackAbschlussquote");
   const trackEinheiten = watch("trackEinheiten");
   const trackEmpfehlungen = watch("trackEmpfehlungen");
 
@@ -360,6 +370,48 @@ export default function KpiSetupFormPage({
                 </div>
               </div>
 
+              {/* Konvertierung (Kontakt → Termin %) */}
+              <div className="flex items-start gap-3 p-4 rounded-lg border">
+                <Checkbox
+                  id="trackKonvertierung"
+                  checked={trackKonvertierung}
+                  onCheckedChange={(checked) => setValue("trackKonvertierung", !!checked)}
+                  className="mt-1"
+                />
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-purple-500" />
+                    <Label htmlFor="trackKonvertierung" className="font-semibold cursor-pointer">
+                      Konvertierung tracken (Kontakt → Termin)
+                    </Label>
+                  </div>
+                  {trackKonvertierung && (
+                    <div className="space-y-2">
+                      <Label htmlFor="konvertierungTerminSoll" className="text-sm">
+                        Ziel: Konvertierungsquote in %
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Wie viel Prozent deiner Kontakte sollen zu einem Termin führen?
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="konvertierungTerminSoll"
+                          type="number"
+                          inputMode="decimal"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          {...register("konvertierungTerminSoll", { valueAsNumber: true })}
+                          placeholder="z.B. 15"
+                          className="max-w-[120px]"
+                        />
+                        <span className="text-muted-foreground">%</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
               {/* Abschluss-Termine */}
               <div className="flex items-start gap-3 p-4 rounded-lg border">
                 <Checkbox
@@ -391,6 +443,48 @@ export default function KpiSetupFormPage({
                         {...register("termineAbschlussSoll", { valueAsNumber: true })}
                         placeholder="z.B. 5"
                       />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Abschlussquote (Termin → Abschluss %) */}
+              <div className="flex items-start gap-3 p-4 rounded-lg border">
+                <Checkbox
+                  id="trackAbschlussquote"
+                  checked={trackAbschlussquote}
+                  onCheckedChange={(checked) => setValue("trackAbschlussquote", !!checked)}
+                  className="mt-1"
+                />
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Percent className="h-5 w-5 text-orange-500" />
+                    <Label htmlFor="trackAbschlussquote" className="font-semibold cursor-pointer">
+                      Abschlussquote tracken (Termin → Abschluss)
+                    </Label>
+                  </div>
+                  {trackAbschlussquote && (
+                    <div className="space-y-2">
+                      <Label htmlFor="abschlussquoteSoll" className="text-sm">
+                        Ziel: Abschlussquote in %
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Wie viel Prozent deiner Termine sollen zu einem Abschluss führen?
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <Input
+                          id="abschlussquoteSoll"
+                          type="number"
+                          inputMode="decimal"
+                          step="0.1"
+                          min="0"
+                          max="100"
+                          {...register("abschlussquoteSoll", { valueAsNumber: true })}
+                          placeholder="z.B. 30"
+                          className="max-w-[120px]"
+                        />
+                        <span className="text-muted-foreground">%</span>
+                      </div>
                     </div>
                   )}
                 </div>
