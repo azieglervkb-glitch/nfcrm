@@ -1,6 +1,8 @@
 /**
  * Launch Import Engine
  * Handles the actual member import with cooldowns
+ *
+ * CRITICAL: This runs LIVE on launch day - robust error handling essential!
  */
 
 import { prisma } from '@/lib/prisma';
@@ -14,8 +16,10 @@ import {
   OnboardingIndex,
   LSMember,
   DEFAULT_IMPORT_CONFIG,
+  formatPhoneForWhatsApp,
+  formatPhoneForDisplay,
 } from './types';
-import { findOnboardingByName, normalizeName } from './csv-parser';
+import { findOnboardingByName } from './csv-parser';
 
 // Global import state (in-memory for this session)
 let currentImportStatus: ImportStatus = {
@@ -103,26 +107,93 @@ async function sleep(ms: number, signal?: AbortSignal): Promise<void> {
 }
 
 /**
- * Import a single member
+ * Retry helper for transient errors
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 1000,
+  operation: string = 'operation'
+): Promise<T> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`[Launch] ${operation} attempt ${attempt}/${maxRetries} failed:`, lastError.message);
+
+      if (attempt < maxRetries) {
+        await sleep(delayMs * attempt); // Exponential backoff
+      }
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * Validate required member data before import
+ */
+function validateMemberData(lsMember: LSMember): { valid: boolean; issues: string[] } {
+  const issues: string[] = [];
+
+  if (!lsMember.email || !lsMember.email.includes('@')) {
+    issues.push('Keine gültige E-Mail');
+  }
+
+  if (!lsMember.firstName?.trim()) {
+    issues.push('Kein Vorname');
+  }
+
+  if (!lsMember.lastName?.trim()) {
+    issues.push('Kein Nachname');
+  }
+
+  return {
+    valid: issues.length === 0,
+    issues,
+  };
+}
+
+/**
+ * Import a single member with full error handling
  */
 async function importSingleMember(
   lsMember: LSMember,
   onboardingIndex: OnboardingIndex,
   config: ImportConfig
 ): Promise<'skipped' | 'success_with_ob' | 'success_without_ob' | 'error'> {
-  const { email, firstName, lastName } = lsMember;
-  currentImportStatus.currentMember = `${firstName} ${lastName}`;
+  const { email, firstName, lastName, phone } = lsMember;
+  const fullName = `${firstName} ${lastName}`;
+  currentImportStatus.currentMember = fullName;
+
+  // Validate member data
+  const validation = validateMemberData(lsMember);
+  if (!validation.valid) {
+    addLog({
+      email: email || 'N/A',
+      name: fullName || 'Unbekannt',
+      status: 'error',
+      message: `Validierung fehlgeschlagen: ${validation.issues.join(', ')}`,
+    });
+    return 'error';
+  }
 
   try {
-    // Check if already exists in CRM
-    const existing = await prisma.member.findUnique({
-      where: { email: email.toLowerCase() },
-    });
+    // Check if already exists in CRM (with retry for DB connection issues)
+    const existing = await withRetry(
+      () => prisma.member.findUnique({ where: { email: email.toLowerCase() } }),
+      3,
+      500,
+      'DB lookup'
+    );
 
     if (existing) {
       addLog({
         email,
-        name: `${firstName} ${lastName}`,
+        name: fullName,
         status: 'skipped',
         message: 'Bereits im CRM vorhanden',
       });
@@ -133,22 +204,29 @@ async function importSingleMember(
     const onboardingData = findOnboardingByName(onboardingIndex, firstName, lastName);
     const hasOnboarding = !!onboardingData;
 
+    // Format phone number for WhatsApp
+    const whatsappNummer = formatPhoneForWhatsApp(phone);
+    const telefon = formatPhoneForDisplay(phone);
+
     if (config.isDryRun) {
       // Dry run - don't actually create
+      const phoneInfo = whatsappNummer ? ` (Tel: ${telefon})` : ' (keine Tel.)';
       addLog({
         email,
-        name: `${firstName} ${lastName}`,
+        name: fullName,
         status: hasOnboarding ? 'success_with_ob' : 'success_without_ob',
-        message: `[DRY RUN] Würde importiert werden ${hasOnboarding ? 'MIT' : 'OHNE'} Onboarding`,
+        message: `[DRY RUN] Würde importiert${phoneInfo} ${hasOnboarding ? 'MIT' : 'OHNE'} Onboarding`,
       });
       return hasOnboarding ? 'success_with_ob' : 'success_without_ob';
     }
 
-    // Create member
+    // Create member with retry
     const memberData: Parameters<typeof prisma.member.create>[0]['data'] = {
       email: email.toLowerCase(),
-      vorname: firstName,
-      nachname: lastName,
+      vorname: firstName.trim(),
+      nachname: lastName.trim(),
+      telefon: telefon,
+      whatsappNummer: whatsappNummer,
       status: 'AKTIV',
       produkte: ['NFM'],
       // LearningSuite reference
@@ -169,41 +247,55 @@ async function importSingleMember(
         groessetesProblem: onboardingData.groessetesProblem,
         groessteZielWarum: onboardingData.groessteZielWarum,
         wieAufmerksam: onboardingData.wieAufmerksam,
-        // unternehmen and position not in CSV - leave null
       });
     }
 
-    const newMember = await prisma.member.create({
-      data: memberData,
+    const newMember = await withRetry(
+      () => prisma.member.create({ data: memberData }),
+      3,
+      1000,
+      'Member erstellen'
+    );
+
+    console.log(`[Launch] Created member: ${newMember.id} (${email})`);
+
+    // Send appropriate communication (with fallback - import succeeds even if email fails)
+    let emailSent = false;
+    let emailError: string | null = null;
+
+    try {
+      if (hasOnboarding) {
+        await sendKpiSetupInvite(newMember);
+        emailSent = true;
+      } else {
+        await sendOnboardingInvite(newMember);
+        emailSent = true;
+      }
+    } catch (error) {
+      emailError = error instanceof Error ? error.message : 'Unbekannter E-Mail-Fehler';
+      console.error(`[Launch] Email failed for ${email}:`, error);
+      // Don't fail the import - just log the email issue
+    }
+
+    // Build success message
+    const phoneInfo = whatsappNummer ? ` | WhatsApp: ✓` : ' | WhatsApp: ✗';
+    const emailInfo = emailSent ? '' : ` | E-Mail-Fehler: ${emailError}`;
+    const actionInfo = hasOnboarding ? 'KPI-Setup gesendet' : 'Onboarding gesendet';
+
+    addLog({
+      email,
+      name: fullName,
+      status: hasOnboarding ? 'success_with_ob' : 'success_without_ob',
+      message: `Importiert${phoneInfo}${emailInfo} → ${emailSent ? actionInfo : 'Manuell nachholen!'}`,
     });
 
-    // Send appropriate communication
-    if (hasOnboarding) {
-      // Has onboarding -> Send KPI Setup directly
-      await sendKpiSetupInvite(newMember);
-      addLog({
-        email,
-        name: `${firstName} ${lastName}`,
-        status: 'success_with_ob',
-        message: 'Importiert mit Onboarding → KPI-Setup gesendet',
-      });
-      return 'success_with_ob';
-    } else {
-      // No onboarding -> Send Onboarding first
-      await sendOnboardingInvite(newMember);
-      addLog({
-        email,
-        name: `${firstName} ${lastName}`,
-        status: 'success_without_ob',
-        message: 'Importiert ohne Onboarding → Onboarding gesendet',
-      });
-      return 'success_without_ob';
-    }
+    return hasOnboarding ? 'success_with_ob' : 'success_without_ob';
+
   } catch (error) {
     console.error(`[Launch] Error importing ${email}:`, error);
     addLog({
       email,
-      name: `${firstName} ${lastName}`,
+      name: fullName,
       status: 'error',
       message: error instanceof Error ? error.message : 'Unbekannter Fehler',
     });
@@ -214,82 +306,112 @@ async function importSingleMember(
 /**
  * Send onboarding invite to a member
  */
-async function sendOnboardingInvite(member: { id: string; email: string; vorname: string; nachname: string }): Promise<void> {
-  // Create form token
+async function sendOnboardingInvite(member: {
+  id: string;
+  email: string;
+  vorname: string;
+  nachname: string;
+}): Promise<void> {
+  // Create form token with retry
   const token = randomBytes(32).toString('hex');
-  await prisma.formToken.create({
-    data: {
-      token,
-      memberId: member.id,
-      type: 'onboarding',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    },
-  });
+  await withRetry(
+    () => prisma.formToken.create({
+      data: {
+        token,
+        memberId: member.id,
+        type: 'onboarding',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    }),
+    3,
+    500,
+    'FormToken erstellen'
+  );
 
-  // Send email
-  await sendOnboardingInviteEmail({
-    id: member.id,
-    email: member.email,
-    vorname: member.vorname,
-    nachname: member.nachname,
-  }, token);
-
-  // Send WhatsApp if possible
-  // Note: We don't have WhatsApp number for imported members yet
+  // Send email with retry
+  await withRetry(
+    () => sendOnboardingInviteEmail({
+      id: member.id,
+      email: member.email,
+      vorname: member.vorname,
+      nachname: member.nachname,
+    }, token),
+    2,
+    1000,
+    'Onboarding E-Mail senden'
+  );
 }
 
 /**
  * Send KPI setup invite to a member
  */
-async function sendKpiSetupInvite(member: { id: string; email: string; vorname: string; nachname: string }): Promise<void> {
-  // Enable KPI tracking
-  await prisma.member.update({
-    where: { id: member.id },
-    data: {
-      kpiTrackingEnabled: true,
-    },
-  });
+async function sendKpiSetupInvite(member: {
+  id: string;
+  email: string;
+  vorname: string;
+  nachname: string;
+}): Promise<void> {
+  // Enable KPI tracking with retry
+  await withRetry(
+    () => prisma.member.update({
+      where: { id: member.id },
+      data: { kpiTrackingEnabled: true },
+    }),
+    3,
+    500,
+    'KPI aktivieren'
+  );
 
-  // Create form token
+  // Create form token with retry
   const token = randomBytes(32).toString('hex');
-  await prisma.formToken.create({
-    data: {
-      token,
-      memberId: member.id,
-      type: 'kpi-setup',
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-    },
-  });
+  await withRetry(
+    () => prisma.formToken.create({
+      data: {
+        token,
+        memberId: member.id,
+        type: 'kpi-setup',
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    }),
+    3,
+    500,
+    'FormToken erstellen'
+  );
 
   const kpiSetupUrl = generateFormUrl('kpi-setup', token);
 
-  // Send email
-  await sendEmail({
-    to: member.email,
-    subject: '📊 Dein persönliches KPI-Tracking einrichten',
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
-          <p style="font-size: 18px; color: #111827;">Hey ${member.vorname}! 👋</p>
-          <p style="color: #6b7280; line-height: 1.6;">
-            Willkommen im NF Mentoring CRM! 🎉
-          </p>
-          <p style="color: #6b7280; line-height: 1.6;">
-            Um dich optimal unterstützen zu können, bitten wir dich, dein persönliches KPI-Tracking einzurichten.
-            Das dauert nur 5 Minuten und hilft uns, deine Fortschritte zu verfolgen.
-          </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${kpiSetupUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-              KPI-Tracking einrichten →
-            </a>
+  // Send email with retry
+  await withRetry(
+    () => sendEmail({
+      to: member.email,
+      subject: '📊 Dein persönliches KPI-Tracking einrichten',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-radius: 8px;">
+            <p style="font-size: 18px; color: #111827;">Hey ${member.vorname}! 👋</p>
+            <p style="color: #6b7280; line-height: 1.6;">
+              Willkommen im NF Mentoring CRM! 🎉
+            </p>
+            <p style="color: #6b7280; line-height: 1.6;">
+              Um dich optimal unterstützen zu können, bitten wir dich, dein persönliches KPI-Tracking einzurichten.
+              Das dauert nur 5 Minuten und hilft uns, deine Fortschritte zu verfolgen.
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${kpiSetupUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+                KPI-Tracking einrichten →
+              </a>
+            </div>
+            <p style="color: #9ca3af; font-size: 14px; text-align: center;">
+              NF Mentoring | <a href="https://nf-mentoring.de" style="color: #ae1d2b;">nf-mentoring.de</a>
+            </p>
           </div>
-          <p style="color: #9ca3af; font-size: 14px; text-align: center;">
-            NF Mentoring | <a href="https://nf-mentoring.de" style="color: #ae1d2b;">nf-mentoring.de</a>
-          </p>
         </div>
-      </div>
-    `,
-  });
+      `,
+    }),
+    2,
+    1000,
+    'KPI-Setup E-Mail senden'
+  );
 }
 
 /**
@@ -301,6 +423,12 @@ export async function startImport(
   config: Partial<ImportConfig> = {}
 ): Promise<void> {
   const finalConfig: ImportConfig = { ...DEFAULT_IMPORT_CONFIG, ...config };
+
+  // Pre-flight validation
+  if (members.length === 0) {
+    console.log('[Launch] No members to import');
+    return;
+  }
 
   // Initialize status
   currentImportStatus = {
@@ -322,12 +450,27 @@ export async function startImport(
   importAbortController = new AbortController();
 
   console.log(`[Launch] Starting import of ${members.length} members (isDryRun: ${finalConfig.isDryRun})`);
+  console.log(`[Launch] Onboarding index has ${onboardingIndex.size} entries`);
+
+  // Log start
+  addLog({
+    email: '',
+    name: 'SYSTEM',
+    status: 'success_with_ob',
+    message: `Import gestartet: ${members.length} Member${finalConfig.isDryRun ? ' (DRY RUN)' : ''}`,
+  });
 
   try {
     for (let i = 0; i < members.length; i++) {
       // Check if paused/aborted
       if (currentImportStatus.phase !== 'running') {
         console.log('[Launch] Import paused/stopped');
+        addLog({
+          email: '',
+          name: 'SYSTEM',
+          status: 'skipped',
+          message: 'Import pausiert/gestoppt',
+        });
         break;
       }
 
@@ -374,6 +517,14 @@ export async function startImport(
     currentImportStatus.currentMember = null;
     currentImportStatus.estimatedRemainingMinutes = 0;
 
+    // Log completion
+    addLog({
+      email: '',
+      name: 'SYSTEM',
+      status: 'success_with_ob',
+      message: `Import abgeschlossen: ${currentImportStatus.withOnboarding + currentImportStatus.withoutOnboarding} importiert, ${currentImportStatus.skipped} übersprungen, ${currentImportStatus.errors} Fehler`,
+    });
+
     console.log(`[Launch] Import completed:`, {
       processed: currentImportStatus.processed,
       skipped: currentImportStatus.skipped,
@@ -381,15 +532,16 @@ export async function startImport(
       withoutOnboarding: currentImportStatus.withoutOnboarding,
       errors: currentImportStatus.errors,
     });
+
   } catch (error) {
-    console.error('[Launch] Import error:', error);
+    console.error('[Launch] Fatal import error:', error);
     currentImportStatus.phase = 'error';
     currentImportStatus.completedAt = new Date().toISOString();
     addLog({
       email: '',
       name: 'SYSTEM',
       status: 'error',
-      message: error instanceof Error ? error.message : 'Fataler Fehler',
+      message: `Fataler Fehler: ${error instanceof Error ? error.message : 'Unbekannt'}`,
     });
   }
 }
