@@ -38,8 +38,15 @@ export async function POST(request: NextRequest) {
     if (action === "activate_kpi_tracking") {
       for (const memberId of memberIds) {
         try {
-          await activateKpiTracking(memberId, "manual");
-          results.success.push(memberId);
+          const result = await activateKpiTracking(memberId, "manual");
+          if (result.activated) {
+            results.success.push(memberId);
+          } else {
+            results.failed.push({
+              memberId,
+              error: result.reason || "Aktivierung fehlgeschlagen",
+            });
+          }
         } catch (error) {
           results.failed.push({
             memberId,

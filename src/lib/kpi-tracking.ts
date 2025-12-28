@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateFormUrl } from "@/lib/app-url";
+import { syncMemberWithLearninSuite, hasCompletedModule } from "@/lib/learningsuite";
 import { randomBytes } from "crypto";
 
 /**
@@ -16,7 +17,7 @@ import { randomBytes } from "crypto";
 export async function activateKpiTracking(
   memberId: string,
   source: "manual" | "learningsuite_api" = "manual"
-): Promise<void> {
+): Promise<{ activated: boolean; reason?: string }> {
   const member = await prisma.member.findUnique({
     where: { id: memberId },
     select: {
@@ -25,8 +26,11 @@ export async function activateKpiTracking(
       vorname: true,
       nachname: true,
       whatsappNummer: true,
+      onboardingCompleted: true,
       kpiTrackingEnabled: true,
       kpiSetupCompleted: true,
+      learningSuiteUserId: true,
+      currentModule: true,
     },
   });
 
@@ -34,14 +38,60 @@ export async function activateKpiTracking(
     throw new Error(`Member ${memberId} not found`);
   }
 
+  // CRITICAL: Onboarding must be completed first (Grundvoraussetzung)
+  if (!member.onboardingCompleted) {
+    return {
+      activated: false,
+      reason: "Onboarding nicht abgeschlossen - Grundvoraussetzung fehlt",
+    };
+  }
+
   // Don't activate if already enabled
   if (member.kpiTrackingEnabled) {
-    return;
+    return { activated: false, reason: "KPI-Tracking bereits aktiviert" };
   }
 
   // Don't activate if setup already completed
   if (member.kpiSetupCompleted) {
-    return;
+    return { activated: false, reason: "KPI-Setup bereits abgeschlossen" };
+  }
+
+  // Check LearninSuite requirements if API is enabled
+  const settings = await prisma.systemSettings.findFirst({
+    where: { id: "default" },
+  });
+
+  const triggerSource = settings?.kpiTriggerSource || "manual";
+  const triggerModule = settings?.kpiTriggerModule || 2;
+
+  // If LearninSuite is enabled (either "learningsuite_api" or "both")
+  if (triggerSource !== "manual") {
+    // Sync with LearninSuite first
+    const syncResult = await syncMemberWithLearninSuite(member.email);
+    
+    if (syncResult.synced && syncResult.learningSuiteUserId) {
+      // Update member with LearninSuite data
+      await prisma.member.update({
+        where: { id: memberId },
+        data: {
+          learningSuiteUserId: syncResult.learningSuiteUserId,
+          currentModule: syncResult.currentModule,
+          learningSuiteLastSync: new Date(),
+        },
+      });
+    }
+
+    // Check if module requirement is met
+    const hasReachedModule = syncResult.currentModule
+      ? syncResult.currentModule >= triggerModule
+      : false;
+
+    if (!hasReachedModule) {
+      return {
+        activated: false,
+        reason: `Modul ${triggerModule} noch nicht erreicht (aktuell: ${syncResult.currentModule || "unbekannt"})`,
+      };
+    }
   }
 
   // Create KPI setup token
@@ -146,11 +196,15 @@ export async function activateKpiTracking(
         source,
         kpiSetupUrl,
         activatedAt: new Date().toISOString(),
+        onboardingCompleted: member.onboardingCompleted,
+        currentModule: member.currentModule,
       },
     },
   }).catch((error) => {
     console.error("Failed to create automation log:", error);
   });
+
+  return { activated: true };
 }
 
 /**
