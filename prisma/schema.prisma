@@ -71,38 +71,38 @@ enum UpsellStatus {
 
 // Admin/Coach Benutzer
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  passwordHash  String
-  vorname       String
-  nachname      String
-  role          UserRole  @default(COACH)
-  avatarUrl     String?
-  whatsappNummer String?  // Format: +49XXXXXXXXXXX
-  isActive      Boolean   @default(true)
-  lastLogin     DateTime?
+  id             String    @id @default(cuid())
+  email          String    @unique
+  passwordHash   String
+  vorname        String
+  nachname       String
+  role           UserRole  @default(COACH)
+  avatarUrl      String?
+  whatsappNummer String? // Format: +49XXXXXXXXXXX
+  isActive       Boolean   @default(true)
+  lastLogin      DateTime?
 
   // Task-Einstellungen
-  taskRuleIds           String[] @default([]) // Welche Regel-Tasks dieser User empfangen soll (z.B. ["R1", "R3", "C2"])
-  showAllTasks          Boolean  @default(false) // Ob alle Tasks oder nur zugewiesene angezeigt werden
-  taskWhatsappEnabled   Boolean  @default(false) // WhatsApp Benachrichtigung bei neuen zugewiesenen Tasks
+  taskRuleIds         String[] @default([]) // Welche Regel-Tasks dieser User empfangen soll (z.B. ["R1", "R3", "C2"])
+  showAllTasks        Boolean  @default(false) // Ob alle Tasks oder nur zugewiesene angezeigt werden
+  taskWhatsappEnabled Boolean  @default(false) // WhatsApp Benachrichtigung bei neuen zugewiesenen Tasks
 
   // Granulare Berechtigungen (für COACH/MITARBEITER)
   // Mögliche Werte: "dashboard", "leads", "members", "kpis", "tasks", "automations", "communications", "settings", "team"
-  permissions           String[] @default(["dashboard", "tasks"]) // Welche Bereiche sichtbar sind
+  permissions String[] @default(["dashboard", "tasks"]) // Welche Bereiche sichtbar sind
 
   // 2FA (Two-Factor Authentication)
-  twoFactorEnabled Boolean  @default(false)
-  twoFactorSecret  String?  // Encrypted TOTP secret
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret  String? // Encrypted TOTP secret
 
   // Relations
-  tasks           Task[]    @relation("AssignedTasks")
-  createdTasks    Task[]    @relation("CreatedTasks")
+  tasks           Task[]         @relation("AssignedTasks")
+  createdTasks    Task[]         @relation("CreatedTasks")
   sessions        Session[]
   accounts        Account[]
   leadActivities  LeadActivity[]
-  assignedLeads   Lead[]    @relation("AssignedLeads")
-  assignedMembers Member[]  @relation("AssignedMembers")
+  assignedLeads   Lead[]         @relation("AssignedLeads")
+  assignedMembers Member[]       @relation("AssignedMembers")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,7 +152,7 @@ enum LeadStatus {
   NEU
   KONTAKTIERT
   QUALIFIZIERT
-  KONVERTIERT  // Wurde zum Member
+  KONVERTIERT // Wurde zum Member
   VERLOREN
 }
 
@@ -177,13 +177,13 @@ model Lead {
   whatsappNummer String?
 
   // Lead-Tracking
-  status      LeadStatus @default(NEU)
-  source      LeadSource @default(ONEPAGE)
-  sourceDetail String?   // z.B. "Landingpage XYZ", "Instagram Ad"
+  status       LeadStatus @default(NEU)
+  source       LeadSource @default(ONEPAGE)
+  sourceDetail String? // z.B. "Landingpage XYZ", "Instagram Ad"
 
   // OnePage Webhook Data
-  onepageLeadId String?  @unique
-  onepageData   Json?    // Raw webhook data
+  onepageLeadId String? @unique
+  onepageData   Json? // Raw webhook data
 
   // Interessen
   interessiertAn String? // "VPMC", "NFM", etc.
@@ -223,10 +223,10 @@ model LeadActivity {
   channel LeadActivityChannel?
 
   // Details
-  subject     String?  // Betreff oder Zusammenfassung
-  notes       String?  @db.Text // Detaillierte Notizen
-  outcome     String?  // Ergebnis der Aktivität
-  nextSteps   String?  // Nächste Schritte
+  subject   String? // Betreff oder Zusammenfassung
+  notes     String? @db.Text // Detaillierte Notizen
+  outcome   String? // Ergebnis der Aktivität
+  nextSteps String? // Nächste Schritte
 
   // Termin-bezogen
   scheduledAt DateTime? // Geplanter Termin
@@ -245,19 +245,19 @@ model LeadActivity {
 }
 
 enum LeadActivityType {
-  ANRUF          // Telefonat
-  EMAIL          // E-Mail gesendet/erhalten
-  WHATSAPP       // WhatsApp Nachricht
-  MEETING        // Persönliches Treffen
-  VIDEO_CALL     // Video-Call (Zoom etc.)
-  NOTIZ          // Interne Notiz
-  STATUS_CHANGE  // Statusänderung
-  FOLLOW_UP      // Geplantes Follow-up
+  ANRUF // Telefonat
+  EMAIL // E-Mail gesendet/erhalten
+  WHATSAPP // WhatsApp Nachricht
+  MEETING // Persönliches Treffen
+  VIDEO_CALL // Video-Call (Zoom etc.)
+  NOTIZ // Interne Notiz
+  STATUS_CHANGE // Statusänderung
+  FOLLOW_UP // Geplantes Follow-up
 }
 
 enum LeadActivityChannel {
-  INBOUND   // Eingehend (Lead hat sich gemeldet)
-  OUTBOUND  // Ausgehend (Wir haben kontaktiert)
+  INBOUND // Eingehend (Lead hat sich gemeldet)
+  OUTBOUND // Ausgehend (Wir haben kontaktiert)
 }
 
 // Mentoring-Mitglieder
@@ -272,41 +272,57 @@ model Member {
   whatsappNummer String? // Format: +49XXXXXXXXXXX
 
   // Membership
-  produkte          ProductType[]
-  status            MemberStatus  @default(AKTIV)
-  membershipStart   DateTime      @default(now())
-  membershipEnd     DateTime?
+  produkte           ProductType[]
+  status             MemberStatus  @default(AKTIV)
+  membershipStart    DateTime      @default(now())
+  membershipEnd      DateTime?
   copecartCustomerId String?
 
   // Onboarding Daten (Formular 1: "Starte jetzt dein NF Mentoring")
   unternehmen           String?
   position              String?
-  aktuellerMonatsumsatz Decimal?  @db.Decimal(12, 2)
-  wasNervtAmMeisten     String?   @db.Text
-  groessetesProblem     String?   @db.Text
-  zielMonatsumsatz      Decimal?  @db.Decimal(12, 2)
-  groessteZielWarum     String?   @db.Text
+  aktuellerMonatsumsatz Decimal? @db.Decimal(12, 2)
+  wasNervtAmMeisten     String?  @db.Text
+  groessetesProblem     String?  @db.Text
+  zielMonatsumsatz      Decimal? @db.Decimal(12, 2)
+  groessteZielWarum     String?  @db.Text
   wieAufmerksam         String? // Marketing Attribution
 
   // Onboarding Status
   onboardingCompleted  Boolean   @default(false)
   onboardingDate       DateTime?
+  onboardingSentAt     DateTime? // Wann wurde Onboarding-E-Mail gesendet?
   welcomeCallCompleted Boolean   @default(false)
   welcomeCallDate      DateTime?
 
   // KPI Tracking Setup (Formular 2: "Starte dein persönliches KPI-Tracking")
-  kpiTrackingActive    Boolean   @default(false)
-  kpiTrackingStartDate DateTime?
-  hauptzielEinSatz     String?
+  kpiTrackingActive      Boolean   @default(false) // DEPRECATED: Use kpiTrackingEnabled instead
+  kpiTrackingStartDate   DateTime? // DEPRECATED: Use kpiTrackingEnabledAt instead
+  kpiTrackingEnabled     Boolean   @default(false) // Wurde KPI-Tracking aktiviert? (manuell oder via LearninSuite)
+  kpiTrackingEnabledAt   DateTime? // Wann wurde KPI-Tracking aktiviert?
+  kpiSetupCompleted      Boolean   @default(false) // Wurde KPI-Setup-Formular abgeschlossen?
+  kpiSetupCompletedAt    DateTime? // Wann wurde Setup abgeschlossen?
+  kpiSetupSentAt         DateTime? // Wann wurde KPI-Setup-Mail gesendet?
+  kpiSetupReminderCount  Int       @default(0) // Anzahl gesendeter Reminder
+  kpiSetupLastReminderAt DateTime? // Letzter Reminder-Zeitpunkt
+  hauptzielEinSatz       String?
+
+  // LearninSuite Integration
+  learningSuiteUserId   String? // LearninSuite User ID
+  learningSuiteLastSync DateTime? // Letzter Sync-Zeitpunkt
+  currentModule         Int? // Aktuelles Modul in LearninSuite
+
+  // KPI Setup Formular Daten (strukturiert als JSON)
+  kpiSetupData Json? // Strukturierte KPI-Setup-Daten (für erweiterte Felder)
 
   // Welche KPIs werden getrackt (Checkboxen)
-  trackKontakte    Boolean @default(false)
-  trackTermine     Boolean @default(false)
-  trackEinheiten   Boolean @default(false)
+  trackKontakte     Boolean @default(false)
+  trackTermine      Boolean @default(false)
+  trackEinheiten    Boolean @default(false)
   trackEmpfehlungen Boolean @default(false)
-  trackEntscheider Boolean @default(false)
-  trackAbschluesse Boolean @default(false)
-  trackUmsatz      Boolean @default(true) // Immer aktiv
+  trackEntscheider  Boolean @default(false)
+  trackAbschluesse  Boolean @default(false)
+  trackUmsatz       Boolean @default(true) // Immer aktiv
 
   // SOLL-Werte (Ziele)
   umsatzSollWoche          Decimal? @db.Decimal(12, 2)
@@ -320,10 +336,10 @@ model Member {
   empfehlungenSoll         Int?
 
   // Flags (von Automationen gesetzt)
-  reviewFlag     Boolean @default(false)
-  churnRisk      Boolean @default(false)
+  reviewFlag      Boolean @default(false)
+  churnRisk       Boolean @default(false)
   upsellCandidate Boolean @default(false)
-  dangerZone     Boolean @default(false)
+  dangerZone      Boolean @default(false)
 
   // Zuweisung an Team-Mitglied
   assignedTo   User?   @relation("AssignedMembers", fields: [assignedToId], references: [id])
@@ -359,25 +375,25 @@ model KpiWeek {
   year       Int
 
   // IST-Werte (eingetragen vom Member)
-  umsatzIst                Decimal? @db.Decimal(12, 2)
-  kontakteIst              Int?
-  entscheiderIst           Int?
-  termineVereinbartIst     Int?
-  termineStattgefundenIst  Int?
-  termineErstIst           Int?
-  termineFolgeIst          Int?
-  termineAbschlussIst      Int?
-  termineNoshowIst         Int?
-  einheitenIst             Int?
-  empfehlungenIst          Int?
+  umsatzIst               Decimal? @db.Decimal(12, 2)
+  kontakteIst             Int?
+  entscheiderIst          Int?
+  termineVereinbartIst    Int?
+  termineStattgefundenIst Int?
+  termineErstIst          Int?
+  termineFolgeIst         Int?
+  termineAbschlussIst     Int?
+  termineNoshowIst        Int?
+  einheitenIst            Int?
+  empfehlungenIst         Int?
 
   // Berechnete Werte
   noshowQuote Decimal? @db.Decimal(5, 4) // z.B. 0.3000 = 30%
 
   // Reflexion & Motivation
-  feelingScore   Int?    // 1-10
-  heldentat      String? @db.Text
-  blockiert      String? @db.Text
+  feelingScore    Int? // 1-10
+  heldentat       String? @db.Text
+  blockiert       String? @db.Text
   herausforderung String? @db.Text
 
   // KI-Feedback
@@ -547,31 +563,38 @@ model SystemSettings {
   // Quiet Hours (keine WhatsApp-Nachrichten)
   quietHoursEnabled Boolean @default(true)
   quietHoursStart   Int     @default(21) // 21:00
-  quietHoursEnd     Int     @default(8)  // 08:00
+  quietHoursEnd     Int     @default(8) // 08:00
 
   // KPI Reminder Schedule
-  kpiReminderEnabled     Boolean @default(true)
-  kpiReminderDay1        Int     @default(0) // 0 = Sonntag
-  kpiReminderTime1       String  @default("18:00")
-  kpiReminderDay2        Int     @default(1) // 1 = Montag
-  kpiReminderTime2       String  @default("10:00")
-  kpiReminderChannels    String[] @default(["EMAIL", "WHATSAPP"])
+  kpiReminderEnabled  Boolean  @default(true)
+  kpiReminderDay1     Int      @default(0) // 0 = Sonntag
+  kpiReminderTime1    String   @default("18:00")
+  kpiReminderDay2     Int      @default(1) // 1 = Montag
+  kpiReminderTime2    String   @default("10:00")
+  kpiReminderChannels String[] @default(["EMAIL", "WHATSAPP"])
 
   // AI Feedback Settings
-  aiFeedbackEnabled      Boolean @default(true)
-  aiFeedbackDelay        Int     @default(0) // Minuten nach KPI-Einreichung (deprecated, use min/max)
-  aiFeedbackDelayMin     Int     @default(60) // Minimum delay in minutes
-  aiFeedbackDelayMax     Int     @default(120) // Maximum delay in minutes
-  aiFeedbackChannels     String[] @default(["WHATSAPP"])
+  aiFeedbackEnabled  Boolean  @default(true)
+  aiFeedbackDelay    Int      @default(0) // Minuten nach KPI-Einreichung (deprecated, use min/max)
+  aiFeedbackDelayMin Int      @default(60) // Minimum delay in minutes
+  aiFeedbackDelayMax Int      @default(120) // Maximum delay in minutes
+  aiFeedbackChannels String[] @default(["WHATSAPP"])
 
   // Scheduled Automations
-  automationsEnabled     Boolean @default(true)
-  automationsDay         Int     @default(1) // Montag
-  automationsTime        String  @default("09:00")
+  automationsEnabled Boolean @default(true)
+  automationsDay     Int     @default(1) // Montag
+  automationsTime    String  @default("09:00")
+
+  // KPI Tracking Trigger Settings
+  kpiTriggerModule Int    @default(2) // Ab welchem Modul KPI-Tracking aktiviert wird
+  kpiTriggerSource String @default("manual") // "manual" | "learningsuite_api" | "both"
+
+  // KPI Setup Reminder Settings
+  kpiSetupReminderDays Int[] @default([1, 3, 7]) // Tage nach Aktivierung für Reminder
 
   // Inaktivitäts-Schwellwerte
-  churnRiskWeeks         Int     @default(2)
-  dangerZoneWeeks        Int     @default(4)
+  churnRiskWeeks  Int @default(2)
+  dangerZoneWeeks Int @default(4)
 
   // Upsell-Trigger (Monatsumsatz-basiert)
   upsellRevenueThreshold Decimal @default(20000) @db.Decimal(12, 2) // Mindest-Monatsumsatz
@@ -587,15 +610,15 @@ model SystemSettings {
 
 // AI Prompt Configuration
 model AiPrompt {
-  id          String   @id @default(cuid())
-  promptKey   String   @unique // e.g., "KPI_FEEDBACK_SYSTEM", "KPI_FEEDBACK_USER"
-  name        String   // Human readable name
-  description String?  @db.Text
-  content     String   @db.Text
-  isActive    Boolean  @default(true)
+  id          String  @id @default(cuid())
+  promptKey   String  @unique // e.g., "KPI_FEEDBACK_SYSTEM", "KPI_FEEDBACK_USER"
+  name        String // Human readable name
+  description String? @db.Text
+  content     String  @db.Text
+  isActive    Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 // Automation Rules (konfigurierbar)
@@ -649,14 +672,14 @@ model MessageTemplate {
 
 // Form Tokens for public forms
 model FormToken {
-  id        String   @id @default(cuid())
-  token     String   @unique
+  id        String    @id @default(cuid())
+  token     String    @unique
   type      String // "onboarding", "kpi-setup", "weekly"
-  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member    Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   memberId  String
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([memberId])

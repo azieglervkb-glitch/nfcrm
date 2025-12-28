@@ -36,6 +36,9 @@ interface SystemSettings {
   coachEmailNotifications: boolean;
   adminEmailDigest: boolean;
   adminEmailDigestTime: string;
+  kpiTriggerModule: number;
+  kpiTriggerSource: string;
+  kpiSetupReminderDays: number[];
 }
 
 const DAYS = [
@@ -600,6 +603,95 @@ export function SettingsForm() {
                   onChange={(e) => updateSetting("automationsTime", e.target.value)}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* KPI Tracking Trigger Settings */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              KPI-Tracking Aktivierung
+            </CardTitle>
+            <CardDescription>
+              Wann wird KPI-Tracking automatisch aktiviert?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>LearninSuite Integration</Label>
+              <Select
+                value={settings.kpiTriggerSource || "manual"}
+                onValueChange={(v) => updateSetting("kpiTriggerSource", v)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Nur manuell</SelectItem>
+                  <SelectItem value="learningsuite_api">Nur LearninSuite API</SelectItem>
+                  <SelectItem value="both">Beide (manuell + API)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Wenn "LearninSuite API" aktiviert ist, wird KPI-Tracking automatisch aktiviert,
+                sobald ein Member das konfigurierte Modul erreicht.
+              </p>
+            </div>
+
+            {settings.kpiTriggerSource !== "manual" && (
+              <div className="space-y-2">
+                <Label>Ab Modul aktivieren</Label>
+                <Select
+                  value={String(settings.kpiTriggerModule || 2)}
+                  onValueChange={(v) => updateSetting("kpiTriggerModule", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((mod) => (
+                      <SelectItem key={mod} value={String(mod)}>
+                        Modul {mod}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  KPI-Tracking wird automatisch aktiviert, wenn ein Member dieses Modul oder höher erreicht.
+                </p>
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Reminder-Tage nach Aktivierung</Label>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 5, 7, 10, 14].map((day) => {
+                  const isSelected = (settings.kpiSetupReminderDays || [1, 3, 7]).includes(day);
+                  return (
+                    <Button
+                      key={day}
+                      type="button"
+                      variant={isSelected ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => {
+                        const currentDays = settings.kpiSetupReminderDays || [1, 3, 7];
+                        const newDays = isSelected
+                          ? currentDays.filter((d) => d !== day)
+                          : [...currentDays, day].sort((a, b) => a - b);
+                        updateSetting("kpiSetupReminderDays", newDays);
+                      }}
+                    >
+                      Tag {day}
+                    </Button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                An welchen Tagen nach KPI-Aktivierung sollen Reminder gesendet werden?
+                Aktuell: {settings.kpiSetupReminderDays?.join(", ") || "1, 3, 7"}
+              </p>
             </div>
           </CardContent>
         </Card>

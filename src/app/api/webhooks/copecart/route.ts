@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { sendEmail } from "@/lib/email";
+import { generateFormUrl } from "@/lib/app-url";
 
 // Verify Copecart webhook signature
 function verifySignature(body: string, signature: string | null): boolean {
@@ -147,7 +148,7 @@ async function handleNewOrder(data: any) {
   });
 
   // Send welcome email
-  const onboardingUrl = `${process.env.APP_URL}/form/onboarding/${token}`;
+  const onboardingUrl = generateFormUrl("onboarding", token);
 
   await sendEmail({
     to: member.email,

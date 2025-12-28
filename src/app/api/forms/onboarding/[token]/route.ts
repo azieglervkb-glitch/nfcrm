@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
+import { generateFormUrl } from "@/lib/app-url";
 import { randomBytes } from "crypto";
 
 export async function GET(
@@ -158,7 +159,7 @@ export async function POST(
       },
     });
 
-    const kpiSetupLink = `${process.env.APP_URL || "http://localhost:3000"}/form/kpi-setup/${kpiSetupToken}`;
+    const kpiSetupLink = generateFormUrl("kpi-setup", kpiSetupToken);
 
     // Send welcome email with KPI setup link
     sendWelcomeEmail(

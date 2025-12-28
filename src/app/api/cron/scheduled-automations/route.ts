@@ -55,7 +55,8 @@ export async function GET(request: NextRequest) {
     const inactiveMembers = await prisma.member.findMany({
       where: {
         status: "AKTIV",
-        kpiTrackingActive: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         churnRisk: false, // Not already flagged
       },
       include: {
@@ -166,7 +167,8 @@ export async function GET(request: NextRequest) {
       const activeMembers = await prisma.member.findMany({
         where: {
           status: "AKTIV",
-          kpiTrackingActive: true,
+          kpiTrackingEnabled: true,
+        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         },
       });
 

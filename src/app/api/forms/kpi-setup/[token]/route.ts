@@ -18,7 +18,8 @@ export async function GET(
             vorname: true,
             nachname: true,
             zielMonatsumsatz: true,
-            kpiTrackingActive: true,
+            kpiTrackingEnabled: true,
+            kpiSetupCompleted: true,
           },
         },
       },
@@ -37,8 +38,8 @@ export async function GET(
         return NextResponse.json({ error: "Token bereits verwendet" }, { status: 400 });
       }
 
-      if (formToken.member.kpiTrackingActive) {
-        return NextResponse.json({ error: "KPI-Tracking bereits aktiviert" }, { status: 400 });
+      if (formToken.member.kpiSetupCompleted) {
+        return NextResponse.json({ error: "KPI-Setup bereits abgeschlossen" }, { status: 400 });
       }
 
       return NextResponse.json({
@@ -116,11 +117,29 @@ export async function POST(
     }
 
     // Update member with KPI tracking settings
+    // Store structured data in kpiSetupData for future extensibility
+    const kpiSetupData = {
+      hauptzielEinSatz: body.hauptzielEinSatz,
+      trackKontakte: body.trackKontakte ?? false,
+      trackTermine: body.trackTermine ?? false,
+      trackEinheiten: body.trackEinheiten ?? false,
+      trackEmpfehlungen: body.trackEmpfehlungen ?? false,
+      trackEntscheider: body.trackEntscheider ?? false,
+      trackAbschluesse: body.trackAbschluesse ?? false,
+      // Add any additional fields from the form here
+    };
+
     await prisma.member.update({
       where: { id: formToken.memberId },
       data: {
-        kpiTrackingActive: true,
-        kpiTrackingStartDate: new Date(),
+        // Mark setup as completed
+        kpiSetupCompleted: true,
+        kpiSetupCompletedAt: new Date(),
+        // Ensure tracking is enabled (should already be set, but double-check)
+        kpiTrackingEnabled: true,
+        // Keep legacy fields for backward compatibility
+        kpiTrackingActive: true, // DEPRECATED but keep for now
+        kpiTrackingStartDate: new Date(), // DEPRECATED but keep for now
         hauptzielEinSatz: body.hauptzielEinSatz,
         umsatzSollWoche: body.umsatzSollWoche,
         umsatzSollMonat: body.umsatzSollMonat,
@@ -135,6 +154,8 @@ export async function POST(
         termineAbschlussSoll: body.termineAbschlussSoll ?? null,
         einheitenSoll: body.einheitenSoll ?? null,
         empfehlungenSoll: body.empfehlungenSoll ?? null,
+        // Store structured data
+        kpiSetupData: kpiSetupData as any,
       },
     });
 
@@ -144,14 +165,31 @@ export async function POST(
       data: { usedAt: new Date() },
     });
 
+    // Reset reminder count (setup completed, no more reminders needed)
+    await prisma.member.update({
+      where: { id: formToken.memberId },
+      data: {
+        kpiSetupReminderCount: 0,
+        kpiSetupLastReminderAt: null,
+      },
+    });
+
     // Log automation
     await prisma.automationLog.create({
       data: {
         memberId: formToken.memberId,
         ruleId: "SYSTEM",
-        ruleName: "KPI-Tracking aktiviert",
+        ruleName: "KPI-Setup abgeschlossen",
         triggered: true,
-        actionsTaken: ["KPI-Setup abgeschlossen", "Wöchentliche Erinnerung aktiviert"],
+        actionsTaken: [
+          "KPI_SETUP_COMPLETED",
+          "RESET_REMINDER_COUNT",
+          "WEEKLY_KPI_TRACKING_ENABLED",
+        ],
+        details: {
+          kpiSetupData,
+          completedAt: new Date().toISOString(),
+        },
       },
     });
 

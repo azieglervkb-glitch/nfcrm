@@ -3,6 +3,9 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createMemberSchema } from "@/lib/validations";
 import { ZodError } from "zod";
+import { sendEmail } from "@/lib/email";
+import { generateFormUrl } from "@/lib/app-url";
+import { randomBytes } from "crypto";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -100,6 +103,74 @@ export async function POST(request: NextRequest) {
 
     const member = await prisma.member.create({
       data: validatedData,
+    });
+
+    // Create onboarding token and send welcome email (same as Copecart webhook)
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    await prisma.formToken.create({
+      data: {
+        token,
+        type: "onboarding",
+        memberId: member.id,
+        expiresAt,
+      },
+    });
+
+    // Send welcome email with onboarding link
+    const onboardingUrl = generateFormUrl("onboarding", token);
+    await sendEmail({
+      to: member.email,
+      subject: "Willkommen beim NF Mentoring!",
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #ae1d2b 0%, #8a1722 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">Willkommen beim NF Mentoring!</h1>
+          </div>
+          <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
+            <p style="font-size: 18px; color: #111827;">Hallo ${member.vorname}!</p>
+            <p style="color: #6b7280; line-height: 1.6;">
+              Vielen Dank für deine Anmeldung zum NF Mentoring. Wir freuen uns, dich auf deinem Weg zu unterstützen!
+            </p>
+            <p style="color: #6b7280; line-height: 1.6;">
+              Um loszulegen, fülle bitte das kurze Onboarding-Formular aus:
+            </p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${onboardingUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
+                Onboarding starten
+              </a>
+            </div>
+            <p style="color: #9ca3af; font-size: 14px;">
+              Der Link ist 7 Tage gültig.
+            </p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+            <p style="color: #9ca3af; font-size: 14px; text-align: center;">
+              NF Mentoring | <a href="https://nf-mentoring.de" style="color: #ae1d2b;">nf-mentoring.de</a>
+            </p>
+          </div>
+        </div>
+      `,
+    }).catch((error) => {
+      console.error("Failed to send onboarding email:", error);
+      // Don't fail member creation if email fails
+    });
+
+    // Log automation
+    await prisma.automationLog.create({
+      data: {
+        memberId: member.id,
+        ruleId: "MANUAL",
+        ruleName: "Manual Member Creation",
+        actionsTaken: ["CREATE_MEMBER", "CREATE_ONBOARDING_TOKEN", "SEND_WELCOME_EMAIL"],
+        details: {
+          createdBy: session.user.id,
+          email: member.email,
+        },
+      },
+    }).catch((error) => {
+      console.error("Failed to create automation log:", error);
+      // Don't fail member creation if log fails
     });
 
     return NextResponse.json(member, { status: 201 });

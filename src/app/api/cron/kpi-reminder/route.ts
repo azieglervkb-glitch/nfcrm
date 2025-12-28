@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { sendKpiReminderEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
+import { generateFormUrl } from "@/lib/app-url";
 import { randomBytes } from "crypto";
 import { shouldRunKpiReminder, hasRunThisMinute } from "@/lib/cron-scheduler";
 
@@ -42,7 +43,8 @@ export async function GET(request: NextRequest) {
     const membersWithoutKpi = await prisma.member.findMany({
       where: {
         status: "AKTIV",
-        kpiTrackingActive: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         kpiWeeks: {
           none: {
             weekStart,
@@ -79,7 +81,7 @@ export async function GET(request: NextRequest) {
           },
         });
 
-        const formLink = `${process.env.APP_URL || "http://localhost:3000"}/form/weekly/${token}`;
+        const formLink = generateFormUrl("weekly", token);
 
         // Send Email
         const emailSent = await sendKpiReminderEmail(member, formLink, weekNumber);

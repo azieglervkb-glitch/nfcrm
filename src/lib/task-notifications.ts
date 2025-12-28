@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { isInQuietHours, sendWhatsApp } from "@/lib/whatsapp";
+import { getAppUrl } from "@/lib/app-url";
 
 function formatPriority(priority: string | null | undefined): string {
   switch (priority) {
@@ -56,7 +57,7 @@ export async function notifyTaskAssignee(taskId: string): Promise<void> {
       ? `${task.member.vorname} ${task.member.nachname}`
       : null;
 
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const appUrl = getAppUrl();
     const prio = formatPriority(task.priority);
 
     const lines: string[] = [];

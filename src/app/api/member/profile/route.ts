@@ -32,7 +32,8 @@ export async function GET(request: NextRequest) {
         produkte: true,
         membershipStart: true,
         onboardingCompleted: true,
-        kpiTrackingActive: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true,
       },
     });
 
@@ -50,7 +51,8 @@ export async function GET(request: NextRequest) {
       produkte: member.produkte,
       membershipStart: member.membershipStart.toISOString(),
       onboardingCompleted: member.onboardingCompleted,
-      kpiTrackingActive: member.kpiTrackingActive,
+      kpiTrackingEnabled: member.kpiTrackingEnabled,
+      kpiSetupCompleted: member.kpiSetupCompleted,
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
@@ -103,7 +105,8 @@ export async function PUT(request: NextRequest) {
         produkte: true,
         membershipStart: true,
         onboardingCompleted: true,
-        kpiTrackingActive: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true,
       },
     });
 
@@ -117,7 +120,8 @@ export async function PUT(request: NextRequest) {
       produkte: member.produkte,
       membershipStart: member.membershipStart.toISOString(),
       onboardingCompleted: member.onboardingCompleted,
-      kpiTrackingActive: member.kpiTrackingActive,
+      kpiTrackingEnabled: member.kpiTrackingEnabled,
+      kpiSetupCompleted: member.kpiSetupCompleted,
     });
   } catch (error) {
     console.error("Failed to update profile:", error);

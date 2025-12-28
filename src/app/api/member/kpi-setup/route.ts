@@ -34,6 +34,11 @@ export async function POST(request: NextRequest) {
       where: { id: memberId },
       data: {
         // KPI Tracking aktivieren
+        kpiTrackingEnabled: true,
+        kpiTrackingEnabledAt: new Date(),
+        kpiSetupCompleted: true,
+        kpiSetupCompletedAt: new Date(),
+        // Legacy fields for backward compatibility
         kpiTrackingActive: true,
         kpiTrackingStartDate: new Date(),
         hauptzielEinSatz,

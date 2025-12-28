@@ -3,6 +3,8 @@ import { sendEmail, renderTemplate } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { notifyTaskAssignee } from "@/lib/task-notifications";
+import { generateFormUrl, getAppUrl } from "@/lib/app-url";
+import { randomBytes } from "crypto";
 import type { Member, KpiWeek, AutomationRule } from "@prisma/client";
 
 // Check if cooldown is active for a rule/member combination
@@ -780,7 +782,7 @@ export async function checkSilentMember(member: Member): Promise<void> {
           <h2>Hallo ${member.vorname}!</h2>
           <p>Es ist wieder Zeit für dein wöchentliches KPI-Update.</p>
           <p>Bitte trage deine Zahlen für diese Woche ein:</p>
-          <p><a href="${process.env.APP_URL}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">KPIs eintragen</a></p>
+          <p><a href="${getAppUrl()}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">KPIs eintragen</a></p>
           <p>Dauert nur 2 Minuten!</p>
           <p>Beste Grüße,<br>Dein NF Mentoring Team</p>
         `,
@@ -1016,7 +1018,31 @@ export async function checkSmartNudge(member: Member): Promise<void> {
   if (missingGoals && member.whatsappNummer && !quietHours) {
     const actions: string[] = [];
 
-    const message = `Hey ${member.vorname}! Ich hab gesehen, dass du noch keine Wochenziele eingetragen hast. S.M.A.R.T. Ziele helfen dir, fokussiert zu bleiben! Hier kannst du sie eintragen: ${process.env.APP_URL}/form/kpi-setup/${member.id}`;
+    // Create or get existing KPI setup token
+    let formToken = await prisma.formToken.findFirst({
+      where: {
+        memberId: member.id,
+        type: "kpi-setup",
+        expiresAt: { gt: new Date() },
+        usedAt: null,
+      },
+    });
+
+    if (!formToken) {
+      // Create new token
+      const token = randomBytes(32).toString("hex");
+      formToken = await prisma.formToken.create({
+        data: {
+          token,
+          type: "kpi-setup",
+          memberId: member.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
+      });
+    }
+
+    const kpiSetupUrl = generateFormUrl("kpi-setup", formToken.token);
+    const message = `Hey ${member.vorname}! Ich hab gesehen, dass du noch keine Wochenziele eingetragen hast. S.M.A.R.T. Ziele helfen dir, fokussiert zu bleiben! Hier kannst du sie eintragen: ${kpiSetupUrl}`;
 
     await sendWhatsApp({
       phone: member.whatsappNummer,
@@ -1075,7 +1101,7 @@ export async function runWeeklyReminders(): Promise<void> {
           <h2>Guten Morgen, ${member.vorname}!</h2>
           <p>Wir hoffen, du hast eine gute Woche bisher!</p>
           <p>Kurze Erinnerung: Dein KPI-Update für diese Woche steht noch aus.</p>
-          <p><a href="${process.env.APP_URL}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">Jetzt eintragen</a></p>
+          <p><a href="${getAppUrl()}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">Jetzt eintragen</a></p>
           <p>Dauert nur 2 Minuten!</p>
           <p>Beste Grüße,<br>Dein NF Mentoring Team</p>
         `,
@@ -1087,7 +1113,7 @@ export async function runWeeklyReminders(): Promise<void> {
     if (isEvening && member.whatsappNummer) {
       const quietHours = await isInQuietHours();
       if (!quietHours) {
-        const message = `Hey ${member.vorname}! 👋 Bevor der Tag rum ist - hast du deine KPIs schon eingetragen? Dauert nur 2 Min: ${process.env.APP_URL}/form/weekly/${member.id}`;
+        const message = `Hey ${member.vorname}! 👋 Bevor der Tag rum ist - hast du deine KPIs schon eingetragen? Dauert nur 2 Min: ${getAppUrl()}/form/weekly/${member.id}`;
 
         await sendWhatsApp({
           phone: member.whatsappNummer,

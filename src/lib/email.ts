@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { prisma } from "./prisma";
+import { getAppUrl, generateLogoUrl } from "./app-url";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -168,7 +169,7 @@ export async function sendKpiReminderEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `📊 Deine KPIs für KW${weekNumber} fehlen noch`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -240,7 +241,7 @@ export async function sendWeeklyFeedbackEmail(
       </div>
 
       <div style="text-align: center;">
-        <a href="${process.env.APP_URL || "http://localhost:3000"}/dashboard" class="button">Dashboard öffnen</a>
+        <a href="${getAppUrl()}/dashboard" class="button">Dashboard öffnen</a>
       </div>
     </div>
   `;
@@ -250,7 +251,7 @@ export async function sendWeeklyFeedbackEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `${stats.goalAchieved ? "🎉 Ziel erreicht!" : "📊"} Dein Feedback für KW${weekNumber}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -324,7 +325,7 @@ export async function sendWelcomeEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: "🚀 Willkommen im NF Mentoring!",
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -402,7 +403,7 @@ export async function sendChurnWarningEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `${member.vorname}, wir vermissen dich!`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -479,7 +480,7 @@ export async function sendGoalCelebrationEmail(
       </p>
 
       <div style="text-align: center;">
-        <a href="${process.env.APP_URL || "http://localhost:3000"}/dashboard" class="button">Zum Dashboard</a>
+        <a href="${getAppUrl()}/dashboard" class="button">Zum Dashboard</a>
       </div>
     </div>
   `;
@@ -489,7 +490,7 @@ export async function sendGoalCelebrationEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `🎉 Ziel erreicht! ${stats.umsatzIst.toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0 })} in KW${weekNumber}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -565,7 +566,7 @@ export async function sendCoachTaskNotification(
       </div>
 
       <div style="text-align: center;">
-        <a href="${process.env.APP_URL || "http://localhost:3000"}/tasks" class="button">Aufgaben ansehen</a>
+        <a href="${getAppUrl()}/tasks" class="button">Aufgaben ansehen</a>
       </div>
     </div>
   `;
@@ -575,6 +576,6 @@ export async function sendCoachTaskNotification(
   return sendEmail({
     to: coach.email,
     subject: `${task.priority === "URGENT" ? "🚨" : "📋"} Neue Aufgabe: ${task.title}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 }
