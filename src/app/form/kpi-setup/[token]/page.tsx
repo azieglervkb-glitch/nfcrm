@@ -12,15 +12,23 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, Trophy, Euro, Phone, Calendar, Handshake, Target, Gift, Settings, Percent, TrendingUp, Package } from "lucide-react";
 
-// Zod 4 compatible helpers with explicit type annotations to ensure correct inference
+// Zod 4 compatible helpers - include z.null() in union so Zod infers output as number | null
 // NaN from empty number inputs is transformed to null
 const optionalNumericField = z
-  .union([z.number(), z.nan()])
-  .transform((val): number | null => (typeof val === 'number' && !Number.isNaN(val) ? val : null));
+  .union([z.number(), z.nan(), z.null()])
+  .transform((val) => {
+    if (val === null) return null;
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    return null;
+  });
 
 const optionalPercentField = z
-  .union([z.number(), z.nan()])
-  .transform((val): number | null => (typeof val === 'number' && !Number.isNaN(val) ? val : null));
+  .union([z.number(), z.nan(), z.null()])
+  .transform((val) => {
+    if (val === null) return null;
+    if (typeof val === 'number' && !Number.isNaN(val)) return val;
+    return null;
+  });
 
 const requiredNumericField = (minValue: number, errorMessage: string) =>
   z
