@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, X, Trophy, DollarSign, Phone, Calendar, TrendingUp, Handshake, Target, Award, Lightbulb, Settings } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, X, Trophy, DollarSign, Phone, Calendar, TrendingUp, Handshake, Target, Award, Settings } from "lucide-react";
 
 const kpiSetupSchema = z.object({
   // Ziel
@@ -197,36 +197,13 @@ export default function KpiSetupFormPage({
 
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-bold">Starte dein persönliches KPI-Tracking 🚀</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">
+            Hey {memberData?.vorname}! Starte dein KPI-Tracking 🚀
+          </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base max-w-2xl mx-auto">
-            Dieses Formular aktiviert dein persönliches KPI-Tracking. Hier legst du fest, welche
-            Kennzahlen du ab jetzt wöchentlich messen möchtest.
+            Lege fest, welche Kennzahlen du ab jetzt wöchentlich messen möchtest.
           </p>
         </div>
-        {/* So funktioniert's */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <h2 className="font-semibold mb-3">So funktioniert's:</h2>
-            <ul className="space-y-2 text-sm text-muted-foreground mb-4">
-              <li>• Fülle das Formular einmal aus, um dein Tracking zu starten.</li>
-              <li>
-                • Du kannst es später jederzeit erneut absenden, wenn sich deine Ziele oder KPIs
-                ändern.
-              </li>
-              <li>
-                • Nur aktivierte KPIs (mit Häkchen) werden in deinem wöchentlichen Formular
-                abgefragt.
-              </li>
-            </ul>
-            <div className="flex items-start gap-2 bg-blue-50 p-3 rounded-lg">
-              <Lightbulb className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-blue-800">
-                <strong>Tipp:</strong> Setze lieber wenige, aber aussagekräftige KPIs – und bleib
-                konsequent dabei.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
