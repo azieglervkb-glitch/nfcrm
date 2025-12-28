@@ -116,10 +116,10 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
   const someSelected = selectedMembers.size > 0 && selectedMembers.size < members.length;
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* Bulk Actions Bar */}
       {selectedMembers.size > 0 && (
-        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 p-4 bg-primary/5 rounded-lg border border-primary/20 shadow-sm">
+        <div className="m-4 mb-0 flex flex-wrap items-center justify-between gap-3 p-3 bg-primary/5 rounded-lg border border-primary/20">
           <div className="flex items-center gap-3">
             <Checkbox
               checked={allSelected ? true : someSelected ? "indeterminate" : false}

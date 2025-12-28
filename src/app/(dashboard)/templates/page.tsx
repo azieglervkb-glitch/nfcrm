@@ -749,12 +749,16 @@ export default function TemplatesPage() {
             Verwalte die Vorlagen für automatische Nachrichten
           </p>
         </div>
-        {templates.length === 0 && (
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setLoading(true); fetchTemplates(); }}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Neu laden
+          </Button>
           <Button onClick={initializeTemplates}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Standard-Templates laden
+            Templates synchronisieren
           </Button>
-        )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
