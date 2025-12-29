@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
-import { getCurrentWeekStart, getPreviousWeek, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const memberId = searchParams.get("memberId");
+    const weekStartParam = searchParams.get("weekStart");
 
     if (!memberId) {
       return NextResponse.json({ error: "Member ID required" }, { status: 400 });
@@ -48,15 +49,36 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Members enter data for the PREVIOUS week (what they achieved last week)
-    const weekStart = getPreviousWeek(getCurrentWeekStart());
+    // Calculate available weeks for selection (only previous and current week)
+    const currentWeekMonday = getCurrentWeekStart();
+    const previousWeek = getPreviousWeek(currentWeekMonday);
+
+    const availableWeeks = [
+      {
+        weekStart: previousWeek.toISOString(),
+        label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
+        weekNumber: getWeekInfo(previousWeek).weekNumber,
+        isDefault: true,
+      },
+      {
+        weekStart: currentWeekMonday.toISOString(),
+        label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
+        weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
+        isDefault: false,
+      },
+    ];
+
+    // Use provided weekStart or default to previous week
+    const weekStart = weekStartParam
+      ? new Date(weekStartParam)
+      : previousWeek;
 
     const currentWeek = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);
       return entryWeek.getTime() === weekStart.getTime();
     });
 
-    // History (exclude previous week entry) - return all tracked values
+    // History (exclude selected week) - return all tracked values
     const history = member.kpiWeeks
       .filter((entry) => {
         const entryWeek = new Date(entry.weekStart);
@@ -104,6 +126,8 @@ export async function GET(request: NextRequest) {
         konvertierungTerminSoll: member.konvertierungTerminSoll ? Number(member.konvertierungTerminSoll) : null,
         abschlussquoteSoll: member.abschlussquoteSoll ? Number(member.abschlussquoteSoll) : null,
       },
+      availableWeeks,
+      selectedWeekStart: weekStart.toISOString(),
       currentWeek: currentWeek
         ? {
             id: currentWeek.id,
@@ -142,6 +166,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       memberId,
+      weekStart: weekStartParam,
       umsatzIst,
       kontakteIst,
       entscheiderIst,
@@ -171,8 +196,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Members enter data for the PREVIOUS week (what they achieved last week)
-    const weekStart = getPreviousWeek(getCurrentWeekStart());
+    // Use provided weekStart or default to previous week
+    const weekStart = weekStartParam
+      ? new Date(weekStartParam)
+      : getPreviousWeek(getCurrentWeekStart());
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Check if already submitted for this week - no edits allowed

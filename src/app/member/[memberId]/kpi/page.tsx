@@ -16,6 +16,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   BarChart3,
   Target,
   User,
@@ -32,6 +39,13 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+interface WeekOption {
+  weekStart: string;
+  label: string;
+  weekNumber: number;
+  isDefault: boolean;
+}
 
 interface MemberData {
   vorname: string;
@@ -58,6 +72,8 @@ interface MemberData {
 
 interface KpiData {
   member: MemberData;
+  availableWeeks?: WeekOption[];
+  selectedWeekStart?: string;
   currentWeek: {
     id?: string;
     umsatzIst: number | null;
@@ -106,6 +122,7 @@ export default function MemberKpiPage() {
   const [success, setSuccess] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [feelingScore, setFeelingScore] = useState(5);
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
 
   const [formValues, setFormValues] = useState({
     umsatzIst: "",
@@ -130,14 +147,31 @@ export default function MemberKpiPage() {
     }
   }, [memberId]);
 
-  const fetchKpiData = async () => {
+  // Refetch when week selection changes
+  useEffect(() => {
+    if (selectedWeek && memberId && data?.selectedWeekStart !== selectedWeek) {
+      fetchKpiData(selectedWeek);
+    }
+  }, [selectedWeek]);
+
+  const fetchKpiData = async (weekStart?: string) => {
     try {
-      const response = await fetch(`/api/member/kpi/full?memberId=${memberId}`);
+      setLoading(true);
+      const url = weekStart
+        ? `/api/member/kpi/full?memberId=${memberId}&weekStart=${encodeURIComponent(weekStart)}`
+        : `/api/member/kpi/full?memberId=${memberId}`;
+      const response = await fetch(url);
       if (response.ok) {
         const result = await response.json();
         setData(result);
+        // Set default selected week on first load
+        if (!selectedWeek && result.selectedWeekStart) {
+          setSelectedWeek(result.selectedWeekStart);
+        }
         if (result.currentWeek?.id) {
           setAlreadySubmitted(true);
+        } else {
+          setAlreadySubmitted(false);
         }
       }
     } catch (err) {
@@ -158,6 +192,7 @@ export default function MemberKpiPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           memberId,
+          weekStart: selectedWeek,
           umsatzIst: formValues.umsatzIst ? parseFloat(formValues.umsatzIst) : null,
           kontakteIst: formValues.kontakteIst ? parseInt(formValues.kontakteIst) : null,
           entscheiderIst: formValues.entscheiderIst ? parseInt(formValues.entscheiderIst) : null,
@@ -359,9 +394,36 @@ export default function MemberKpiPage() {
               Hey {member?.vorname}!
             </h1>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-              Zeit für dein Weekly Update – trage deine Zahlen für diese Woche ein.
+              Zeit für dein Weekly Update – trage deine Zahlen ein.
             </p>
           </div>
+
+          {/* Week Selector */}
+          {data?.availableWeeks && data.availableWeeks.length > 0 && (
+            <Card className="bg-blue-50 border-blue-200 mb-6">
+              <CardContent className="py-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                  <Label className="text-blue-800 font-medium whitespace-nowrap">
+                    <Calendar className="h-4 w-4 inline mr-2" />
+                    Woche auswählen:
+                  </Label>
+                  <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                    <SelectTrigger className="w-full sm:w-[320px] bg-white">
+                      <SelectValue placeholder="Woche auswählen..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {data.availableWeeks.map((week) => (
+                        <SelectItem key={week.weekStart} value={week.weekStart}>
+                          {week.label}
+                          {week.isDefault && " (Vorwoche)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
