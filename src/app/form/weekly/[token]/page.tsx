@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, CheckCircle, AlertCircle, Euro, Phone, Calendar, Target, Gift, Heart, MessageSquare, Handshake } from "lucide-react";
 
 interface MemberData {
@@ -31,6 +32,14 @@ interface MemberData {
   empfehlungenSoll: number | null;
 }
 
+interface WeekOption {
+  weekStart: string;
+  label: string;
+  weekNumber: number;
+  isDefault: boolean;
+  alreadySubmitted: boolean;
+}
+
 export default function WeeklyKpiFormPage({
   params,
 }: {
@@ -45,6 +54,9 @@ export default function WeeklyKpiFormPage({
   const [feelingScore, setFeelingScore] = useState(5);
   const [token, setToken] = useState<string>("");
   const [isPreview, setIsPreview] = useState(false);
+  const [availableWeeks, setAvailableWeeks] = useState<WeekOption[]>([]);
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
+  const [selectedWeekLabel, setSelectedWeekLabel] = useState<string>("");
 
   const {
     register,
@@ -70,6 +82,14 @@ export default function WeeklyKpiFormPage({
         const data = await response.json();
         setMemberData(data.member);
         setIsPreview(data.isPreview || false);
+        if (data.availableWeeks) {
+          setAvailableWeeks(data.availableWeeks);
+          if (data.selectedWeekStart) {
+            setSelectedWeek(data.selectedWeekStart);
+            const week = data.availableWeeks.find((w: WeekOption) => w.weekStart === data.selectedWeekStart);
+            setSelectedWeekLabel(week?.label || "");
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
       } finally {
@@ -87,7 +107,7 @@ export default function WeeklyKpiFormPage({
       const response = await fetch(`/api/forms/weekly/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, feelingScore }),
+        body: JSON.stringify({ ...data, feelingScore, weekStart: selectedWeek }),
       });
 
       if (!response.ok) {
@@ -167,9 +187,47 @@ export default function WeeklyKpiFormPage({
             Hey {memberData?.vorname}!
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Zeit für dein Weekly Update – trage deine Zahlen für diese Woche ein.
+            Zeit für dein Weekly Update – trage deine Zahlen ein.
           </p>
         </div>
+
+        {/* Week Selector */}
+        {availableWeeks.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Label htmlFor="week-select">Woche auswählen</Label>
+                <Select value={selectedWeek} onValueChange={(value) => {
+                  setSelectedWeek(value);
+                  const week = availableWeeks.find((w) => w.weekStart === value);
+                  setSelectedWeekLabel(week?.label || "");
+                }}>
+                  <SelectTrigger id="week-select" className="h-12">
+                    <SelectValue placeholder="Woche auswählen">
+                      {selectedWeekLabel || availableWeeks.find((w) => w.isDefault)?.label || "Woche auswählen"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableWeeks.map((week) => (
+                      <SelectItem
+                        key={week.weekStart}
+                        value={week.weekStart}
+                        disabled={week.alreadySubmitted}
+                      >
+                        {week.label} {week.alreadySubmitted && "✓ (bereits eingereicht)"}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {availableWeeks.find((w) => w.weekStart === selectedWeek)?.alreadySubmitted && (
+                  <p className="text-sm text-amber-600">
+                    Diese Woche wurde bereits eingereicht. Du kannst sie bearbeiten.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
@@ -199,13 +257,13 @@ export default function WeeklyKpiFormPage({
                     </span>
                   </>
                 ) : (
-                  "Wie viel Umsatz hast du diese Woche gemacht?"
+                  "Wie viel Umsatz hast du gemacht?"
                 )}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="umsatzIst">Umsatz diese Woche (€) *</Label>
+                <Label htmlFor="umsatzIst">Umsatz (€) *</Label>
                 <Input
                   id="umsatzIst"
                   type="number"
@@ -241,7 +299,7 @@ export default function WeeklyKpiFormPage({
                       </span>
                     </>
                   ) : (
-                    "Wie viele Kontakte hast du diese Woche gemacht?"
+                    "Wie viele Kontakte hast du gemacht?"
                   )}
                 </CardDescription>
               </CardHeader>
@@ -293,7 +351,7 @@ export default function WeeklyKpiFormPage({
                       </span>
                     </>
                   ) : (
-                    "Wie viele Termine hattest du diese Woche?"
+                    "Wie viele Termine hattest du?"
                   )}
                 </CardDescription>
               </CardHeader>
@@ -506,7 +564,7 @@ export default function WeeklyKpiFormPage({
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="heldentat">
-                  Was war deine Heldentat diese Woche?
+                  Was war deine Heldentat?
                 </Label>
                 <Textarea
                   id="heldentat"
@@ -517,7 +575,7 @@ export default function WeeklyKpiFormPage({
 
               <div className="space-y-2">
                 <Label htmlFor="blockiert">
-                  Was hat dich diese Woche blockiert?
+                  Was hat dich blockiert?
                 </Label>
                 <Textarea
                   id="blockiert"

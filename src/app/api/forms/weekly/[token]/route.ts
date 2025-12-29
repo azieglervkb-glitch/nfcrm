@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { weeklyKpiFormSchema } from "@/lib/validations";
-import { getCurrentWeekStart, getPreviousWeek, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
@@ -27,34 +27,63 @@ export async function GET(
       return NextResponse.json({ error: "Ungültiger Token-Typ" }, { status: 400 });
     }
 
-    return NextResponse.json({
-      member: {
-        id: formToken.member.id,
-        vorname: formToken.member.vorname,
-        nachname: formToken.member.nachname,
-        trackKontakte: formToken.member.trackKontakte,
-        trackTermine: formToken.member.trackTermine,
-        trackEinheiten: formToken.member.trackEinheiten,
-        trackEmpfehlungen: formToken.member.trackEmpfehlungen,
-        trackEntscheider: formToken.member.trackEntscheider,
-        trackAbschluesse: formToken.member.trackAbschluesse,
-        umsatzSollWoche: formToken.member.umsatzSollWoche,
-        kontakteSoll: formToken.member.kontakteSoll,
-        termineVereinbartSoll: formToken.member.termineVereinbartSoll,
-        termineAbschlussSoll: formToken.member.termineAbschlussSoll,
-        einheitenSoll: formToken.member.einheitenSoll,
-        empfehlungenSoll: formToken.member.empfehlungenSoll,
+    // Get member with KPI weeks to check submissions
+    const member = await prisma.member.findUnique({
+      where: { id: formToken.memberId },
+      include: {
+        kpiWeeks: {
+          orderBy: { weekStart: "desc" },
+          take: 12,
+        },
       },
-      isPreview: false,
     });
-  }
 
-  // If no token found, try to find by member ID (for admin preview)
-  const member = await prisma.member.findUnique({
-    where: { id: token },
-  });
+    if (!member) {
+      return NextResponse.json({ error: "Member nicht gefunden" }, { status: 404 });
+    }
 
-  if (member) {
+    // Calculate available weeks for selection (only previous and current week)
+    const currentWeekMonday = getCurrentWeekStart();
+    const previousWeek = getPreviousWeek(currentWeekMonday);
+
+    // Check if previous week was already submitted
+    const previousWeekEntry = member.kpiWeeks.find((entry) => {
+      const entryWeek = new Date(entry.weekStart);
+      return entryWeek.getTime() === previousWeek.getTime();
+    });
+    const previousWeekSubmitted = !!previousWeekEntry?.id;
+
+    // Check if current week was already submitted
+    const currentWeekEntry = member.kpiWeeks.find((entry) => {
+      const entryWeek = new Date(entry.weekStart);
+      return entryWeek.getTime() === currentWeekMonday.getTime();
+    });
+    const currentWeekSubmitted = !!currentWeekEntry?.id;
+
+    const availableWeeks = [
+      {
+        weekStart: previousWeek.toISOString(),
+        label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
+        weekNumber: getWeekInfo(previousWeek).weekNumber,
+        isDefault: !previousWeekSubmitted,
+        alreadySubmitted: previousWeekSubmitted,
+      },
+      {
+        weekStart: currentWeekMonday.toISOString(),
+        label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
+        weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
+        isDefault: previousWeekSubmitted,
+        alreadySubmitted: currentWeekSubmitted,
+      },
+    ];
+
+    // Use weekStart from token if available, otherwise smart default
+    const selectedWeekStart = formToken.weekStart
+      ? formToken.weekStart.toISOString()
+      : previousWeekSubmitted
+      ? currentWeekMonday.toISOString()
+      : previousWeek.toISOString();
+
     return NextResponse.json({
       member: {
         id: member.id,
@@ -73,6 +102,84 @@ export async function GET(
         einheitenSoll: member.einheitenSoll,
         empfehlungenSoll: member.empfehlungenSoll,
       },
+      availableWeeks,
+      selectedWeekStart,
+      isPreview: false,
+    });
+  }
+
+  // If no token found, try to find by member ID (for admin preview)
+  const member = await prisma.member.findUnique({
+    where: { id: token },
+    include: {
+      kpiWeeks: {
+        orderBy: { weekStart: "desc" },
+        take: 12,
+      },
+    },
+  });
+
+  if (member) {
+    // Calculate available weeks for selection (only previous and current week)
+    const currentWeekMonday = getCurrentWeekStart();
+    const previousWeek = getPreviousWeek(currentWeekMonday);
+
+    // Check if previous week was already submitted
+    const previousWeekEntry = member.kpiWeeks.find((entry) => {
+      const entryWeek = new Date(entry.weekStart);
+      return entryWeek.getTime() === previousWeek.getTime();
+    });
+    const previousWeekSubmitted = !!previousWeekEntry?.id;
+
+    // Check if current week was already submitted
+    const currentWeekEntry = member.kpiWeeks.find((entry) => {
+      const entryWeek = new Date(entry.weekStart);
+      return entryWeek.getTime() === currentWeekMonday.getTime();
+    });
+    const currentWeekSubmitted = !!currentWeekEntry?.id;
+
+    const availableWeeks = [
+      {
+        weekStart: previousWeek.toISOString(),
+        label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
+        weekNumber: getWeekInfo(previousWeek).weekNumber,
+        isDefault: !previousWeekSubmitted,
+        alreadySubmitted: previousWeekSubmitted,
+      },
+      {
+        weekStart: currentWeekMonday.toISOString(),
+        label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
+        weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
+        isDefault: previousWeekSubmitted,
+        alreadySubmitted: currentWeekSubmitted,
+      },
+    ];
+
+    // Smart default: current week if previous is submitted, otherwise previous week
+    const selectedWeekStart = previousWeekSubmitted
+      ? currentWeekMonday.toISOString()
+      : previousWeek.toISOString();
+
+    return NextResponse.json({
+      member: {
+        id: member.id,
+        vorname: member.vorname,
+        nachname: member.nachname,
+        trackKontakte: member.trackKontakte,
+        trackTermine: member.trackTermine,
+        trackEinheiten: member.trackEinheiten,
+        trackEmpfehlungen: member.trackEmpfehlungen,
+        trackEntscheider: member.trackEntscheider,
+        trackAbschluesse: member.trackAbschluesse,
+        umsatzSollWoche: member.umsatzSollWoche,
+        kontakteSoll: member.kontakteSoll,
+        termineVereinbartSoll: member.termineVereinbartSoll,
+        termineAbschlussSoll: member.termineAbschlussSoll,
+        einheitenSoll: member.einheitenSoll,
+        empfehlungenSoll: member.empfehlungenSoll,
+      },
+      availableWeeks,
+      selectedWeekStart,
       isPreview: true,
     });
   }
@@ -107,9 +214,10 @@ export async function POST(
     const body = await request.json();
     const validatedData = weeklyKpiFormSchema.parse(body);
 
-    // Use weekStart from token if available (from reminder), otherwise fall back to previous week
-    // Members always enter data for the PREVIOUS week (what they achieved last week)
-    const weekStart = formToken.weekStart ?? getPreviousWeek(getCurrentWeekStart());
+    // Use weekStart from body (user selection), token, or fall back to previous week
+    const weekStart = body.weekStart
+      ? new Date(body.weekStart)
+      : formToken.weekStart ?? getPreviousWeek(getCurrentWeekStart());
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Calculate no-show quote
