@@ -131,12 +131,6 @@ export function normalizeWeekStart(date: Date): Date {
   return monday;
 }
 
-// Format date with time (e.g., "29.12.2024 um 14:30 Uhr")
-export function formatDateTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return format(d, "dd.MM.yyyy 'um' HH:mm 'Uhr'", { locale: de });
-}
-
 // Format date for datetime-local input (YYYY-MM-DDTHH:mm)
 export function toDateTimeLocalString(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
