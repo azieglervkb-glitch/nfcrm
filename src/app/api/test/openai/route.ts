@@ -12,6 +12,11 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Safety: don't expose this endpoint in production
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Check if API key exists
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -34,11 +39,11 @@ export async function GET() {
 
     // Simple test call
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: process.env.OPENAI_MODEL || "gpt-5.2",
       messages: [
         { role: "user", content: "Antworte nur mit: OK" }
       ],
-      max_tokens: 10,
+      max_completion_tokens: 10,
     });
 
     const reply = response.choices[0].message.content;

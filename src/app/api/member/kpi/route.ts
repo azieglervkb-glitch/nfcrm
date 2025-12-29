@@ -1,22 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
-
-function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-}
-
-function getCurrentWeekStart(): Date {
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + 1);
-  weekStart.setHours(0, 0, 0, 0);
-  return weekStart;
-}
+import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -128,8 +113,7 @@ export async function POST(request: NextRequest) {
     }
 
     const weekStart = getCurrentWeekStart();
-    const weekNumber = getWeekNumber(weekStart);
-    const year = weekStart.getFullYear();
+    const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Upsert KPI entry
     const kpiWeek = await prisma.kpiWeek.upsert({

@@ -17,6 +17,8 @@ export async function GET() {
         nachname: true,
         email: true,
         role: true,
+        whatsappNummer: true,
+        taskWhatsappEnabled: true,
       },
     });
 
@@ -31,6 +33,8 @@ export async function GET() {
       nachname: user.nachname,
       email: user.email,
       role: user.role,
+      whatsappNummer: user.whatsappNummer,
+      taskWhatsappEnabled: user.taskWhatsappEnabled,
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
@@ -49,7 +53,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { vorname, nachname, name, email } = body;
+    const { vorname, nachname, name, email, whatsappNummer, taskWhatsappEnabled } = body;
 
     // Support both name (legacy) and vorname/nachname
     let updateVorname = vorname;
@@ -81,6 +85,8 @@ export async function PUT(request: Request) {
         vorname: updateVorname,
         nachname: updateNachname,
         email,
+        whatsappNummer: typeof whatsappNummer === "string" ? whatsappNummer : undefined,
+        taskWhatsappEnabled: typeof taskWhatsappEnabled === "boolean" ? taskWhatsappEnabled : undefined,
       },
       select: {
         id: true,
@@ -88,6 +94,8 @@ export async function PUT(request: Request) {
         nachname: true,
         email: true,
         role: true,
+        whatsappNummer: true,
+        taskWhatsappEnabled: true,
       },
     });
 
@@ -98,6 +106,8 @@ export async function PUT(request: Request) {
       nachname: updatedUser.nachname,
       email: updatedUser.email,
       role: updatedUser.role,
+      whatsappNummer: updatedUser.whatsappNummer,
+      taskWhatsappEnabled: updatedUser.taskWhatsappEnabled,
     });
   } catch (error) {
     console.error("Failed to update profile:", error);

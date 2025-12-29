@@ -11,13 +11,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Loader2, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from "lucide-react";
 
+// Zod 4 compatible helper with explicit type predicate for correct inference
+// NaN from empty number inputs triggers validation error
+const numericField = (minValue: number, errorMessage: string) =>
+  z
+    .union([z.number(), z.nan()])
+    .refine((val): val is number => typeof val === 'number' && !Number.isNaN(val), { message: errorMessage })
+    .refine((val) => val >= minValue, { message: errorMessage });
+
 const onboardingSchema = z.object({
   unternehmen: z.string().min(1, "Bitte gib dein Unternehmen an"),
   position: z.string().min(1, "Bitte gib deine Position an"),
-  aktuellerMonatsumsatz: z.number().min(0, "Bitte gib einen gültigen Umsatz an"),
+  aktuellerMonatsumsatz: numericField(0, "Bitte gib einen gültigen Umsatz an"),
   wasNervtAmMeisten: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
   groessetesProblem: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
-  zielMonatsumsatz: z.number().min(0, "Bitte gib ein gültiges Ziel an"),
+  zielMonatsumsatz: numericField(1, "Bitte gib ein gültiges Ziel an (mindestens 1€)"),
   groessteZielWarum: z.string().min(10, "Bitte beschreibe ausführlicher (mind. 10 Zeichen)"),
   wieAufmerksam: z.string().optional(),
 });
@@ -27,6 +35,15 @@ type OnboardingInput = z.infer<typeof onboardingSchema>;
 interface MemberData {
   vorname: string;
   nachname: string;
+  // Pre-fill data
+  unternehmen?: string | null;
+  position?: string | null;
+  aktuellerMonatsumsatz?: number | null;
+  wasNervtAmMeisten?: string | null;
+  groessetesProblem?: string | null;
+  zielMonatsumsatz?: number | null;
+  groessteZielWarum?: string | null;
+  wieAufmerksam?: string | null;
 }
 
 export default function OnboardingFormPage({
@@ -47,6 +64,7 @@ export default function OnboardingFormPage({
     register,
     handleSubmit,
     trigger,
+    setValue,
     formState: { errors },
   } = useForm<OnboardingInput>({
     resolver: zodResolver(onboardingSchema),
@@ -65,6 +83,30 @@ export default function OnboardingFormPage({
         const data = await response.json();
         setMemberData(data.member);
         setIsPreview(data.isPreview || false);
+
+        // Pre-fill data if available (with validation to ensure form recognizes the values)
+        if (data.member) {
+          const m = data.member;
+          const opts = { shouldValidate: true, shouldDirty: true };
+
+          // Step 1 fields
+          if (m.unternehmen) setValue("unternehmen", m.unternehmen, opts);
+          if (m.position) setValue("position", m.position, opts);
+          if (m.aktuellerMonatsumsatz !== null && m.aktuellerMonatsumsatz !== undefined) {
+            setValue("aktuellerMonatsumsatz", Number(m.aktuellerMonatsumsatz), opts);
+          }
+
+          // Step 2 fields
+          if (m.wasNervtAmMeisten) setValue("wasNervtAmMeisten", m.wasNervtAmMeisten, opts);
+          if (m.groessetesProblem) setValue("groessetesProblem", m.groessetesProblem, opts);
+
+          // Step 3 fields (the problematic ones on the last page)
+          if (m.zielMonatsumsatz !== null && m.zielMonatsumsatz !== undefined) {
+            setValue("zielMonatsumsatz", Number(m.zielMonatsumsatz), opts);
+          }
+          if (m.groessteZielWarum) setValue("groessteZielWarum", m.groessteZielWarum, opts);
+          if (m.wieAufmerksam) setValue("wieAufmerksam", m.wieAufmerksam, opts);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
       } finally {
@@ -72,7 +114,7 @@ export default function OnboardingFormPage({
       }
     }
     loadData();
-  }, [params]);
+  }, [params, setValue]);
 
   const nextStep = async () => {
     let fieldsToValidate: (keyof OnboardingInput)[] = [];
@@ -168,15 +210,17 @@ export default function OnboardingFormPage({
           </div>
         )}
 
+        {/* Banner */}
+        <div className="rounded-xl overflow-hidden mb-6 shadow-lg">
+          <img
+            src="/onboarding_banner.jpeg"
+            alt="NF Mentoring Onboarding"
+            className="w-full h-auto object-cover"
+          />
+        </div>
+
         {/* Header */}
         <div className="text-center mb-6 sm:mb-8">
-          <div className="flex justify-center mb-4">
-            <img
-              src="/nf-logo.png"
-              alt="NF Mentoring"
-              className="h-12 sm:h-16 w-auto"
-            />
-          </div>
           <h1 className="text-xl sm:text-2xl font-bold">Starte jetzt dein NF Mentoring</h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
             Hallo {memberData?.vorname}! Erzähl uns mehr über dich.
@@ -251,6 +295,7 @@ export default function OnboardingFormPage({
                     id="aktuellerMonatsumsatz"
                     type="number"
                     inputMode="numeric"
+                    min={0}
                     placeholder="z.B. 15000"
                     {...register("aktuellerMonatsumsatz", { valueAsNumber: true })}
                     className={`h-12 ${errors.aktuellerMonatsumsatz ? "border-destructive" : ""}`}
@@ -330,6 +375,7 @@ export default function OnboardingFormPage({
                     id="zielMonatsumsatz"
                     type="number"
                     inputMode="numeric"
+                    min={1}
                     placeholder="z.B. 30000"
                     {...register("zielMonatsumsatz", { valueAsNumber: true })}
                     className={`h-12 ${errors.zielMonatsumsatz ? "border-destructive" : ""}`}

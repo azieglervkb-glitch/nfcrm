@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { prisma } from "./prisma";
+import { getAppUrl, generateLogoUrl } from "./app-url";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -87,8 +88,8 @@ const EMAIL_STYLES = `
 `;
 
 const EMAIL_HEADER = `
-  <div class="header">
-    <img src="{{logoUrl}}" alt="NF Mentoring" />
+  <div class="header" style="background: #ffffff; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e5e5;">
+    <img src="{{logoUrl}}" alt="NF Mentoring" width="150" height="auto" style="max-height: 50px; width: auto; display: block; margin: 0 auto;" />
   </div>
 `;
 
@@ -103,7 +104,7 @@ const EMAIL_FOOTER = `
   </div>
 `;
 
-function wrapEmailTemplate(content: string): string {
+export function wrapEmailTemplate(content: string): string {
   return `
     <!DOCTYPE html>
     <html lang="de">
@@ -168,7 +169,7 @@ export async function sendKpiReminderEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `📊 Deine KPIs für KW${weekNumber} fehlen noch`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -240,7 +241,7 @@ export async function sendWeeklyFeedbackEmail(
       </div>
 
       <div style="text-align: center;">
-        <a href="${process.env.APP_URL || "http://localhost:3000"}/dashboard" class="button">Dashboard öffnen</a>
+        <a href="${getAppUrl()}/dashboard" class="button">Dashboard öffnen</a>
       </div>
     </div>
   `;
@@ -250,7 +251,7 @@ export async function sendWeeklyFeedbackEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `${stats.goalAchieved ? "🎉 Ziel erreicht!" : "📊"} Dein Feedback für KW${weekNumber}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -273,38 +274,36 @@ export async function sendWeeklyFeedbackEmail(
 
 /**
  * Welcome Email - Sent after successful onboarding
+ * NOTE: This does NOT include KPI setup - that comes later when KPI tracking is activated
  */
 export async function sendWelcomeEmail(
-  member: { id: string; email: string; vorname: string; nachname: string },
-  kpiSetupLink: string
+  member: { id: string; email: string; vorname: string; nachname: string }
 ): Promise<boolean> {
   const content = `
     <div class="content">
       <p class="greeting">Willkommen im NF Mentoring, ${member.vorname}! 🚀</p>
 
       <p class="text">
-        Wir freuen uns riesig, dich an Bord zu haben! Du hast den ersten wichtigen Schritt gemacht
-        – jetzt geht's richtig los.
+        Wir freuen uns riesig, dich an Bord zu haben! Du hast dein Onboarding erfolgreich abgeschlossen
+        – jetzt bist du offiziell Teil der NF Mentoring Familie!
       </p>
 
       <div class="highlight-box">
         <p style="margin: 0;">
-          <strong>Dein nächster Schritt:</strong><br>
-          Richte dein persönliches KPI-Tracking ein, damit wir deine Fortschritte optimal begleiten können.
+          <strong>Was passiert jetzt?</strong><br>
+          Starte mit deinen Trainings auf der LearninSuite Plattform. 
+          Sobald du bereit bist, aktivieren wir dein persönliches KPI-Tracking, 
+          um deine Fortschritte optimal zu begleiten.
         </p>
-      </div>
-
-      <div style="text-align: center;">
-        <a href="${kpiSetupLink}" class="button">KPI-Tracking einrichten →</a>
       </div>
 
       <div class="divider"></div>
 
       <p class="text"><strong>Was dich erwartet:</strong></p>
       <ul style="color: #4a4a4a;">
-        <li>Wöchentliches KPI-Tracking mit persönlichem Feedback</li>
+        <li>Hochwertige Trainings und Ressourcen</li>
         <li>Regelmäßige Check-ins mit deinem Coach</li>
-        <li>Zugang zu exklusiven Ressourcen und Trainings</li>
+        <li>Persönliches KPI-Tracking (wird später aktiviert)</li>
         <li>Eine Community von Gleichgesinnten</li>
       </ul>
 
@@ -324,7 +323,7 @@ export async function sendWelcomeEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: "🚀 Willkommen im NF Mentoring!",
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -335,6 +334,132 @@ export async function sendWelcomeEmail(
         type: "MANUAL",
         subject: "Willkommen im NF Mentoring!",
         content: "Welcome Email",
+        recipient: member.email,
+        sent: true,
+        sentAt: new Date(),
+      },
+    });
+  }
+
+  return sent;
+}
+
+/**
+ * Onboarding Invite Email - Sent when member is created
+ */
+export async function sendOnboardingInviteEmail(
+  member: { id: string; email: string; vorname: string; nachname: string },
+  onboardingUrl: string
+): Promise<boolean> {
+  const content = `
+    <div class="content">
+      <p class="greeting">Willkommen beim NF Mentoring, ${member.vorname}! 🚀</p>
+
+      <p class="text">
+        Vielen Dank für deine Anmeldung! Wir freuen uns riesig, dich auf deinem Weg zu unterstützen.
+      </p>
+
+      <div class="highlight-box">
+        <p style="margin: 0;">
+          <strong>Dein erster Schritt:</strong><br>
+          Fülle bitte das kurze Onboarding-Formular aus, damit wir dich besser kennenlernen können.
+        </p>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${onboardingUrl}" class="button">Onboarding starten →</a>
+      </div>
+
+      <p class="text" style="color: #9ca3af; font-size: 14px;">
+        Dauert nur 2 Minuten! Der Link ist 7 Tage gültig.
+      </p>
+
+      <div class="divider"></div>
+
+      <p class="text">
+        Bei Fragen sind wir jederzeit für dich da!
+      </p>
+
+      <p class="text">
+        Auf deinen Erfolg! 💪<br>
+        <strong>Dein NF Mentoring Team</strong>
+      </p>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  const sent = await sendEmail({
+    to: member.email,
+    subject: "🚀 Willkommen beim NF Mentoring!",
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+
+  if (sent) {
+    await prisma.communicationLog.create({
+      data: {
+        memberId: member.id,
+        channel: "EMAIL",
+        type: "MANUAL",
+        subject: "Willkommen beim NF Mentoring!",
+        content: "Onboarding Invite Email",
+        recipient: member.email,
+        sent: true,
+        sentAt: new Date(),
+      },
+    });
+  }
+
+  return sent;
+}
+
+/**
+ * Onboarding Reminder Email - Sent when member hasn't completed onboarding
+ */
+export async function sendOnboardingReminderEmail(
+  member: { id: string; email: string; vorname: string },
+  onboardingUrl: string,
+  reminderNumber: number
+): Promise<boolean> {
+  const content = `
+    <div class="content">
+      <p class="greeting">Hey ${member.vorname}! 👋</p>
+
+      <p class="text">
+        Kurze Erinnerung: Du hast dein Onboarding noch nicht abgeschlossen.
+      </p>
+
+      <p class="text">
+        Das dauert nur 2 Minuten und hilft uns, dich optimal zu unterstützen!
+      </p>
+
+      <div style="text-align: center;">
+        <a href="${onboardingUrl}" class="button">Jetzt Onboarding abschließen →</a>
+      </div>
+
+      <p class="text">
+        Auf deinen Erfolg! 💪<br>
+        <strong>Dein NF Mentoring Team</strong>
+      </p>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  const sent = await sendEmail({
+    to: member.email,
+    subject: "⏰ Erinnerung: Dein NF Mentoring Onboarding wartet!",
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+
+  if (sent) {
+    await prisma.communicationLog.create({
+      data: {
+        memberId: member.id,
+        channel: "EMAIL",
+        type: "REMINDER",
+        subject: "Erinnerung: Onboarding",
+        content: `Onboarding Reminder ${reminderNumber}`,
         recipient: member.email,
         sent: true,
         sentAt: new Date(),
@@ -402,7 +527,7 @@ export async function sendChurnWarningEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `${member.vorname}, wir vermissen dich!`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -479,7 +604,7 @@ export async function sendGoalCelebrationEmail(
       </p>
 
       <div style="text-align: center;">
-        <a href="${process.env.APP_URL || "http://localhost:3000"}/dashboard" class="button">Zum Dashboard</a>
+        <a href="${getAppUrl()}/dashboard" class="button">Zum Dashboard</a>
       </div>
     </div>
   `;
@@ -489,7 +614,7 @@ export async function sendGoalCelebrationEmail(
   const sent = await sendEmail({
     to: member.email,
     subject: `🎉 Ziel erreicht! ${stats.umsatzIst.toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0 })} in KW${weekNumber}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 
   if (sent) {
@@ -565,7 +690,7 @@ export async function sendCoachTaskNotification(
       </div>
 
       <div style="text-align: center;">
-        <a href="${process.env.APP_URL || "http://localhost:3000"}/tasks" class="button">Aufgaben ansehen</a>
+        <a href="${getAppUrl()}/tasks" class="button">Aufgaben ansehen</a>
       </div>
     </div>
   `;
@@ -575,6 +700,6 @@ export async function sendCoachTaskNotification(
   return sendEmail({
     to: coach.email,
     subject: `${task.priority === "URGENT" ? "🚨" : "📋"} Neue Aufgabe: ${task.title}`,
-    html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 }

@@ -127,16 +127,123 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, "id" | "updatedAt">[] = [
     isActive: true,
   },
   {
-    slug: "welcome_email",
-    name: "Willkommens-Email",
+    slug: "onboarding_invite",
+    name: "Onboarding Einladung",
     channel: "EMAIL",
-    subject: "🚀 Willkommen im NF Mentoring!",
+    subject: "🚀 Willkommen beim NF Mentoring!",
     content: `<div class="content">
-  <p class="greeting">Willkommen im NF Mentoring, {{vorname}}! 🚀</p>
+  <p class="greeting">Willkommen beim NF Mentoring, {{vorname}}! 🚀</p>
 
   <p class="text">
-    Wir freuen uns riesig, dich an Bord zu haben! Du hast den ersten wichtigen Schritt gemacht
-    – jetzt geht's richtig los.
+    Wir freuen uns riesig, dich an Bord zu haben!
+  </p>
+
+  <div class="highlight-box">
+    <p style="margin: 0;">
+      <strong>Dein erster Schritt:</strong><br>
+      Fülle bitte das kurze Onboarding-Formular aus, damit wir dich besser kennenlernen können.
+    </p>
+  </div>
+
+  <div style="text-align: center;">
+    <a href="{{onboardingLink}}" class="button">Onboarding starten →</a>
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="text">
+    Dauert nur 2 Minuten! Der Link ist 7 Tage gültig.
+  </p>
+
+  <p class="text" style="margin-top: 24px;">
+    Auf deinen Erfolg! 💪<br>
+    <strong>Dein NF Mentoring Team</strong>
+  </p>
+</div>`,
+    variables: ["vorname", "onboardingLink"],
+    isActive: true,
+  },
+  {
+    slug: "onboarding_reminder",
+    name: "Onboarding Erinnerung",
+    channel: "EMAIL",
+    subject: "⏰ Erinnerung: Dein NF Mentoring Onboarding wartet!",
+    content: `<div class="content">
+  <p class="greeting">Hey {{vorname}}! 👋</p>
+
+  <p class="text">
+    Kurze Erinnerung: Du hast dein Onboarding noch nicht abgeschlossen.
+  </p>
+
+  <p class="text">
+    Das dauert nur 2 Minuten und hilft uns, dich optimal zu unterstützen!
+  </p>
+
+  <div style="text-align: center;">
+    <a href="{{onboardingLink}}" class="button">Jetzt Onboarding abschließen →</a>
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="text">
+    Auf deinen Erfolg! 💪<br>
+    <strong>Dein NF Mentoring Team</strong>
+  </p>
+</div>`,
+    variables: ["vorname", "onboardingLink"],
+    isActive: true,
+  },
+  {
+    slug: "welcome_email",
+    name: "Willkommens-Email (nach Onboarding)",
+    channel: "EMAIL",
+    subject: "🎉 Onboarding abgeschlossen!",
+    content: `<div class="content">
+  <p class="greeting">Perfekt, {{vorname}}! 🎉</p>
+
+  <p class="text">
+    Dein Onboarding ist abgeschlossen. Wir freuen uns, dich als Teil unserer Community begrüßen zu dürfen!
+  </p>
+
+  <div class="highlight-box">
+    <p style="margin: 0;">
+      <strong>Was jetzt?</strong><br>
+      Dein Coach wird sich in Kürze bei dir melden, um deinen persönlichen Erfolgsplan zu besprechen.
+    </p>
+  </div>
+
+  <div class="divider"></div>
+
+  <p class="text"><strong>Was dich erwartet:</strong></p>
+  <ul style="color: #4a4a4a;">
+    <li>Persönliches KPI-Tracking mit wöchentlichem Feedback</li>
+    <li>Regelmäßige Check-ins mit deinem Coach</li>
+    <li>Zugang zu exklusiven Ressourcen und Trainings</li>
+    <li>Eine Community von Gleichgesinnten</li>
+  </ul>
+
+  <p class="text" style="margin-top: 24px;">
+    Bei Fragen sind wir jederzeit für dich da!
+  </p>
+
+  <p class="text">
+    Auf deinen Erfolg! 💪<br>
+    <strong>Dein NF Mentoring Team</strong>
+  </p>
+</div>`,
+    variables: ["vorname", "nachname"],
+    isActive: true,
+  },
+  {
+    slug: "kpi_setup_invite",
+    name: "KPI-Setup Einladung",
+    channel: "EMAIL",
+    subject: "📊 Zeit für dein KPI-Tracking!",
+    content: `<div class="content">
+  <p class="greeting">Hey {{vorname}}! 🚀</p>
+
+  <p class="text">
+    Super, dass du dein Onboarding abgeschlossen hast! Jetzt wird's spannend.
   </p>
 
   <div class="highlight-box">
@@ -152,24 +259,46 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, "id" | "updatedAt">[] = [
 
   <div class="divider"></div>
 
-  <p class="text"><strong>Was dich erwartet:</strong></p>
-  <ul style="color: #4a4a4a;">
-    <li>Wöchentliches KPI-Tracking mit persönlichem Feedback</li>
-    <li>Regelmäßige Check-ins mit deinem Coach</li>
-    <li>Zugang zu exklusiven Ressourcen und Trainings</li>
-    <li>Eine Community von Gleichgesinnten</li>
-  </ul>
+  <p class="text">
+    Dauert nur 5 Minuten und ist die Basis für dein wöchentliches Feedback!
+  </p>
 
   <p class="text" style="margin-top: 24px;">
-    Bei Fragen sind wir jederzeit für dich da!
+    Auf deinen Erfolg! 💪<br>
+    <strong>Dein NF Mentoring Team</strong>
   </p>
+</div>`,
+    variables: ["vorname", "kpiSetupLink"],
+    isActive: true,
+  },
+  {
+    slug: "kpi_setup_reminder",
+    name: "KPI-Setup Erinnerung",
+    channel: "EMAIL",
+    subject: "⏰ Erinnerung: Richte dein KPI-Tracking ein!",
+    content: `<div class="content">
+  <p class="greeting">Hey {{vorname}}! 👋</p>
+
+  <p class="text">
+    Kurze Erinnerung: Du hast dein KPI-Tracking noch nicht eingerichtet.
+  </p>
+
+  <p class="text">
+    Das dauert nur 5 Minuten und ist wichtig, damit du dein wöchentliches Feedback erhältst!
+  </p>
+
+  <div style="text-align: center;">
+    <a href="{{kpiSetupLink}}" class="button">Jetzt KPI-Tracking einrichten →</a>
+  </div>
+
+  <div class="divider"></div>
 
   <p class="text">
     Auf deinen Erfolg! 💪<br>
     <strong>Dein NF Mentoring Team</strong>
   </p>
 </div>`,
-    variables: ["vorname", "nachname", "kpiSetupLink"],
+    variables: ["vorname", "kpiSetupLink"],
     isActive: true,
   },
   {
@@ -300,6 +429,66 @@ const DEFAULT_TEMPLATES: Omit<EmailTemplate, "id" | "updatedAt">[] = [
   </div>
 </div>`,
     variables: ["coachVorname", "taskTitle", "memberName", "priorityEmoji", "priorityColor", "priorityLabel", "taskDescriptionHtml", "tasksLink"],
+    isActive: true,
+  },
+  {
+    slug: "whatsapp_onboarding_invite",
+    name: "WhatsApp Onboarding Einladung",
+    channel: "WHATSAPP",
+    subject: null,
+    content: `Hey {{vorname}}! 👋
+
+Willkommen beim NF Mentoring! 🚀
+
+Bitte fülle kurz dein Onboarding aus, damit wir dich besser kennenlernen können:
+
+{{onboardingLink}}
+
+Dauert nur 2 Minuten! 💪`,
+    variables: ["vorname", "onboardingLink"],
+    isActive: true,
+  },
+  {
+    slug: "whatsapp_onboarding_reminder",
+    name: "WhatsApp Onboarding Erinnerung",
+    channel: "WHATSAPP",
+    subject: null,
+    content: `Hey {{vorname}}! 👋
+
+Kurze Erinnerung: Du hast dein Onboarding noch nicht abgeschlossen. Dauert nur 2 Min:
+
+{{onboardingLink}}`,
+    variables: ["vorname", "onboardingLink"],
+    isActive: true,
+  },
+  {
+    slug: "whatsapp_kpi_setup_invite",
+    name: "WhatsApp KPI-Setup Einladung",
+    channel: "WHATSAPP",
+    subject: null,
+    content: `Hey {{vorname}}! 🚀
+
+Super, dass du dein Onboarding abgeschlossen hast!
+
+Jetzt fehlt nur noch dein KPI-Tracking Setup (dauert 5 Min):
+
+{{kpiSetupLink}}
+
+Let's go! 💪`,
+    variables: ["vorname", "kpiSetupLink"],
+    isActive: true,
+  },
+  {
+    slug: "whatsapp_kpi_setup_reminder",
+    name: "WhatsApp KPI-Setup Erinnerung",
+    channel: "WHATSAPP",
+    subject: null,
+    content: `Hey {{vorname}}! 👋
+
+Kurze Erinnerung: Richte dein KPI-Tracking ein, um dein wöchentliches Feedback zu erhalten:
+
+{{kpiSetupLink}}`,
+    variables: ["vorname", "kpiSetupLink"],
     isActive: true,
   },
   {
@@ -560,12 +749,16 @@ export default function TemplatesPage() {
             Verwalte die Vorlagen für automatische Nachrichten
           </p>
         </div>
-        {templates.length === 0 && (
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => { setLoading(true); fetchTemplates(); }}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Neu laden
+          </Button>
           <Button onClick={initializeTemplates}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            Standard-Templates laden
+            Templates synchronisieren
           </Button>
-        )}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

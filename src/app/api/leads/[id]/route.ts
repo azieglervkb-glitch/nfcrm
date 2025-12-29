@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { canDeleteLeads } from "@/lib/permissions";
 
 export async function GET(
   request: NextRequest,
@@ -62,9 +63,23 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Check delete permission (SUPER_ADMIN, ADMIN, or explicit permission)
+  if (!canDeleteLeads(session.user)) {
+    return NextResponse.json(
+      { error: "Keine Berechtigung zum Löschen von Leads" },
+      { status: 403 }
+    );
+  }
+
   const { id } = await params;
 
   try {
+    // Delete related activities first
+    await prisma.leadActivity.deleteMany({
+      where: { leadId: id },
+    });
+
+    // Then delete the lead
     await prisma.lead.delete({
       where: { id },
     });

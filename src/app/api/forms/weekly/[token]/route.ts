@@ -4,6 +4,7 @@ import { weeklyKpiFormSchema } from "@/lib/validations";
 import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
+import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
 
 export async function GET(
   request: NextRequest,
@@ -106,7 +107,9 @@ export async function POST(
     const body = await request.json();
     const validatedData = weeklyKpiFormSchema.parse(body);
 
-    const weekStart = getCurrentWeekStart();
+    // Use weekStart from token if available (from reminder), otherwise fall back to current week
+    // This ensures that when a member submits after a Monday reminder, the KPIs go to the correct (previous) week
+    const weekStart = formToken.weekStart ?? getCurrentWeekStart();
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Calculate no-show quote
@@ -120,6 +123,26 @@ export async function POST(
       if (total > 0) {
         noshowQuote = validatedData.termineNoshowIst / total;
       }
+    }
+
+    // Calculate konvertierungTerminIst (Kontakt → Termin %)
+    let konvertierungTerminIst = null;
+    if (
+      validatedData.kontakteIst &&
+      validatedData.termineVereinbartIst &&
+      validatedData.kontakteIst > 0
+    ) {
+      konvertierungTerminIst = (validatedData.termineVereinbartIst / validatedData.kontakteIst) * 100;
+    }
+
+    // Calculate abschlussquoteIst (Termin → Abschluss %)
+    let abschlussquoteIst = null;
+    if (
+      validatedData.termineStattgefundenIst &&
+      validatedData.termineAbschlussIst &&
+      validatedData.termineStattgefundenIst > 0
+    ) {
+      abschlussquoteIst = (validatedData.termineAbschlussIst / validatedData.termineStattgefundenIst) * 100;
     }
 
     // Create or update KPI week
@@ -137,11 +160,15 @@ export async function POST(
         year,
         ...validatedData,
         noshowQuote,
+        konvertierungTerminIst,
+        abschlussquoteIst,
         submittedAt: new Date(),
       },
       update: {
         ...validatedData,
         noshowQuote,
+        konvertierungTerminIst,
+        abschlussquoteIst,
         submittedAt: new Date(),
       },
     });
@@ -170,14 +197,17 @@ export async function POST(
         data: { reviewFlag: true },
       });
 
+      // Create task for review
+      await createFeedbackBlockTask(kpiWeek.id, formToken.memberId, (anomalyCheck.reason || "Daten-Anomalie"), "Q2");
+
       // Log automation
       await prisma.automationLog.create({
         data: {
           memberId: formToken.memberId,
           ruleId: "Q2",
           ruleName: "Daten-Anomalie",
-          actionsTaken: ["BLOCK_AI_FEEDBACK", "SET_FLAG: reviewFlag"],
-          details: { reason: anomalyCheck.reason },
+          actionsTaken: ["BLOCK_AI_FEEDBACK", "SET_FLAG: reviewFlag", "CREATE_TASK: Review"],
+          details: { reason: anomalyCheck.reason, kpiWeekId: kpiWeek.id },
         },
       });
     } else {
@@ -208,13 +238,16 @@ async function generateAiFeedback(
   try {
     // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
+      const reason = "OpenAI API Key nicht konfiguriert";
       await prisma.kpiWeek.update({
         where: { id: kpiWeekId },
         data: {
           aiFeedbackBlocked: true,
-          aiFeedbackBlockReason: "OpenAI API Key nicht konfiguriert",
+          aiFeedbackBlockReason: reason,
         },
       });
+      // Create task for admin to configure API key
+      await createFeedbackBlockTask(kpiWeekId, member.id, reason, "FEEDBACK_BLOCK");
       console.error("OpenAI API Key not configured");
       return;
     }
@@ -250,14 +283,18 @@ async function generateAiFeedback(
   } catch (error: any) {
     // Store the error so it's visible in the UI
     const errorMessage = error?.message || "Unbekannter Fehler bei KI-Feedback-Generierung";
+    const reason = `OpenAI Fehler: ${errorMessage.substring(0, 200)}`;
     console.error("Error generating AI feedback:", error);
 
     await prisma.kpiWeek.update({
       where: { id: kpiWeekId },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: `OpenAI Fehler: ${errorMessage.substring(0, 200)}`,
+        aiFeedbackBlockReason: reason,
       },
     });
+
+    // Create task for admin to review the error
+    await createFeedbackBlockTask(kpiWeekId, member.id, reason, "FEEDBACK_BLOCK");
   }
 }
