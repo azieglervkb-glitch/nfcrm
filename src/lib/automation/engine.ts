@@ -4,6 +4,7 @@ import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { notifyTaskAssignee } from "@/lib/task-notifications";
 import { generateFormUrl, getAppUrl } from "@/lib/app-url";
+import { getCurrentWeekStart } from "@/lib/date-utils";
 import { randomBytes } from "crypto";
 import type { Member, KpiWeek, AutomationRule } from "@prisma/client";
 
@@ -755,12 +756,7 @@ export async function checkSilentMember(member: Member): Promise<void> {
   if (await isCooldownActive(member.id, ruleId)) return;
 
   // Get current week start (Monday)
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() + mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
+  const weekStart = getCurrentWeekStart();
 
   // Check if KPI exists for current week
   const kpiThisWeek = await prisma.kpiWeek.findFirst({
@@ -1064,12 +1060,7 @@ export async function runWeeklyReminders(): Promise<void> {
   const ruleName = "Weekly-Reminder Process";
 
   // Get current week start
-  const today = new Date();
-  const dayOfWeek = today.getDay();
-  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-  const weekStart = new Date(today);
-  weekStart.setDate(today.getDate() + mondayOffset);
-  weekStart.setHours(0, 0, 0, 0);
+  const weekStart = getCurrentWeekStart();
 
   // Find active members without KPI this week
   const membersWithoutKpi = await prisma.member.findMany({
