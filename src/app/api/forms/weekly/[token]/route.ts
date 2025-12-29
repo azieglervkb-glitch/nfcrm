@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { weeklyKpiFormSchema } from "@/lib/validations";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
@@ -107,9 +107,9 @@ export async function POST(
     const body = await request.json();
     const validatedData = weeklyKpiFormSchema.parse(body);
 
-    // Use weekStart from token if available (from reminder), otherwise fall back to current week
-    // This ensures that when a member submits after a Monday reminder, the KPIs go to the correct (previous) week
-    const weekStart = formToken.weekStart ?? getCurrentWeekStart();
+    // Use weekStart from token if available (from reminder), otherwise fall back to previous week
+    // Members always enter data for the PREVIOUS week (what they achieved last week)
+    const weekStart = formToken.weekStart ?? getPreviousWeek(getCurrentWeekStart());
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Calculate no-show quote

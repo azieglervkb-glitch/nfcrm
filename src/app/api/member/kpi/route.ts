@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +35,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const weekStart = getCurrentWeekStart();
+    // Members enter data for the PREVIOUS week (what they achieved last week)
+    const weekStart = getPreviousWeek(getCurrentWeekStart());
 
     const currentWeek = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);
@@ -112,7 +113,8 @@ export async function POST(request: NextRequest) {
       memberId = session.memberId;
     }
 
-    const weekStart = getCurrentWeekStart();
+    // Members enter data for the PREVIOUS week (what they achieved last week)
+    const weekStart = getPreviousWeek(getCurrentWeekStart());
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Upsert KPI entry

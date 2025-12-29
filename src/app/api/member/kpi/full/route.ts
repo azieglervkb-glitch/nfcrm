@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,14 +48,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const weekStart = getCurrentWeekStart();
+    // Members enter data for the PREVIOUS week (what they achieved last week)
+    const weekStart = getPreviousWeek(getCurrentWeekStart());
 
     const currentWeek = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);
       return entryWeek.getTime() === weekStart.getTime();
     });
 
-    // History (exclude current week) - return all tracked values
+    // History (exclude previous week entry) - return all tracked values
     const history = member.kpiWeeks
       .filter((entry) => {
         const entryWeek = new Date(entry.weekStart);
@@ -170,10 +171,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const weekStart = getCurrentWeekStart();
+    // Members enter data for the PREVIOUS week (what they achieved last week)
+    const weekStart = getPreviousWeek(getCurrentWeekStart());
     const { weekNumber, year } = getWeekInfo(weekStart);
 
-    // Check if already submitted this week - no edits allowed
+    // Check if already submitted for this week - no edits allowed
     const existingKpi = await prisma.kpiWeek.findUnique({
       where: {
         memberId_weekStart: {
