@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { canDeleteMembers } from "@/lib/permissions";
 import {
   SectionHeader,
   StatusBadge,
@@ -29,6 +31,7 @@ import {
 import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { AddNoteDialog } from "@/components/member/AddNoteDialog";
 import { SyncLearningSuiteButton } from "@/components/member/SyncLearningSuiteButton";
+import { DeleteMemberButton } from "@/components/member/DeleteMemberButton";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
 import { DefinedTooltip } from "@/components/ui/info-tooltip";
 
@@ -112,12 +115,14 @@ export default async function MemberDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const member = await getMember(id);
+  const [member, session] = await Promise.all([getMember(id), auth()]);
 
   if (!member) {
     notFound();
   }
 
+  const showDeleteButton = canDeleteMembers(session?.user);
+  const canHardDelete = session?.user?.role === "SUPER_ADMIN";
   const latestKpi = member.kpiWeeks[0];
 
   // Calculate performance percentage
@@ -168,6 +173,13 @@ export default async function MemberDetailPage({
                   Bearbeiten
                 </Link>
               </Button>
+              {showDeleteButton && (
+                <DeleteMemberButton
+                  memberId={member.id}
+                  memberName={`${member.vorname} ${member.nachname}`}
+                  canHardDelete={canHardDelete}
+                />
+              )}
             </div>
           </div>
         </CardContent>

@@ -343,7 +343,8 @@ export default function LeadsPage() {
         fetchLeads();
         if (selectedLead?.id === leadId) setSelectedLead(null);
       } else {
-        toast.error("Fehler beim Löschen");
+        const data = await res.json();
+        toast.error(data.error || "Fehler beim Löschen");
       }
     } catch (error) {
       toast.error("Fehler beim Löschen");
