@@ -7,10 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { FeelingEmoji } from "@/components/common";
-import { formatDate } from "@/lib/date-utils";
+import { formatDate, formatDateTime, toDateTimeLocalString } from "@/lib/date-utils";
+import { toast } from "sonner";
 import {
   TrendingUp,
   Users,
@@ -21,7 +25,10 @@ import {
   AlertCircle,
   Lightbulb,
   Bot,
-  Clock
+  Clock,
+  Pencil,
+  Save,
+  X,
 } from "lucide-react";
 
 interface KpiWeek {
@@ -74,6 +81,10 @@ interface KpiWeeksListProps {
 
 export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
   const [selectedKpi, setSelectedKpi] = useState<KpiWeek | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedFeedback, setEditedFeedback] = useState("");
+  const [editedScheduledFor, setEditedScheduledFor] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const formatCurrency = (value: number | null) => {
     if (value === null) return "-";
@@ -95,6 +106,88 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
     if (percentage >= 100) return "text-green-600";
     if (percentage >= 70) return "text-yellow-600";
     return "text-red-600";
+  };
+
+  const startEditing = () => {
+    if (!selectedKpi) return;
+    setEditedFeedback(selectedKpi.aiFeedbackText || "");
+    setEditedScheduledFor(
+      selectedKpi.whatsappScheduledFor
+        ? toDateTimeLocalString(selectedKpi.whatsappScheduledFor)
+        : ""
+    );
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditedFeedback("");
+    setEditedScheduledFor("");
+  };
+
+  const saveChanges = async () => {
+    if (!selectedKpi) return;
+
+    try {
+      setSaving(true);
+
+      const updatePayload: { feedback?: string; scheduledFor?: string | null } = {};
+
+      // Only include feedback if it changed
+      if (editedFeedback.trim() !== (selectedKpi.aiFeedbackText || "")) {
+        updatePayload.feedback = editedFeedback.trim();
+      }
+
+      // Only include scheduledFor if it changed
+      const originalScheduled = selectedKpi.whatsappScheduledFor
+        ? toDateTimeLocalString(selectedKpi.whatsappScheduledFor)
+        : "";
+      if (editedScheduledFor !== originalScheduled) {
+        updatePayload.scheduledFor = editedScheduledFor || null;
+      }
+
+      // Nothing changed
+      if (Object.keys(updatePayload).length === 0) {
+        setIsEditing(false);
+        return;
+      }
+
+      const res = await fetch(`/api/kpi-weeks/${selectedKpi.id}/update-feedback`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatePayload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        toast.error(data?.error || "Konnte Änderungen nicht speichern");
+        return;
+      }
+
+      const updated = data.kpiWeek;
+      setSelectedKpi((prev) =>
+        prev
+          ? {
+              ...prev,
+              aiFeedbackText: updated.aiFeedbackText ?? prev.aiFeedbackText,
+              aiFeedbackGeneratedAt: updated.aiFeedbackGeneratedAt
+                ? new Date(updated.aiFeedbackGeneratedAt)
+                : prev.aiFeedbackGeneratedAt,
+              whatsappScheduledFor: updated.whatsappScheduledFor
+                ? new Date(updated.whatsappScheduledFor)
+                : null,
+            }
+          : prev
+      );
+
+      setIsEditing(false);
+      toast.success("Änderungen wurden gespeichert");
+    } catch {
+      toast.error("Konnte Änderungen nicht speichern");
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (kpiWeeks.length === 0) {
@@ -146,7 +239,15 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
       </div>
 
       {/* Detail Modal */}
-      <Dialog open={!!selectedKpi} onOpenChange={(open) => !open && setSelectedKpi(null)}>
+      <Dialog
+        open={!!selectedKpi}
+        onOpenChange={(open) => {
+          if (!open) {
+            setSelectedKpi(null);
+            cancelEditing();
+          }
+        }}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           {selectedKpi && (
             <>
@@ -358,29 +459,108 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                     <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
                       <Bot className="h-4 w-4" />
                       KI-Feedback
+                      {!selectedKpi.whatsappFeedbackSent && (
+                        <Badge variant="outline" className="text-xs ml-2">
+                          Bearbeitbar
+                        </Badge>
+                      )}
                     </h3>
                     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                      <p className="text-sm whitespace-pre-wrap">{selectedKpi.aiFeedbackText}</p>
-                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-primary/10 text-xs text-muted-foreground">
-                        {selectedKpi.aiFeedbackGeneratedAt && (
-                          <span className="flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            Generiert: {formatDate(selectedKpi.aiFeedbackGeneratedAt)}
-                          </span>
-                        )}
-                        {selectedKpi.whatsappFeedbackSent ? (
-                          <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700">
-                            <MessageSquare className="h-3 w-3 mr-1" />
-                            WhatsApp gesendet
-                            {selectedKpi.whatsappSentAt && ` (${formatDate(selectedKpi.whatsappSentAt)})`}
-                          </Badge>
-                        ) : selectedKpi.whatsappScheduledFor && (
-                          <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700">
-                            <Clock className="h-3 w-3 mr-1" />
-                            Geplant: {formatDate(selectedKpi.whatsappScheduledFor)}
-                          </Badge>
-                        )}
-                      </div>
+                      {isEditing ? (
+                        <div className="space-y-4">
+                          {/* Feedback Text */}
+                          <div className="space-y-2">
+                            <Label htmlFor="feedback">Feedback-Text</Label>
+                            <Textarea
+                              id="feedback"
+                              value={editedFeedback}
+                              onChange={(e) => setEditedFeedback(e.target.value)}
+                              className="min-h-[150px] text-sm"
+                              placeholder="Feedback-Text eingeben..."
+                            />
+                          </div>
+
+                          {/* Scheduled Time */}
+                          <div className="space-y-2">
+                            <Label htmlFor="scheduledFor">
+                              Geplante Sendezeit
+                            </Label>
+                            <Input
+                              id="scheduledFor"
+                              type="datetime-local"
+                              value={editedScheduledFor}
+                              onChange={(e) => setEditedScheduledFor(e.target.value)}
+                              className="w-full"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Leer lassen um den Versand zu pausieren. In die Vergangenheit setzen für sofortigen Versand beim nächsten Cron-Lauf.
+                            </p>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex justify-end gap-2 pt-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={cancelEditing}
+                              disabled={saving}
+                            >
+                              <X className="h-4 w-4 mr-1" />
+                              Abbrechen
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={saving}
+                              onClick={saveChanges}
+                            >
+                              <Save className="h-4 w-4 mr-1" />
+                              {saving ? "Speichern..." : "Speichern"}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="text-sm whitespace-pre-wrap">{selectedKpi.aiFeedbackText}</p>
+                          <div className="flex flex-col gap-2 mt-3 pt-3 border-t border-primary/10 text-xs text-muted-foreground">
+                            {selectedKpi.aiFeedbackGeneratedAt && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Generiert: {formatDateTime(selectedKpi.aiFeedbackGeneratedAt)}
+                              </span>
+                            )}
+                            {selectedKpi.whatsappFeedbackSent ? (
+                              <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700 w-fit">
+                                <MessageSquare className="h-3 w-3 mr-1" />
+                                WhatsApp gesendet
+                                {selectedKpi.whatsappSentAt && ` (${formatDateTime(selectedKpi.whatsappSentAt)})`}
+                              </Badge>
+                            ) : selectedKpi.whatsappScheduledFor ? (
+                              <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700 w-fit">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Geplant: {formatDateTime(selectedKpi.whatsappScheduledFor)}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs bg-gray-50 border-gray-200 text-gray-700 w-fit">
+                                <Clock className="h-3 w-3 mr-1" />
+                                Versand pausiert
+                              </Badge>
+                            )}
+                          </div>
+
+                          {!selectedKpi.whatsappFeedbackSent && (
+                            <div className="mt-3 flex justify-end">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={startEditing}
+                              >
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Bearbeiten
+                              </Button>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
