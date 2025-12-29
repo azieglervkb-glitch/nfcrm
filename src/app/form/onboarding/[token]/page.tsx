@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, AlertTriangle, ArrowRight, ArrowLeft } from "lucide-react";
 
 // Zod 4 compatible helper with explicit type predicate for correct inference
 // NaN from empty number inputs triggers validation error
@@ -251,9 +251,46 @@ export default function OnboardingFormPage({
             </div>
           )}
 
+          {/* Fehler-Zusammenfassung */}
+          {Object.keys(errors).length > 0 && (
+            <div className="rounded-lg bg-red-50 border-2 border-red-200 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-red-800 mb-2">
+                    Bitte fülle alle Pflichtfelder aus
+                  </h3>
+                  <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+                    {errors.unternehmen && (
+                      <li>Unternehmen / Firma ist ein Pflichtfeld</li>
+                    )}
+                    {errors.position && (
+                      <li>Deine Position ist ein Pflichtfeld</li>
+                    )}
+                    {errors.aktuellerMonatsumsatz && (
+                      <li>Aktueller Monatsumsatz ist ein Pflichtfeld</li>
+                    )}
+                    {errors.wasNervtAmMeisten && (
+                      <li>Was nervt dich am meisten - bitte ausführlicher beschreiben</li>
+                    )}
+                    {errors.groessetesProblem && (
+                      <li>Größtes Problem - bitte ausführlicher beschreiben</li>
+                    )}
+                    {errors.zielMonatsumsatz && (
+                      <li>Ziel-Monatsumsatz ist ein Pflichtfeld</li>
+                    )}
+                    {errors.groessteZielWarum && (
+                      <li>Warum ist dir dieses Ziel wichtig - bitte ausführlicher beschreiben</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Step 1: Über dich */}
           {step === 1 && (
-            <Card>
+            <Card className={(errors.unternehmen || errors.position || errors.aktuellerMonatsumsatz) ? "border-red-300 bg-red-50/30" : ""}>
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Über dich</CardTitle>
                 <CardDescription>
@@ -312,7 +349,7 @@ export default function OnboardingFormPage({
 
           {/* Step 2: Herausforderungen */}
           {step === 2 && (
-            <Card>
+            <Card className={(errors.wasNervtAmMeisten || errors.groessetesProblem) ? "border-red-300 bg-red-50/30" : ""}>
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Deine Herausforderungen</CardTitle>
                 <CardDescription>
@@ -361,7 +398,7 @@ export default function OnboardingFormPage({
 
           {/* Step 3: Ziele */}
           {step === 3 && (
-            <Card>
+            <Card className={(errors.zielMonatsumsatz || errors.groessteZielWarum) ? "border-red-300 bg-red-50/30" : ""}>
               <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Deine Ziele</CardTitle>
                 <CardDescription>
