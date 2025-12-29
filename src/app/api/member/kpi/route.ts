@@ -36,10 +36,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Calculate available weeks for selection
+    // Calculate available weeks for selection (only previous and current week)
     const currentWeekMonday = getCurrentWeekStart();
     const previousWeek = getPreviousWeek(currentWeekMonday);
-    const twoWeeksAgo = getPreviousWeek(previousWeek);
 
     const availableWeeks = [
       {
@@ -52,12 +51,6 @@ export async function GET(request: NextRequest) {
         weekStart: currentWeekMonday.toISOString(),
         label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
         weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
-        isDefault: false,
-      },
-      {
-        weekStart: twoWeeksAgo.toISOString(),
-        label: `KW${getWeekInfo(twoWeeksAgo).weekNumber} (${getWeekRangeString(twoWeeksAgo)})`,
-        weekNumber: getWeekInfo(twoWeeksAgo).weekNumber,
         isDefault: false,
       },
     ];
