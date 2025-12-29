@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   BarChart3,
@@ -35,6 +42,13 @@ interface KPIEntry {
   submitted: boolean;
 }
 
+interface WeekOption {
+  weekStart: string;
+  label: string;
+  weekNumber: number;
+  isDefault: boolean;
+}
+
 interface KPIData {
   currentWeek: KPIEntry | null;
   history: KPIEntry[];
@@ -43,12 +57,15 @@ interface KPIData {
     termine: number;
     abschluesse: number;
   };
+  availableWeeks?: WeekOption[];
+  selectedWeekStart?: string;
 }
 
 export default function MemberKPIPage() {
   const [data, setData] = useState<KPIData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState<string>("");
   const [formData, setFormData] = useState({
     kontakteGenerated: "",
     termineClosed: "",
@@ -61,18 +78,41 @@ export default function MemberKPIPage() {
     fetchKPIData();
   }, []);
 
-  const fetchKPIData = async () => {
+  // Refetch when week selection changes
+  useEffect(() => {
+    if (selectedWeek && data?.selectedWeekStart !== selectedWeek) {
+      fetchKPIData(selectedWeek);
+    }
+  }, [selectedWeek]);
+
+  const fetchKPIData = async (weekStart?: string) => {
     try {
-      const response = await fetch("/api/member/kpi");
+      setLoading(true);
+      const url = weekStart
+        ? `/api/member/kpi?weekStart=${encodeURIComponent(weekStart)}`
+        : "/api/member/kpi";
+      const response = await fetch(url);
       if (response.ok) {
         const result = await response.json();
         setData(result);
+        // Set default selected week on first load
+        if (!selectedWeek && result.selectedWeekStart) {
+          setSelectedWeek(result.selectedWeekStart);
+        }
         if (result.currentWeek) {
           setFormData({
             kontakteGenerated: result.currentWeek.kontakteGenerated?.toString() || "",
             termineClosed: result.currentWeek.termineClosed?.toString() || "",
             abschluesseCount: result.currentWeek.abschluesseCount?.toString() || "",
             umsatz: result.currentWeek.umsatz?.toString() || "",
+          });
+        } else {
+          // Reset form if no data for this week
+          setFormData({
+            kontakteGenerated: "",
+            termineClosed: "",
+            abschluesseCount: "",
+            umsatz: "",
           });
         }
       }
@@ -92,6 +132,7 @@ export default function MemberKPIPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          weekStart: selectedWeek,
           kontakteGenerated: formData.kontakteGenerated ? parseInt(formData.kontakteGenerated) : null,
           termineClosed: formData.termineClosed ? parseInt(formData.termineClosed) : null,
           abschluesseCount: formData.abschluesseCount ? parseInt(formData.abschluesseCount) : null,
@@ -101,23 +142,23 @@ export default function MemberKPIPage() {
 
       if (response.ok) {
         toast({
-          title: "Success",
-          description: "KPIs saved successfully",
+          title: "Gespeichert",
+          description: "KPIs wurden erfolgreich gespeichert",
         });
-        fetchKPIData();
+        fetchKPIData(selectedWeek);
       } else {
         const error = await response.json();
         toast({
-          title: "Error",
-          description: error.message || "Failed to save KPIs",
+          title: "Fehler",
+          description: error.message || "KPIs konnten nicht gespeichert werden",
           variant: "destructive",
         });
       }
     } catch (error) {
       console.error("Failed to save KPIs:", error);
       toast({
-        title: "Error",
-        description: "Failed to save KPIs",
+        title: "Fehler",
+        description: "KPIs konnten nicht gespeichert werden",
         variant: "destructive",
       });
     } finally {
@@ -150,8 +191,35 @@ export default function MemberKPIPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">KPI Tracking</h1>
-        <p className="text-gray-600">Track your weekly performance metrics</p>
+        <p className="text-gray-600">Trage deine wöchentlichen Leistungszahlen ein</p>
       </div>
+
+      {/* Week Selector */}
+      {data?.availableWeeks && data.availableWeeks.length > 0 && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <Label className="text-blue-800 font-medium whitespace-nowrap">
+                <Calendar className="h-4 w-4 inline mr-2" />
+                Woche auswählen:
+              </Label>
+              <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                <SelectTrigger className="w-full sm:w-[320px] bg-white">
+                  <SelectValue placeholder="Woche auswählen..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {data.availableWeeks.map((week) => (
+                    <SelectItem key={week.weekStart} value={week.weekStart}>
+                      {week.label}
+                      {week.isDefault && " (Vorwoche)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Current Week Entry */}
       <Card>
@@ -160,19 +228,19 @@ export default function MemberKPIPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <BarChart3 className="h-5 w-5 text-red-600" />
-                This Week's KPIs
+                KPIs eintragen
               </CardTitle>
               <CardDescription>
                 <div className="flex items-center gap-2 mt-1">
                   <Calendar className="h-4 w-4" />
-                  Week of {data?.currentWeek ? getWeekLabel(data.currentWeek.weekStart) : "N/A"}
+                  {data?.availableWeeks?.find(w => w.weekStart === selectedWeek)?.label || "Woche auswählen"}
                 </div>
               </CardDescription>
             </div>
             {data?.currentWeek?.submitted && (
               <Badge className="bg-green-100 text-green-800">
                 <CheckCircle className="h-3 w-3 mr-1" />
-                Submitted
+                Eingereicht
               </Badge>
             )}
           </div>

@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentWeekStart, getPreviousWeek, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
     // Support direct memberId parameter or session-based auth
     const { searchParams } = new URL(request.url);
     const directMemberId = searchParams.get("memberId");
+    const weekStartParam = searchParams.get("weekStart");
 
     let memberId: string;
 
@@ -35,15 +36,43 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Members enter data for the PREVIOUS week (what they achieved last week)
-    const weekStart = getPreviousWeek(getCurrentWeekStart());
+    // Calculate available weeks for selection
+    const currentWeekMonday = getCurrentWeekStart();
+    const previousWeek = getPreviousWeek(currentWeekMonday);
+    const twoWeeksAgo = getPreviousWeek(previousWeek);
 
-    const currentWeek = member.kpiWeeks.find((entry) => {
+    const availableWeeks = [
+      {
+        weekStart: previousWeek.toISOString(),
+        label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
+        weekNumber: getWeekInfo(previousWeek).weekNumber,
+        isDefault: true,
+      },
+      {
+        weekStart: currentWeekMonday.toISOString(),
+        label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
+        weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
+        isDefault: false,
+      },
+      {
+        weekStart: twoWeeksAgo.toISOString(),
+        label: `KW${getWeekInfo(twoWeeksAgo).weekNumber} (${getWeekRangeString(twoWeeksAgo)})`,
+        weekNumber: getWeekInfo(twoWeeksAgo).weekNumber,
+        isDefault: false,
+      },
+    ];
+
+    // Use provided weekStart or default to previous week
+    const weekStart = weekStartParam
+      ? new Date(weekStartParam)
+      : previousWeek;
+
+    const selectedWeek = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);
       return entryWeek.getTime() === weekStart.getTime();
     });
 
-    // History (exclude current week)
+    // History (exclude selected week)
     const history = member.kpiWeeks
       .filter((entry) => {
         const entryWeek = new Date(entry.weekStart);
@@ -68,14 +97,16 @@ export async function GET(request: NextRequest) {
         termineAbschlussSoll: member.termineAbschlussSoll,
         umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
       },
-      currentWeek: currentWeek
+      availableWeeks,
+      selectedWeekStart: weekStart.toISOString(),
+      currentWeek: selectedWeek
         ? {
-            id: currentWeek.id,
-            kontakteIst: currentWeek.kontakteIst,
-            termineVereinbartIst: currentWeek.termineVereinbartIst,
-            termineAbschlussIst: currentWeek.termineAbschlussIst,
-            umsatzIst: currentWeek.umsatzIst ? Number(currentWeek.umsatzIst) : null,
-            feelingScore: currentWeek.feelingScore,
+            id: selectedWeek.id,
+            kontakteIst: selectedWeek.kontakteIst,
+            termineVereinbartIst: selectedWeek.termineVereinbartIst,
+            termineAbschlussIst: selectedWeek.termineAbschlussIst,
+            umsatzIst: selectedWeek.umsatzIst ? Number(selectedWeek.umsatzIst) : null,
+            feelingScore: selectedWeek.feelingScore,
           }
         : null,
       history,
@@ -94,6 +125,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       memberId: directMemberId,
+      weekStart: weekStartParam,
       kontakteIst,
       termineVereinbartIst,
       termineAbschlussIst,
@@ -113,8 +145,10 @@ export async function POST(request: NextRequest) {
       memberId = session.memberId;
     }
 
-    // Members enter data for the PREVIOUS week (what they achieved last week)
-    const weekStart = getPreviousWeek(getCurrentWeekStart());
+    // Use provided weekStart or default to previous week
+    const weekStart = weekStartParam
+      ? new Date(weekStartParam)
+      : getPreviousWeek(getCurrentWeekStart());
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Upsert KPI entry
