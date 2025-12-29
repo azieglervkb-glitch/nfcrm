@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import OpenAI from "openai";
 import { shouldRunSystemHealth, hasRunThisMinute } from "@/lib/cron-scheduler";
+import { getCurrentWeekStart } from "@/lib/date-utils";
 
 // Daily AI-powered system health check (runs at 07:00)
 export async function GET(request: NextRequest) {
@@ -95,11 +96,7 @@ export async function GET(request: NextRequest) {
     };
 
     // 5. KPI Stats for current week
-    const weekStart = new Date();
-    const dayOfWeek = weekStart.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    weekStart.setDate(weekStart.getDate() + mondayOffset);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = getCurrentWeekStart();
 
     const kpisThisWeek = await prisma.kpiWeek.count({
       where: { weekStart: { gte: weekStart } },

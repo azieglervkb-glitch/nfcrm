@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
+import { getCurrentWeekStart } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -37,10 +38,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get current week's KPI entry
-    const now = new Date();
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = getCurrentWeekStart();
 
     const currentWeekKpi = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);

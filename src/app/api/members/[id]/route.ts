@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { updateMemberSchema } from "@/lib/validations";
+import { canDeleteMembers } from "@/lib/permissions";
 
 export async function GET(
   request: NextRequest,
@@ -75,18 +76,47 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await auth();
-  if (!session || session.user.role !== "SUPER_ADMIN") {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Check delete permission (SUPER_ADMIN, ADMIN, or explicit permission)
+  if (!canDeleteMembers(session.user)) {
+    return NextResponse.json(
+      { error: "Keine Berechtigung zum Löschen von Mitgliedern" },
+      { status: 403 }
+    );
   }
 
   const { id } = await params;
 
   try {
-    // Soft delete - just set status to INAKTIV
-    await prisma.member.update({
-      where: { id },
-      data: { status: "INAKTIV" },
-    });
+    // Check if hard delete is requested (only SUPER_ADMIN)
+    const { searchParams } = new URL(request.url);
+    const hardDelete = searchParams.get("hard") === "true";
+
+    if (hardDelete && session.user.role === "SUPER_ADMIN") {
+      // Hard delete - remove all related data first
+      await prisma.$transaction(async (tx) => {
+        // Delete related records
+        await tx.kpiWeek.deleteMany({ where: { memberId: id } });
+        await tx.task.deleteMany({ where: { memberId: id } });
+        await tx.memberNote.deleteMany({ where: { memberId: id } });
+        await tx.automationCooldown.deleteMany({ where: { memberId: id } });
+        await tx.automationLog.deleteMany({ where: { memberId: id } });
+        await tx.communicationLog.deleteMany({ where: { memberId: id } });
+        await tx.formToken.deleteMany({ where: { memberId: id } });
+        await tx.upsellPipeline.deleteMany({ where: { memberId: id } });
+        // Finally delete the member
+        await tx.member.delete({ where: { id } });
+      });
+    } else {
+      // Soft delete - just set status to INAKTIV
+      await prisma.member.update({
+        where: { id },
+        data: { status: "INAKTIV" },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

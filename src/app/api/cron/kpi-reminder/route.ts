@@ -38,9 +38,10 @@ export async function GET(request: NextRequest) {
     }
     // We remind about the PREVIOUS week (e.g., Monday reminder is for last week's KPIs)
     const previousWeekStart = getPreviousWeek(getCurrentWeekStart());
-    const { weekNumber } = getWeekInfo(previousWeekStart);
+    const { weekNumber, year } = getWeekInfo(previousWeekStart);
 
     // Find active members who haven't submitted KPIs for last week
+    // Query by weekNumber and year for reliable matching (avoids timezone issues)
     const membersWithoutKpi = await prisma.member.findMany({
       where: {
         status: "AKTIV",
@@ -48,7 +49,8 @@ export async function GET(request: NextRequest) {
         kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         kpiWeeks: {
           none: {
-            weekStart: previousWeekStart,
+            weekNumber,
+            year,
           },
         },
       },
