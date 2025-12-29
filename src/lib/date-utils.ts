@@ -1,4 +1,4 @@
-import { startOfWeek, endOfWeek, format, getWeek, getYear, addWeeks, subWeeks } from "date-fns";
+import { startOfWeek, endOfWeek, format, getWeek, getWeekYear, addWeeks, subWeeks } from "date-fns";
 import { de } from "date-fns/locale";
 
 /**
@@ -15,12 +15,14 @@ export function getCurrentWeekStart(): Date {
 }
 
 /**
- * Get week number and year for a date
+ * Get week number and year for a date (ISO week year)
+ * Note: Uses ISO week year, so Dec 29, 2025 = KW 1/2026
  */
 export function getWeekInfo(date: Date): { weekNumber: number; year: number } {
+  const options = { weekStartsOn: 1 as const, firstWeekContainsDate: 4 as const };
   return {
-    weekNumber: getWeek(date, { weekStartsOn: 1, firstWeekContainsDate: 4 }),
-    year: getYear(date),
+    weekNumber: getWeek(date, options),
+    year: getWeekYear(date, options),
   };
 }
 
