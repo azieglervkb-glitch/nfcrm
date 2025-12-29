@@ -35,6 +35,14 @@ export function formatDate(date: Date | string, formatStr: string = "dd.MM.yyyy"
 }
 
 /**
+ * Format a date with time for display (e.g., "29.12.2025 um 14:30 Uhr")
+ */
+export function formatDateTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return format(d, "dd.MM.yyyy 'um' HH:mm 'Uhr'", { locale: de });
+}
+
+/**
  * Format relative time
  */
 export function formatRelativeTime(date: Date | string): string {

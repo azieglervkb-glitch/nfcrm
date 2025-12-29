@@ -10,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeelingEmoji } from "@/components/common";
-import { formatDate } from "@/lib/date-utils";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -446,6 +446,15 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                       {isEditing ? (
                         <div className="space-y-3">
+                          {selectedKpi.whatsappScheduledFor && (
+                            <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm flex items-center gap-2">
+                              <Clock className="h-4 w-4 flex-shrink-0" />
+                              <span>
+                                <strong>Geplanter WhatsApp-Versand:</strong>{" "}
+                                {formatDateTime(selectedKpi.whatsappScheduledFor)}
+                              </span>
+                            </div>
+                          )}
                           <Textarea
                             value={editedFeedback}
                             onChange={(e) => setEditedFeedback(e.target.value)}
@@ -529,12 +538,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                               <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700">
                                 <MessageSquare className="h-3 w-3 mr-1" />
                                 WhatsApp gesendet
-                                {selectedKpi.whatsappSentAt && ` (${formatDate(selectedKpi.whatsappSentAt)})`}
+                                {selectedKpi.whatsappSentAt && ` (${formatDateTime(selectedKpi.whatsappSentAt)})`}
                               </Badge>
                             ) : selectedKpi.whatsappScheduledFor && (
                               <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700">
                                 <Clock className="h-3 w-3 mr-1" />
-                                Geplant: {formatDate(selectedKpi.whatsappScheduledFor)}
+                                Geplanter Versand: {formatDateTime(selectedKpi.whatsappScheduledFor)}
                               </Badge>
                             )}
                           </div>
