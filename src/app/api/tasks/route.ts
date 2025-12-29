@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
+import { notifyTaskAssignee } from "@/lib/task-notifications";
 
 const createTaskSchema = z.object({
   title: z.string().min(1),
@@ -71,6 +72,8 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    await notifyTaskAssignee(task.id);
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {

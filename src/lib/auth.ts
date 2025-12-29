@@ -12,7 +12,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, request) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
@@ -40,6 +40,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return null;
         }
 
+        // Check 2FA if enabled
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          // Check if 2FA was verified (cookie set by /api/auth/2fa/verify)
+          const cookieHeader = request?.headers?.get?.("cookie") || "";
+          const match = cookieHeader.match(/(?:^|;\s*)2fa-verified=([^;]+)/);
+          const verifiedUserId = match ? decodeURIComponent(match[1]) : null;
+
+          if (verifiedUserId !== user.id) {
+            // 2FA not verified yet - deny login
+            return null;
+          }
+        }
+
         // Update last login
         await prisma.user.update({
           where: { id: user.id },
@@ -54,6 +67,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           nachname: user.nachname,
           role: user.role,
           avatarUrl: user.avatarUrl,
+          permissions: user.permissions,
+          twoFactorEnabled: user.twoFactorEnabled,
         };
       },
     }),

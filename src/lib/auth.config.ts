@@ -19,6 +19,7 @@ export const authConfig: NextAuthConfig = {
         "/login",
         "/forgot-password",
         "/reset-password",
+        "/setup-2fa",
         "/form",
         "/api/auth",
         "/api/webhooks",
@@ -46,6 +47,8 @@ export const authConfig: NextAuthConfig = {
         token.vorname = user.vorname;
         token.nachname = user.nachname;
         token.avatarUrl = user.avatarUrl;
+        token.permissions = user.permissions;
+        token.twoFactorEnabled = user.twoFactorEnabled;
       }
       return token;
     },
@@ -56,6 +59,8 @@ export const authConfig: NextAuthConfig = {
         session.user.vorname = token.vorname as string;
         session.user.nachname = token.nachname as string;
         session.user.avatarUrl = token.avatarUrl as string | null;
+        session.user.permissions = token.permissions as string[] | undefined;
+        session.user.twoFactorEnabled = token.twoFactorEnabled as boolean;
       }
       return session;
     },

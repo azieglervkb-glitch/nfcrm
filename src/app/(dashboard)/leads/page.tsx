@@ -81,6 +81,15 @@ interface Lead {
   interessiertAn: string | null;
   notizen: string | null;
   createdAt: string;
+  assignedToId: string | null;
+  assignedTo: { id: string; vorname: string; nachname: string } | null;
+}
+
+interface TeamMember {
+  id: string;
+  vorname: string;
+  nachname: string;
+  role: string;
 }
 
 interface LeadActivity {
@@ -152,6 +161,7 @@ export default function LeadsPage() {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [activities, setActivities] = useState<LeadActivity[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [showActivityDialog, setShowActivityDialog] = useState(false);
   const [savingActivity, setSavingActivity] = useState(false);
   const [newActivity, setNewActivity] = useState({
@@ -166,7 +176,20 @@ export default function LeadsPage() {
 
   useEffect(() => {
     fetchLeads();
+    fetchTeamMembers();
   }, [statusFilter]);
+
+  async function fetchTeamMembers() {
+    try {
+      const res = await fetch("/api/team");
+      if (res.ok) {
+        const data = await res.json();
+        setTeamMembers(data);
+      }
+    } catch (error) {
+      console.error("Failed to fetch team:", error);
+    }
+  }
 
   async function fetchLeads() {
     try {
@@ -324,6 +347,36 @@ export default function LeadsPage() {
       }
     } catch (error) {
       toast.error("Fehler beim Löschen");
+    }
+  }
+
+  async function updateLeadAssignment(leadId: string, assignedToId: string | null) {
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedToId }),
+      });
+      if (res.ok) {
+        toast.success("Zuständiger aktualisiert");
+        fetchLeads();
+        if (selectedLead?.id === leadId) {
+          const assignedTo = assignedToId
+            ? teamMembers.find((t) => t.id === assignedToId)
+            : null;
+          setSelectedLead({
+            ...selectedLead,
+            assignedToId,
+            assignedTo: assignedTo
+              ? { id: assignedTo.id, vorname: assignedTo.vorname, nachname: assignedTo.nachname }
+              : null,
+          });
+        }
+      } else {
+        toast.error("Fehler beim Aktualisieren");
+      }
+    } catch (error) {
+      toast.error("Fehler beim Aktualisieren");
     }
   }
 
@@ -650,6 +703,31 @@ export default function LeadsPage() {
                   </Select>
                 </div>
 
+                {/* Zuständig */}
+                <div className="space-y-3">
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    Zuständiger Mitarbeiter
+                  </h3>
+                  <Select
+                    value={selectedLead.assignedToId || "none"}
+                    onValueChange={(value) =>
+                      updateLeadAssignment(selectedLead.id, value === "none" ? null : value)
+                    }
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Nicht zugewiesen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nicht zugewiesen</SelectItem>
+                      {teamMembers.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.vorname} {member.nachname}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 {/* Notes */}
                 {selectedLead.notizen && (
                   <div className="space-y-3">
@@ -930,7 +1008,7 @@ export default function LeadsPage() {
                   <SelectContent>
                     <SelectItem value="VPMC">VPMC</SelectItem>
                     <SelectItem value="NFM">NF Mentoring</SelectItem>
-                    <SelectItem value="PREMIUM">Premium</SelectItem>
+                    <SelectItem value="MM">Mastermind</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

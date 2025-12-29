@@ -26,6 +26,7 @@ import {
   Lightbulb,
   Bot,
   Clock,
+  RefreshCw,
   Pencil,
   Save,
   X,
@@ -41,10 +42,14 @@ interface KpiWeek {
   entscheiderIst: number | null;
   termineVereinbartIst: number | null;
   termineStattgefundenIst: number | null;
+  termineErstIst: number | null;
+  termineFolgeIst: number | null;
   termineAbschlussIst: number | null;
   termineNoshowIst: number | null;
   einheitenIst: number | null;
   empfehlungenIst: number | null;
+  konvertierungTerminIst: number | null;
+  abschlussquoteIst: number | null;
   feelingScore: number | null;
   heldentat: string | null;
   blockiert: string | null;
@@ -64,6 +69,8 @@ interface MemberTracking {
   trackEmpfehlungen: boolean;
   trackEntscheider: boolean;
   trackAbschluesse: boolean;
+  trackKonvertierung?: boolean;
+  trackAbschlussquote?: boolean;
   umsatzSollWoche: number | null;
   kontakteSoll: number | null;
   entscheiderSoll: number | null;
@@ -72,6 +79,8 @@ interface MemberTracking {
   termineAbschlussSoll: number | null;
   einheitenSoll: number | null;
   empfehlungenSoll: number | null;
+  konvertierungTerminSoll?: number | null;
+  abschlussquoteSoll?: number | null;
 }
 
 interface KpiWeeksListProps {
@@ -81,6 +90,7 @@ interface KpiWeeksListProps {
 
 export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
   const [selectedKpi, setSelectedKpi] = useState<KpiWeek | null>(null);
+  const [regenerating, setRegenerating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedFeedback, setEditedFeedback] = useState("");
   const [editedScheduledFor, setEditedScheduledFor] = useState("");
@@ -187,6 +197,50 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
       toast.error("Konnte Änderungen nicht speichern");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const regenerateFeedback = async () => {
+    if (!selectedKpi) return;
+
+    try {
+      setRegenerating(true);
+      const res = await fetch(
+        `/api/kpi-weeks/${selectedKpi.id}/regenerate-ai-feedback`,
+        { method: "POST" }
+      );
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        toast.error(
+          data?.message ||
+            data?.error ||
+            "Konnte KI-Feedback nicht neu erstellen"
+        );
+        return;
+      }
+
+      const updated = data.kpiWeek;
+      setSelectedKpi((prev) =>
+        prev
+          ? {
+              ...prev,
+              aiFeedbackText: updated.aiFeedbackText ?? prev.aiFeedbackText,
+              aiFeedbackGeneratedAt: updated.aiFeedbackGeneratedAt
+                ? new Date(updated.aiFeedbackGeneratedAt)
+                : prev.aiFeedbackGeneratedAt,
+              whatsappScheduledFor: updated.whatsappScheduledFor
+                ? new Date(updated.whatsappScheduledFor)
+                : prev.whatsappScheduledFor,
+            }
+          : prev
+      );
+
+      toast.success("KI-Feedback wurde neu erstellt und neu geplant");
+    } catch {
+      toast.error("Konnte KI-Feedback nicht neu erstellen");
+    } finally {
+      setRegenerating(false);
     }
   };
 
@@ -352,6 +406,48 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                       </div>
                     )}
 
+                    {/* Ersttermine */}
+                    {memberTracking.trackTermine && selectedKpi.termineErstIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Ersttermine
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {formatNumber(selectedKpi.termineErstIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Folgetermine */}
+                    {memberTracking.trackTermine && selectedKpi.termineFolgeIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Folgetermine
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {formatNumber(selectedKpi.termineFolgeIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Konvertierung (calculated) */}
+                    {selectedKpi.konvertierungTerminIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Konvertierung
+                        </p>
+                        <p className="text-lg font-semibold text-purple-600">
+                          {Number(selectedKpi.konvertierungTerminIst).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Kontakt → Termin
+                          {memberTracking.konvertierungTerminSoll && (
+                            <> (Ziel: {memberTracking.konvertierungTerminSoll}%)</>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Termine Abschluss */}
                     {memberTracking.trackAbschluesse && (
                       <div className="p-3 rounded-lg bg-muted/50">
@@ -377,6 +473,24 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-lg font-semibold text-orange-600">
                           {formatNumber(selectedKpi.termineNoshowIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Abschlussquote (calculated) */}
+                    {selectedKpi.abschlussquoteIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Abschlussquote
+                        </p>
+                        <p className="text-lg font-semibold text-green-600">
+                          {Number(selectedKpi.abschlussquoteIst).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Termin → Abschluss
+                          {memberTracking.abschlussquoteSoll && (
+                            <> (Ziel: {memberTracking.abschlussquoteSoll}%)</>
+                          )}
                         </p>
                       </div>
                     )}
@@ -548,7 +662,7 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                           </div>
 
                           {!selectedKpi.whatsappFeedbackSent && (
-                            <div className="mt-3 flex justify-end">
+                            <div className="mt-3 flex justify-end gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
@@ -557,6 +671,19 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Bearbeiten
                               </Button>
+                              {selectedKpi.whatsappScheduledFor && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  disabled={regenerating}
+                                  onClick={regenerateFeedback}
+                                >
+                                  <RefreshCw
+                                    className={`h-4 w-4 mr-2 ${regenerating ? "animate-spin" : ""}`}
+                                  />
+                                  Neu erstellen
+                                </Button>
+                              )}
                             </div>
                           )}
                         </>

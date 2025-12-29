@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createMemberSchema } from "@/lib/validations";
 import { ZodError } from "zod";
+import { sendOnboardingNotification } from "@/lib/onboarding";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -40,9 +41,20 @@ export async function GET(request: NextRequest) {
     ];
   }
 
+  // Sichtbarkeits-Filterung: COACH/MITARBEITER sehen nur zugewiesene Members
+  const userRole = session.user.role;
+  if (userRole === "COACH" || userRole === "MITARBEITER") {
+    where.assignedToId = session.user.id;
+  }
+
   const [members, total] = await Promise.all([
     prisma.member.findMany({
       where,
+      include: {
+        assignedTo: {
+          select: { id: true, vorname: true, nachname: true },
+        },
+      },
       orderBy: { updatedAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -89,6 +101,17 @@ export async function POST(request: NextRequest) {
 
     const member = await prisma.member.create({
       data: validatedData,
+    });
+
+    // Send onboarding notification (Email + WhatsApp) - don't fail if notification fails
+    sendOnboardingNotification({
+      id: member.id,
+      email: member.email,
+      vorname: member.vorname,
+      nachname: member.nachname,
+      whatsappNummer: member.whatsappNummer,
+    }).catch((error) => {
+      console.error("Failed to send onboarding notification:", error);
     });
 
     return NextResponse.json(member, { status: 201 });

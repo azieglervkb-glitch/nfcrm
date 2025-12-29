@@ -2,6 +2,9 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, renderTemplate } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
+import { notifyTaskAssignee } from "@/lib/task-notifications";
+import { generateFormUrl, getAppUrl } from "@/lib/app-url";
+import { randomBytes } from "crypto";
 import type { Member, KpiWeek, AutomationRule } from "@prisma/client";
 
 // Check if cooldown is active for a rule/member combination
@@ -122,7 +125,7 @@ export async function checkLowFeelingStreak(
 
     // Create urgent task
     const assigneeR1 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Check-in 1:1 binnen 24h",
@@ -132,6 +135,8 @@ export async function checkLowFeelingStreak(
         assignedToId: assigneeR1,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Check-in 1:1 binnen 24h (HIGH)");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
@@ -179,7 +184,7 @@ export async function checkLeistungsabfall(
 
     // Create urgent task
     const assigneeR3 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Taktik-Call planen",
@@ -189,6 +194,8 @@ export async function checkLeistungsabfall(
         assignedToId: assigneeR3,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Taktik-Call planen (URGENT)");
 
     await logAutomation(member.id, ruleId, ruleName, actions);
@@ -196,7 +203,7 @@ export async function checkLeistungsabfall(
   }
 }
 
-// P1: Upsell-Signal (based on consecutive months hitting revenue threshold)
+// P1: Upsell-Signal (based on X months with revenue threshold in last 12 months, NOT consecutive)
 export async function checkUpsellSignal(
   member: Member,
   kpiWeek: KpiWeek
@@ -211,66 +218,50 @@ export async function checkUpsellSignal(
     where: { id: "default" },
   });
 
-  const consecutiveWeeks = settings?.upsellConsecutiveWeeks ?? 12;
+  // upsellConsecutiveWeeks is now used as "required months" (e.g., 12 = 3 months)
+  // Interpretation: upsellConsecutiveWeeks / 4 = required months above threshold
+  const requiredMonths = Math.floor((settings?.upsellConsecutiveWeeks ?? 12) / 4);
   const monthlyThreshold = settings?.upsellRevenueThreshold
     ? Number(settings.upsellRevenueThreshold)
     : 20000;
 
-  // Need at least 4 weeks for one "month"
-  if (consecutiveWeeks < 4) return;
+  // Get last 12 months of KPIs (52 weeks)
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
 
-  // Get recent KPIs
   const recentKpis = await prisma.kpiWeek.findMany({
-    where: { memberId: member.id },
-    orderBy: { weekStart: "desc" },
-    take: consecutiveWeeks,
+    where: {
+      memberId: member.id,
+      weekStart: { gte: twelveMonthsAgo },
+    },
+    orderBy: { weekStart: "asc" },
   });
 
-  // Not enough data yet
-  if (recentKpis.length < consecutiveWeeks) return;
+  // Need at least 4 weeks for one "month"
+  if (recentKpis.length < 4) return;
 
-  // Check if weeks are consecutive (no gaps)
-  const sortedKpis = [...recentKpis].sort(
-    (a, b) => new Date(a.weekStart).getTime() - new Date(b.weekStart).getTime()
-  );
-
-  let isConsecutive = true;
-  for (let i = 1; i < sortedKpis.length; i++) {
-    const prevDate = new Date(sortedKpis[i - 1].weekStart);
-    const currDate = new Date(sortedKpis[i].weekStart);
-    const daysDiff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
-    // Should be exactly 7 days apart (allow 1 day tolerance)
-    if (daysDiff < 6 || daysDiff > 8) {
-      isConsecutive = false;
-      break;
-    }
+  // Group KPIs by calendar month
+  const kpisByMonth: Map<string, number> = new Map();
+  
+  for (const kpi of recentKpis) {
+    const date = new Date(kpi.weekStart);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    const currentSum = kpisByMonth.get(monthKey) || 0;
+    kpisByMonth.set(monthKey, currentSum + (kpi.umsatzIst ? Number(kpi.umsatzIst) : 0));
   }
 
-  if (!isConsecutive) return;
-
-  // Group into "months" (4 weeks each)
-  const numMonths = Math.floor(consecutiveWeeks / 4);
-  const monthlyRevenues: number[] = [];
-
-  for (let i = 0; i < numMonths; i++) {
-    const startIdx = i * 4;
-    const monthKpis = sortedKpis.slice(startIdx, startIdx + 4);
-    const monthSum = monthKpis.reduce(
-      (sum, kpi) => sum + (kpi.umsatzIst ? Number(kpi.umsatzIst) : 0),
-      0
-    );
-    monthlyRevenues.push(monthSum);
-  }
-
-  // Check if ALL months meet the threshold
-  const allMonthsAboveThreshold = monthlyRevenues.every(
+  // Count months that meet the threshold
+  const monthlyRevenues = Array.from(kpisByMonth.values());
+  const monthsAboveThreshold = monthlyRevenues.filter(
     (revenue) => revenue >= monthlyThreshold
-  );
+  ).length;
 
-  if (allMonthsAboveThreshold) {
+  // Check if required number of months meet threshold (not necessarily consecutive)
+  if (monthsAboveThreshold >= requiredMonths) {
     const actions: string[] = [];
+    const qualifyingMonths = monthlyRevenues.filter((r) => r >= monthlyThreshold);
     const avgMonthlyRevenue = Math.round(
-      monthlyRevenues.reduce((a, b) => a + b, 0) / monthlyRevenues.length
+      qualifyingMonths.reduce((a, b) => a + b, 0) / qualifyingMonths.length
     );
 
     // Set upsell flag
@@ -293,19 +284,20 @@ export async function checkUpsellSignal(
       await prisma.upsellPipeline.create({
         data: {
           memberId: member.id,
-          triggerReason: `${numMonths} Monate in Folge über ${monthlyThreshold.toLocaleString("de-DE")}€ Monatsumsatz (Ø ${avgMonthlyRevenue.toLocaleString("de-DE")}€)`,
+          triggerReason: `${monthsAboveThreshold} von ${kpisByMonth.size} Monaten über ${monthlyThreshold.toLocaleString("de-DE")}€ (Ø ${avgMonthlyRevenue.toLocaleString("de-DE")}€)`,
           triggerRuleId: ruleId,
           status: "IDENTIFIED",
         },
       });
-      actions.push("CREATE_UPSELL_PIPELINE: Monatsumsatz-Trigger");
+      actions.push("CREATE_UPSELL_PIPELINE: Monatsumsatz-Trigger (nicht konsekutiv)");
     }
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
-      monthlyRevenues,
+      monthsAboveThreshold,
+      requiredMonths,
+      totalMonths: kpisByMonth.size,
       avgMonthlyRevenue,
       threshold: monthlyThreshold,
-      consecutiveWeeks,
     });
 
     await setCooldown(member.id, ruleId, 720); // 30 days
@@ -403,7 +395,7 @@ export async function checkHighNoShow(
 
     // Create task
     const assigneeQ1 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Reminder-Routine implementieren",
@@ -413,6 +405,8 @@ export async function checkHighNoShow(
         assignedToId: assigneeQ1,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Reminder-Routine implementieren");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
@@ -455,7 +449,7 @@ export async function checkChurnRisk(member: Member): Promise<void> {
 
     // Create urgent task
     const assigneeL1 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Retention-Call planen",
@@ -465,6 +459,8 @@ export async function checkChurnRisk(member: Member): Promise<void> {
         assignedToId: assigneeL1,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Retention-Call planen (URGENT)");
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
@@ -529,18 +525,19 @@ export async function checkBlockade(
     const actions: string[] = [];
 
     // Block AI feedback
+    const blockReason = "Blockade erkannt - persönlicher Check-in erforderlich";
     await prisma.kpiWeek.update({
       where: { id: kpiWeek.id },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: "Blockade erkannt - persönlicher Check-in erforderlich",
+        aiFeedbackBlockReason: blockReason,
       },
     });
     actions.push("BLOCK_AI_FEEDBACK");
 
-    // Create task
+    // Create task for check-in
     const assigneeC2 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Persönlicher Check-in",
@@ -550,7 +547,13 @@ export async function checkBlockade(
         assignedToId: assigneeC2,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Persönlicher Check-in (HIGH)");
+
+    // Also create feedback block task
+    const { createFeedbackBlockTask } = await import("@/lib/feedback-block-helper");
+    await createFeedbackBlockTask(kpiWeek.id, member.id, blockReason, ruleId);
 
     await logAutomation(member.id, ruleId, ruleName, actions, {
       blockade: kpiWeek.blockiert?.substring(0, 100),
@@ -779,7 +782,7 @@ export async function checkSilentMember(member: Member): Promise<void> {
           <h2>Hallo ${member.vorname}!</h2>
           <p>Es ist wieder Zeit für dein wöchentliches KPI-Update.</p>
           <p>Bitte trage deine Zahlen für diese Woche ein:</p>
-          <p><a href="${process.env.APP_URL}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">KPIs eintragen</a></p>
+          <p><a href="${getAppUrl()}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">KPIs eintragen</a></p>
           <p>Dauert nur 2 Minuten!</p>
           <p>Beste Grüße,<br>Dein NF Mentoring Team</p>
         `,
@@ -840,7 +843,7 @@ export async function checkFunnelLeak(
 
     // Create task
     const assigneeP2 = await findTaskAssignee(ruleId);
-    await prisma.task.create({
+    const createdTask = await prisma.task.create({
       data: {
         memberId: member.id,
         title: "Konvertierungs-Training empfehlen",
@@ -850,6 +853,8 @@ export async function checkFunnelLeak(
         assignedToId: assigneeP2,
       },
     });
+
+    await notifyTaskAssignee(createdTask.id);
     actions.push("CREATE_TASK: Konvertierungs-Training");
 
     // Add note
@@ -917,14 +922,19 @@ export async function checkDatenAnomalie(
     const actions: string[] = [];
 
     // Block AI feedback
+    const blockReason = `Daten-Anomalie: ${anomalies.join(", ")}`;
     await prisma.kpiWeek.update({
       where: { id: kpiWeek.id },
       data: {
         aiFeedbackBlocked: true,
-        aiFeedbackBlockReason: `Daten-Anomalie: ${anomalies.join(", ")}`,
+        aiFeedbackBlockReason: blockReason,
       },
     });
     actions.push("BLOCK_AI_FEEDBACK");
+
+    // Create feedback block task
+    const { createFeedbackBlockTask } = await import("@/lib/feedback-block-helper");
+    await createFeedbackBlockTask(kpiWeek.id, member.id, blockReason, "Q2");
 
     // Set review flag
     await prisma.member.update({
@@ -1008,7 +1018,31 @@ export async function checkSmartNudge(member: Member): Promise<void> {
   if (missingGoals && member.whatsappNummer && !quietHours) {
     const actions: string[] = [];
 
-    const message = `Hey ${member.vorname}! Ich hab gesehen, dass du noch keine Wochenziele eingetragen hast. S.M.A.R.T. Ziele helfen dir, fokussiert zu bleiben! Hier kannst du sie eintragen: ${process.env.APP_URL}/form/kpi-setup/${member.id}`;
+    // Create or get existing KPI setup token
+    let formToken = await prisma.formToken.findFirst({
+      where: {
+        memberId: member.id,
+        type: "kpi-setup",
+        expiresAt: { gt: new Date() },
+        usedAt: null,
+      },
+    });
+
+    if (!formToken) {
+      // Create new token
+      const token = randomBytes(32).toString("hex");
+      formToken = await prisma.formToken.create({
+        data: {
+          token,
+          type: "kpi-setup",
+          memberId: member.id,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+        },
+      });
+    }
+
+    const kpiSetupUrl = generateFormUrl("kpi-setup", formToken.token);
+    const message = `Hey ${member.vorname}! Ich hab gesehen, dass du noch keine Wochenziele eingetragen hast. S.M.A.R.T. Ziele helfen dir, fokussiert zu bleiben! Hier kannst du sie eintragen: ${kpiSetupUrl}`;
 
     await sendWhatsApp({
       phone: member.whatsappNummer,
@@ -1067,7 +1101,7 @@ export async function runWeeklyReminders(): Promise<void> {
           <h2>Guten Morgen, ${member.vorname}!</h2>
           <p>Wir hoffen, du hast eine gute Woche bisher!</p>
           <p>Kurze Erinnerung: Dein KPI-Update für diese Woche steht noch aus.</p>
-          <p><a href="${process.env.APP_URL}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">Jetzt eintragen</a></p>
+          <p><a href="${getAppUrl()}/form/weekly/${member.id}" style="display: inline-block; padding: 12px 24px; background-color: #ae1d2b; color: white; text-decoration: none; border-radius: 6px;">Jetzt eintragen</a></p>
           <p>Dauert nur 2 Minuten!</p>
           <p>Beste Grüße,<br>Dein NF Mentoring Team</p>
         `,
@@ -1079,7 +1113,7 @@ export async function runWeeklyReminders(): Promise<void> {
     if (isEvening && member.whatsappNummer) {
       const quietHours = await isInQuietHours();
       if (!quietHours) {
-        const message = `Hey ${member.vorname}! 👋 Bevor der Tag rum ist - hast du deine KPIs schon eingetragen? Dauert nur 2 Min: ${process.env.APP_URL}/form/weekly/${member.id}`;
+        const message = `Hey ${member.vorname}! 👋 Bevor der Tag rum ist - hast du deine KPIs schon eingetragen? Dauert nur 2 Min: ${getAppUrl()}/form/weekly/${member.id}`;
 
         await sendWhatsApp({
           phone: member.whatsappNummer,

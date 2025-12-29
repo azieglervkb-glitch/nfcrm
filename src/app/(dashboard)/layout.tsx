@@ -21,6 +21,7 @@ export default async function Layout({
         email: session.user.email || undefined,
         role: session.user.role,
         avatarUrl: session.user.avatarUrl,
+        permissions: session.user.permissions,
       }}
     >
       {children}

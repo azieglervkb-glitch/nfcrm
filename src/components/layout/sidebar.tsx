@@ -28,58 +28,73 @@ interface SidebarProps {
     nachname: string;
     role: string;
     avatarUrl?: string | null;
+    permissions?: string[];
   };
 }
+
+// Permission-to-href mapping
+const PERMISSION_MAP: Record<string, string[]> = {
+  dashboard: ["/dashboard"],
+  leads: ["/leads"],
+  members: ["/members"],
+  kpis: ["/kpis", "/kpis/pending"],
+  automations: ["/automations/rules", "/automations/logs"],
+  upsell: ["/upsell"],
+  tasks: ["/tasks"],
+  communications: ["/communications", "/templates"],
+  settings: ["/settings", "/settings/prompts", "/settings/forms"],
+  team: ["/settings/team"],
+};
 
 const menuItems = [
   {
     category: "HOME",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, permission: "dashboard" },
     ],
   },
   {
     category: "KONTAKTE",
     items: [
-      { label: "Leads", href: "/leads", icon: UserPlus },
-      { label: "Mitglieder", href: "/members", icon: Users },
+      { label: "Leads", href: "/leads", icon: UserPlus, permission: "leads" },
+      { label: "Mitglieder", href: "/members", icon: Users, permission: "members" },
     ],
   },
   {
     category: "KPI-TRACKING",
     items: [
-      { label: "Übersicht", href: "/kpis", icon: BarChart3 },
-      { label: "Ausstehend", href: "/kpis/pending", icon: AlertCircle },
+      { label: "Übersicht", href: "/kpis", icon: BarChart3, permission: "kpis" },
+      { label: "Ausstehend", href: "/kpis/pending", icon: AlertCircle, permission: "kpis" },
     ],
   },
   {
     category: "AUTOMATIONEN",
     items: [
-      { label: "Regeln", href: "/automations/rules", icon: Zap },
-      { label: "Logs", href: "/automations/logs", icon: ScrollText },
+      { label: "Regeln", href: "/automations/rules", icon: Zap, permission: "automations" },
+      { label: "Logs", href: "/automations/logs", icon: ScrollText, permission: "automations" },
     ],
   },
   {
     category: "SALES",
     items: [
-      { label: "Upsell Pipeline", href: "/upsell", icon: TrendingUp },
-      { label: "Tasks", href: "/tasks", icon: CheckSquare },
+      { label: "Upsell Pipeline", href: "/upsell", icon: TrendingUp, permission: "upsell" },
+      { label: "Tasks", href: "/tasks", icon: CheckSquare, permission: "tasks" },
     ],
   },
   {
     category: "KOMMUNIKATION",
     items: [
-      { label: "Nachrichten-Log", href: "/communications", icon: MessageSquare },
-      { label: "Templates", href: "/templates", icon: FileText },
+      { label: "Nachrichten-Log", href: "/communications", icon: MessageSquare, permission: "communications" },
+      { label: "Templates", href: "/templates", icon: FileText, permission: "communications" },
     ],
   },
   {
     category: "EINSTELLUNGEN",
     items: [
-      { label: "Team", href: "/settings/team", icon: UserCog },
-      { label: "AI Prompts", href: "/settings/prompts", icon: Bot },
-      { label: "Formulare", href: "/settings/forms", icon: ClipboardList },
-      { label: "System", href: "/settings", icon: Settings },
+      { label: "Team", href: "/settings/team", icon: UserCog, permission: "team" },
+      { label: "AI Prompts", href: "/settings/prompts", icon: Bot, permission: "settings" },
+      { label: "Formulare", href: "/settings/forms", icon: ClipboardList, permission: "settings" },
+      { label: "System", href: "/settings", icon: Settings, permission: "settings" },
     ],
   },
 ];
@@ -92,9 +107,26 @@ function getRoleLabel(role: string): string {
       return "Admin";
     case "COACH":
       return "Coach";
+    case "MITARBEITER":
+      return "Mitarbeiter";
     default:
       return role;
   }
+}
+
+// Check if user has permission for an item
+function hasPermission(
+  role: string,
+  permissions: string[] | undefined,
+  requiredPermission: string
+): boolean {
+  // SUPER_ADMIN and ADMIN have full access
+  if (role === "SUPER_ADMIN" || role === "ADMIN") {
+    return true;
+  }
+  // COACH and MITARBEITER need explicit permission
+  if (!permissions) return false;
+  return permissions.includes(requiredPermission);
 }
 
 function getInitials(vorname: string, nachname: string): string {
@@ -145,28 +177,38 @@ export function Sidebar({ user }: SidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 space-y-1 px-3">
-          {menuItems.map((section) => (
-            <div key={section.category} className="mb-4">
-              <p className="sidebar-category">{section.category}</p>
-              {section.items.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={cn(
-                      "sidebar-item",
-                      active && "active"
-                    )}
-                  >
-                    <Icon className="h-5 w-5 flex-shrink-0" />
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
-            </div>
-          ))}
+          {menuItems.map((section) => {
+            // Filter items based on permissions
+            const visibleItems = section.items.filter((item) =>
+              hasPermission(user.role, user.permissions, item.permission)
+            );
+            
+            // Hide entire category if no visible items
+            if (visibleItems.length === 0) return null;
+            
+            return (
+              <div key={section.category} className="mb-4">
+                <p className="sidebar-category">{section.category}</p>
+                {visibleItems.map((item) => {
+                  const Icon = item.icon;
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={cn(
+                        "sidebar-item",
+                        active && "active"
+                      )}
+                    >
+                      <Icon className="h-5 w-5 flex-shrink-0" />
+                      <span>{item.label}</span>
+                    </Link>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
 
       </div>

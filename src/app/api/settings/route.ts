@@ -42,6 +42,19 @@ const systemSettingsSchema = z.object({
   coachEmailNotifications: z.boolean().optional(),
   adminEmailDigest: z.boolean().optional(),
   adminEmailDigestTime: z.string().optional(),
+
+  // KPI Tracking Trigger Settings
+  kpiTriggerModule: z.number().min(1).max(10).optional(),
+  kpiTriggerSource: z.enum(["manual", "learningsuite_api", "both"]).optional(),
+  kpiSetupReminderDays: z.array(z.number().min(0).max(30)).optional(),
+  onboardingReminderDays: z.array(z.number().min(0).max(30)).optional(),
+
+  // Onboarding Trigger Settings (LearningSuite-based)
+  onboardingTriggerEnabled: z.boolean().optional(),
+  onboardingTriggerLessonId: z.string().nullable().optional(),
+  onboardingTriggerLessonName: z.string().nullable().optional(),
+  onboardingTriggerCourseId: z.string().nullable().optional(),
+  onboardingExistingMemberModule: z.number().min(1).max(10).optional(),
 });
 
 export async function GET() {

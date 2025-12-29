@@ -22,7 +22,7 @@ export async function PATCH(
 
   try {
     const body = await request.json();
-    const { email, vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks } = body;
+    const { email, vorname, nachname, password, role, isActive, taskRuleIds, showAllTasks, permissions } = body;
 
     const updateData: any = {};
     if (email) updateData.email = email;
@@ -32,6 +32,7 @@ export async function PATCH(
     if (isActive !== undefined) updateData.isActive = isActive;
     if (taskRuleIds !== undefined) updateData.taskRuleIds = taskRuleIds;
     if (showAllTasks !== undefined) updateData.showAllTasks = showAllTasks;
+    if (permissions !== undefined) updateData.permissions = permissions;
     if (password) {
       updateData.passwordHash = await hash(password, 12);
     }
@@ -48,6 +49,7 @@ export async function PATCH(
         isActive: true,
         taskRuleIds: true,
         showAllTasks: true,
+        permissions: true,
       },
     });
 

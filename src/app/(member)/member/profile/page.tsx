@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import {
   User,
@@ -20,6 +21,8 @@ import {
   Calendar,
   Save,
   Loader2,
+  Camera,
+  X,
 } from "lucide-react";
 
 interface ProfileData {
@@ -28,6 +31,7 @@ interface ProfileData {
   lastName: string;
   email: string;
   phone: string | null;
+  avatarUrl: string | null;
   status: string;
   onboardingDate: string | null;
   program: string | null;
@@ -45,6 +49,11 @@ export default function MemberProfilePage() {
   });
   const { toast } = useToast();
 
+  // Avatar state
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+
   useEffect(() => {
     fetchProfile();
   }, []);
@@ -56,16 +65,125 @@ export default function MemberProfilePage() {
         const data = await response.json();
         setProfile(data);
         setFormData({
-          firstName: data.firstName || "",
-          lastName: data.lastName || "",
+          firstName: data.firstName || data.vorname || "",
+          lastName: data.lastName || data.nachname || "",
           email: data.email || "",
-          phone: data.phone || "",
+          phone: data.phone || data.telefon || "",
         });
+        setAvatarPreview(data.avatarUrl);
       }
     } catch (error) {
       console.error("Failed to fetch profile:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      toast({
+        title: "Fehler",
+        description: "Ungültiger Dateityp. Erlaubt: JPG, PNG, WebP, GIF",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Fehler",
+        description: "Datei zu groß. Maximum: 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAvatarFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const uploadAvatar = async () => {
+    if (!avatarFile) return;
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", avatarFile);
+
+      const response = await fetch("/api/member/profile/avatar", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setAvatarPreview(data.avatarUrl);
+        setAvatarFile(null);
+        toast({
+          title: "Erfolg",
+          description: "Profilbild hochgeladen",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Fehler",
+          description: error.error || "Fehler beim Hochladen",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Hochladen des Profilbilds",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const removeAvatar = async () => {
+    setUploadingAvatar(true);
+    try {
+      const response = await fetch("/api/member/profile/avatar", {
+        method: "DELETE",
+      });
+
+      if (response.ok) {
+        setAvatarPreview(null);
+        setAvatarFile(null);
+        toast({
+          title: "Erfolg",
+          description: "Profilbild entfernt",
+        });
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Fehler",
+          description: error.error || "Fehler beim Entfernen",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "Fehler beim Entfernen des Profilbilds",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingAvatar(false);
     }
   };
 
@@ -179,6 +297,64 @@ export default function MemberProfilePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSave} className="space-y-4">
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-4 pb-4 border-b">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  {avatarPreview && (
+                    <AvatarImage src={avatarPreview} alt="Profile" />
+                  )}
+                  <AvatarFallback className="bg-red-100 text-red-600 font-semibold text-xl">
+                    {formData.firstName?.charAt(0) || "?"}
+                    {formData.lastName?.charAt(0) || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                {avatarPreview && !avatarFile && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    disabled={uploadingAvatar}
+                    className="absolute -top-1 -right-1 bg-red-600 text-white rounded-full p-1 hover:bg-red-700 disabled:opacity-50"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <div className="flex-1">
+                <Label className="mb-2 block">Profilbild</Label>
+                <div className="flex gap-2">
+                  <label className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md cursor-pointer hover:bg-gray-200 text-sm">
+                    <Camera className="h-4 w-4" />
+                    {avatarPreview ? "Ändern" : "Hochladen"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={handleAvatarSelect}
+                    />
+                  </label>
+                  {avatarFile && (
+                    <Button
+                      type="button"
+                      onClick={uploadAvatar}
+                      disabled={uploadingAvatar}
+                      size="sm"
+                      className="bg-red-600 hover:bg-red-700"
+                    >
+                      {uploadingAvatar ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Speichern"
+                      )}
+                    </Button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  JPG, PNG, WebP oder GIF (max. 5MB)
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName">First Name</Label>

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function GET(
   request: NextRequest,
@@ -24,8 +25,10 @@ export async function GET(
         status: true,
         onboardingCompleted: true,
         onboardingDate: true,
-        kpiTrackingActive: true,
-        kpiTrackingStartDate: true,
+        kpiTrackingEnabled: true,
+        kpiTrackingEnabledAt: true,
+        kpiSetupCompleted: true,
+        kpiSetupCompletedAt: true,
       },
     });
 
@@ -34,7 +37,7 @@ export async function GET(
     }
 
     // Form URLs use member ID directly
-    const baseUrl = process.env.APP_URL || "http://localhost:3000";
+    const baseUrl = getAppUrl();
 
     return NextResponse.json({
       ...member,
@@ -46,8 +49,8 @@ export async function GET(
         },
         kpiSetup: {
           url: `${baseUrl}/form/kpi-setup/${member.id}`,
-          completed: member.kpiTrackingActive,
-          completedAt: member.kpiTrackingStartDate,
+          completed: member.kpiSetupCompleted,
+          completedAt: member.kpiSetupCompletedAt,
         },
         weekly: {
           url: `${baseUrl}/form/weekly/${member.id}`,

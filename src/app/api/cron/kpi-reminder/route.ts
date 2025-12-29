@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getWeekInfo, getPreviousWeek } from "@/lib/date-utils";
 import { sendKpiReminderEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
+import { generateFormUrl } from "@/lib/app-url";
 import { randomBytes } from "crypto";
+import { shouldRunKpiReminder, hasRunThisMinute } from "@/lib/cron-scheduler";
 
-// This endpoint should be called by an external cron service
-// Recommended: Sunday 18:00 and Monday 10:00
-//
-// Example cron jobs:
-// - Railway: Add to railway.toml or use Railway Cron
-// - Vercel: Add to vercel.json crons
-// - External: Use cron-job.org with secret header
+// This endpoint runs every minute and checks if it should execute based on settings
+// Settings: kpiReminderDay1, kpiReminderTime1, kpiReminderDay2, kpiReminderTime2
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -23,17 +20,35 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const weekStart = getCurrentWeekStart();
-    const { weekNumber } = getWeekInfo(weekStart);
+    // Check if we should run based on settings
+    const scheduleCheck = await shouldRunKpiReminder();
+    if (!scheduleCheck.shouldRun) {
+      return NextResponse.json({
+        skipped: true,
+        reason: scheduleCheck.reason,
+      });
+    }
 
-    // Find active members who haven't submitted KPIs this week
+    // Prevent duplicate runs within the same minute
+    if (await hasRunThisMinute("CRON", "KPI Reminder Cron")) {
+      return NextResponse.json({
+        skipped: true,
+        reason: "Already ran this minute",
+      });
+    }
+    // We remind about the PREVIOUS week (e.g., Monday reminder is for last week's KPIs)
+    const previousWeekStart = getPreviousWeek(getCurrentWeekStart());
+    const { weekNumber } = getWeekInfo(previousWeekStart);
+
+    // Find active members who haven't submitted KPIs for last week
     const membersWithoutKpi = await prisma.member.findMany({
       where: {
         status: "AKTIV",
-        kpiTrackingActive: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         kpiWeeks: {
           none: {
-            weekStart,
+            weekStart: previousWeekStart,
           },
         },
       },
@@ -56,18 +71,19 @@ export async function GET(request: NextRequest) {
 
     for (const member of membersWithoutKpi) {
       try {
-        // Generate form token
+        // Generate form token with weekStart to ensure correct week on submission
         const token = randomBytes(32).toString("hex");
         await prisma.formToken.create({
           data: {
             token,
             type: "weekly",
             memberId: member.id,
+            weekStart: previousWeekStart, // Store which week this reminder is for
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           },
         });
 
-        const formLink = `${process.env.APP_URL || "http://localhost:3000"}/form/weekly/${token}`;
+        const formLink = generateFormUrl("weekly", token);
 
         // Send Email
         const emailSent = await sendKpiReminderEmail(member, formLink, weekNumber);
@@ -75,7 +91,7 @@ export async function GET(request: NextRequest) {
 
         // Send WhatsApp (if not in quiet hours)
         if (member.whatsappNummer && !inQuietHours) {
-          const message = `Hey ${member.vorname}! 👋 Deine KPIs für diese Woche (KW${weekNumber}) fehlen noch. Hier ist dein Link:\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
+          const message = `Hey ${member.vorname}! 👋 Deine KPIs für letzte Woche (KW${weekNumber}) fehlen noch. Hier ist dein Link:\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
 
           const whatsappSent = await sendWhatsApp({
             phone: member.whatsappNummer,

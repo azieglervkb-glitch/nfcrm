@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendWelcomeEmail } from "@/lib/email";
-import { randomBytes } from "crypto";
 
 export async function GET(
   request: NextRequest,
@@ -20,6 +19,15 @@ export async function GET(
             vorname: true,
             nachname: true,
             onboardingCompleted: true,
+            // All onboarding fields for pre-filling
+            unternehmen: true,
+            position: true,
+            aktuellerMonatsumsatz: true,
+            wasNervtAmMeisten: true,
+            groessetesProblem: true,
+            zielMonatsumsatz: true,
+            groessteZielWarum: true,
+            wieAufmerksam: true,
           },
         },
       },
@@ -42,10 +50,20 @@ export async function GET(
         return NextResponse.json({ error: "Onboarding bereits abgeschlossen" }, { status: 400 });
       }
 
+      const m = formToken.member;
       return NextResponse.json({
         member: {
-          vorname: formToken.member.vorname,
-          nachname: formToken.member.nachname,
+          vorname: m.vorname,
+          nachname: m.nachname,
+          // Pre-fill existing data
+          unternehmen: m.unternehmen,
+          position: m.position,
+          aktuellerMonatsumsatz: m.aktuellerMonatsumsatz,
+          wasNervtAmMeisten: m.wasNervtAmMeisten,
+          groessetesProblem: m.groessetesProblem,
+          zielMonatsumsatz: m.zielMonatsumsatz,
+          groessteZielWarum: m.groessteZielWarum,
+          wieAufmerksam: m.wieAufmerksam,
         },
         isPreview: false,
       });
@@ -59,6 +77,15 @@ export async function GET(
         vorname: true,
         nachname: true,
         onboardingCompleted: true,
+        // All onboarding fields for pre-filling
+        unternehmen: true,
+        position: true,
+        aktuellerMonatsumsatz: true,
+        wasNervtAmMeisten: true,
+        groessetesProblem: true,
+        zielMonatsumsatz: true,
+        groessteZielWarum: true,
+        wieAufmerksam: true,
       },
     });
 
@@ -67,6 +94,15 @@ export async function GET(
         member: {
           vorname: member.vorname,
           nachname: member.nachname,
+          // Pre-fill existing data
+          unternehmen: member.unternehmen,
+          position: member.position,
+          aktuellerMonatsumsatz: member.aktuellerMonatsumsatz,
+          wasNervtAmMeisten: member.wasNervtAmMeisten,
+          groessetesProblem: member.groessetesProblem,
+          zielMonatsumsatz: member.zielMonatsumsatz,
+          groessteZielWarum: member.groessteZielWarum,
+          wieAufmerksam: member.wieAufmerksam,
         },
         isPreview: true,
       });
@@ -147,29 +183,13 @@ export async function POST(
       },
     });
 
-    // Create KPI setup token
-    const kpiSetupToken = randomBytes(32).toString("hex");
-    await prisma.formToken.create({
-      data: {
-        token: kpiSetupToken,
-        type: "kpi-setup",
-        memberId: formToken.memberId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      },
-    });
-
-    const kpiSetupLink = `${process.env.APP_URL || "http://localhost:3000"}/form/kpi-setup/${kpiSetupToken}`;
-
-    // Send welcome email with KPI setup link
-    sendWelcomeEmail(
-      {
-        id: formToken.memberId,
-        email: formToken.member.email,
-        vorname: formToken.member.vorname,
-        nachname: formToken.member.nachname,
-      },
-      kpiSetupLink
-    ).catch(console.error);
+    // Send welcome email (without KPI setup - that comes later when KPI tracking is activated)
+    sendWelcomeEmail({
+      id: formToken.memberId,
+      email: formToken.member.email,
+      vorname: formToken.member.vorname,
+      nachname: formToken.member.nachname,
+    }).catch(console.error);
 
     return NextResponse.json({ success: true });
   } catch (error) {
