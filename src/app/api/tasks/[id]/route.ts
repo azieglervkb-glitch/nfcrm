@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 import { generateKpiFeedback } from "@/lib/openai";
+import { getCurrentWeekStart } from "@/lib/date-utils";
 
 const updateTaskSchema = z.object({
   title: z.string().min(1).optional(),
@@ -127,15 +128,7 @@ ${taskBeforeUpdate.description || ""}`;
       const targetWeekNumber = weekMatch ? Number(weekMatch[1]) : null;
       const targetYear = weekMatch ? Number(weekMatch[2]) : null;
 
-      const currentWeekStart = (() => {
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() + mondayOffset);
-        weekStart.setHours(0, 0, 0, 0);
-        return weekStart;
-      })();
+      const currentWeekStart = getCurrentWeekStart();
 
       // Try to find blocked KPI week (current week first, then most recent)
       let kpiWeek = await prisma.kpiWeek.findFirst({

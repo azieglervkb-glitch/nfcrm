@@ -88,8 +88,8 @@ const EMAIL_STYLES = `
 `;
 
 const EMAIL_HEADER = `
-  <div class="header">
-    <img src="{{logoUrl}}" alt="NF Mentoring" />
+  <div class="header" style="background: #ffffff; padding: 24px 32px; text-align: center; border-bottom: 1px solid #e5e5e5;">
+    <img src="{{logoUrl}}" alt="NF Mentoring" width="150" height="auto" style="max-height: 50px; width: auto; display: block; margin: 0 auto;" />
   </div>
 `;
 

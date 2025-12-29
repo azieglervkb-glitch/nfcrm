@@ -19,12 +19,14 @@ async function getPendingKpis() {
   const weekStart = getCurrentWeekStart();
   const { weekNumber, year } = getWeekInfo(weekStart);
 
+  // Query by weekNumber and year for reliable matching (avoids timezone issues)
   const activeMembers = await prisma.member.findMany({
     where: {
       status: "AKTIV",
       kpiWeeks: {
         none: {
-          weekStart,
+          weekNumber,
+          year,
         },
       },
     },

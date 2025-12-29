@@ -343,7 +343,8 @@ export default function LeadsPage() {
         fetchLeads();
         if (selectedLead?.id === leadId) setSelectedLead(null);
       } else {
-        toast.error("Fehler beim Löschen");
+        const data = await res.json();
+        toast.error(data.error || "Fehler beim Löschen");
       }
     } catch (error) {
       toast.error("Fehler beim Löschen");
@@ -1008,7 +1009,7 @@ export default function LeadsPage() {
                   <SelectContent>
                     <SelectItem value="VPMC">VPMC</SelectItem>
                     <SelectItem value="NFM">NF Mentoring</SelectItem>
-                    <SelectItem value="PREMIUM">Premium</SelectItem>
+                    <SelectItem value="MM">Mastermind</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

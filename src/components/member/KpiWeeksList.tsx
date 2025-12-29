@@ -10,7 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { FeelingEmoji } from "@/components/common";
-import { formatDate } from "@/lib/date-utils";
+import { formatDate, formatDateTime } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import {
@@ -41,10 +41,14 @@ interface KpiWeek {
   entscheiderIst: number | null;
   termineVereinbartIst: number | null;
   termineStattgefundenIst: number | null;
+  termineErstIst: number | null;
+  termineFolgeIst: number | null;
   termineAbschlussIst: number | null;
   termineNoshowIst: number | null;
   einheitenIst: number | null;
   empfehlungenIst: number | null;
+  konvertierungTerminIst: number | null;
+  abschlussquoteIst: number | null;
   feelingScore: number | null;
   heldentat: string | null;
   blockiert: string | null;
@@ -64,6 +68,8 @@ interface MemberTracking {
   trackEmpfehlungen: boolean;
   trackEntscheider: boolean;
   trackAbschluesse: boolean;
+  trackKonvertierung?: boolean;
+  trackAbschlussquote?: boolean;
   umsatzSollWoche: number | null;
   kontakteSoll: number | null;
   entscheiderSoll: number | null;
@@ -72,6 +78,8 @@ interface MemberTracking {
   termineAbschlussSoll: number | null;
   einheitenSoll: number | null;
   empfehlungenSoll: number | null;
+  konvertierungTerminSoll?: number | null;
+  abschlussquoteSoll?: number | null;
 }
 
 interface KpiWeeksListProps {
@@ -262,6 +270,48 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                       </div>
                     )}
 
+                    {/* Ersttermine */}
+                    {memberTracking.trackTermine && selectedKpi.termineErstIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Ersttermine
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {formatNumber(selectedKpi.termineErstIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Folgetermine */}
+                    {memberTracking.trackTermine && selectedKpi.termineFolgeIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Calendar className="h-3 w-3" /> Folgetermine
+                        </p>
+                        <p className="text-lg font-semibold">
+                          {formatNumber(selectedKpi.termineFolgeIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Konvertierung (calculated) */}
+                    {selectedKpi.konvertierungTerminIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Konvertierung
+                        </p>
+                        <p className="text-lg font-semibold text-purple-600">
+                          {Number(selectedKpi.konvertierungTerminIst).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Kontakt → Termin
+                          {memberTracking.konvertierungTerminSoll && (
+                            <> (Ziel: {memberTracking.konvertierungTerminSoll}%)</>
+                          )}
+                        </p>
+                      </div>
+                    )}
+
                     {/* Termine Abschluss */}
                     {memberTracking.trackAbschluesse && (
                       <div className="p-3 rounded-lg bg-muted/50">
@@ -287,6 +337,24 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-lg font-semibold text-orange-600">
                           {formatNumber(selectedKpi.termineNoshowIst)}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Abschlussquote (calculated) */}
+                    {selectedKpi.abschlussquoteIst !== null && (
+                      <div className="p-3 rounded-lg bg-muted/50">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Abschlussquote
+                        </p>
+                        <p className="text-lg font-semibold text-green-600">
+                          {Number(selectedKpi.abschlussquoteIst).toFixed(1)}%
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Termin → Abschluss
+                          {memberTracking.abschlussquoteSoll && (
+                            <> (Ziel: {memberTracking.abschlussquoteSoll}%)</>
+                          )}
                         </p>
                       </div>
                     )}
@@ -378,6 +446,15 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                     <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
                       {isEditing ? (
                         <div className="space-y-3">
+                          {selectedKpi.whatsappScheduledFor && (
+                            <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm flex items-center gap-2">
+                              <Clock className="h-4 w-4 flex-shrink-0" />
+                              <span>
+                                <strong>Geplanter WhatsApp-Versand:</strong>{" "}
+                                {formatDateTime(selectedKpi.whatsappScheduledFor)}
+                              </span>
+                            </div>
+                          )}
                           <Textarea
                             value={editedFeedback}
                             onChange={(e) => setEditedFeedback(e.target.value)}
@@ -461,12 +538,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                               <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700">
                                 <MessageSquare className="h-3 w-3 mr-1" />
                                 WhatsApp gesendet
-                                {selectedKpi.whatsappSentAt && ` (${formatDate(selectedKpi.whatsappSentAt)})`}
+                                {selectedKpi.whatsappSentAt && ` (${formatDateTime(selectedKpi.whatsappSentAt)})`}
                               </Badge>
                             ) : selectedKpi.whatsappScheduledFor && (
                               <Badge variant="outline" className="text-xs bg-yellow-50 border-yellow-200 text-yellow-700">
                                 <Clock className="h-3 w-3 mr-1" />
-                                Geplant: {formatDate(selectedKpi.whatsappScheduledFor)}
+                                Geplanter Versand: {formatDateTime(selectedKpi.whatsappScheduledFor)}
                               </Badge>
                             )}
                           </div>

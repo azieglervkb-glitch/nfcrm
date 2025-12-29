@@ -7,41 +7,71 @@ const { auth } = NextAuth(authConfig);
 
 export default auth((req) => {
   const isLoggedIn = !!req.auth;
+  const user = req.auth?.user as any;
   const { pathname } = req.nextUrl;
+
+  // Public paths that don't require authentication
+  const publicPaths = [
+    "/login",
+    "/forgot-password",
+    "/reset-password",
+    "/setup-2fa",
+    "/form",
+    "/member",
+    "/api/auth",
+    "/api/webhooks",
+    "/api/forms",
+    "/api/setup",
+    "/api/cron",
+    "/api/member",
+  ];
+
+  const isPublicPath = publicPaths.some(
+    (path) => pathname === path || pathname.startsWith(path + "/")
+  );
+
+  // Paths that are allowed without 2FA (for 2FA setup)
+  const twoFASetupPaths = [
+    "/setup-2fa",
+    "/api/settings/profile/2fa",
+    "/api/auth/signout",
+  ];
+
+  const isTwoFASetupPath = twoFASetupPaths.some(
+    (path) => pathname === path || pathname.startsWith(path + "/")
+  );
 
   // Redirect logged in users away from login page
   if (isLoggedIn && pathname === "/login") {
+    // Check if 2FA is enabled, if not redirect to setup
+    if (!user?.twoFactorEnabled) {
+      return NextResponse.redirect(new URL("/setup-2fa", req.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 
   // Redirect unauthenticated users to login (for protected routes)
-  if (!isLoggedIn) {
-    // Public paths are handled by the authorized callback in auth.config
-    const publicPaths = [
-      "/login",
-      "/forgot-password",
-      "/reset-password",
-      "/form",
-      "/api/auth",
-      "/api/webhooks",
-      "/api/forms",
-      "/api/setup",
-      "/api/cron",
-    ];
-
-    const isPublicPath = publicPaths.some(
-      (path) => pathname === path || pathname.startsWith(path + "/")
-    );
-
-    if (!isPublicPath) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
+  if (!isLoggedIn && !isPublicPath) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect root to dashboard
+  // 2FA ENFORCEMENT: Redirect users without 2FA to setup page
+  if (isLoggedIn && !user?.twoFactorEnabled && !isTwoFASetupPath && !isPublicPath) {
+    return NextResponse.redirect(new URL("/setup-2fa", req.url));
+  }
+
+  // Redirect users with 2FA away from setup page
+  if (isLoggedIn && user?.twoFactorEnabled && pathname === "/setup-2fa") {
+    return NextResponse.redirect(new URL("/dashboard", req.url));
+  }
+
+  // Redirect root to dashboard (or setup-2fa if needed)
   if (pathname === "/" && isLoggedIn) {
+    if (!user?.twoFactorEnabled) {
+      return NextResponse.redirect(new URL("/setup-2fa", req.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", req.url));
   }
 

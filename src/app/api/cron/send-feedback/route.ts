@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(8, 0, 0, 0);
-        
+
         // Add random delay (0-60 minutes) so messages don't all arrive at exactly 8:00
         const randomDelayMinutes = Math.floor(Math.random() * 60);
         tomorrow.setMinutes(randomDelayMinutes);
@@ -87,6 +87,25 @@ export async function GET(request: NextRequest) {
       }
 
       try {
+        // IMPORTANT: Claim this KPI first with atomic update to prevent race conditions
+        // Only update if whatsappFeedbackSent is still false (prevents duplicate sends)
+        const claimed = await prisma.kpiWeek.updateMany({
+          where: {
+            id: kpi.id,
+            whatsappFeedbackSent: false, // Only claim if not already sent/claimed
+          },
+          data: {
+            whatsappFeedbackSent: true, // Mark as sent BEFORE actually sending
+            whatsappSentAt: new Date(),
+          },
+        });
+
+        // If no rows were updated, another process already claimed this KPI
+        if (claimed.count === 0) {
+          continue; // Skip - already being processed by another instance
+        }
+
+        // Now send the WhatsApp message
         const sent = await sendWhatsApp({
           phone: kpi.member.whatsappNummer,
           message: kpi.aiFeedbackText!,
@@ -95,11 +114,10 @@ export async function GET(request: NextRequest) {
         });
 
         if (sent) {
+          // Clear the schedule (already marked as sent above)
           await prisma.kpiWeek.update({
             where: { id: kpi.id },
             data: {
-              whatsappFeedbackSent: true,
-              whatsappSentAt: new Date(),
               whatsappScheduledFor: null,
             },
           });
@@ -119,9 +137,25 @@ export async function GET(request: NextRequest) {
 
           results.sent++;
         } else {
+          // Sending failed - revert the claim so it can be retried
+          await prisma.kpiWeek.update({
+            where: { id: kpi.id },
+            data: {
+              whatsappFeedbackSent: false,
+              whatsappSentAt: null,
+            },
+          });
           results.errors.push(`Failed to send to ${kpi.member.vorname}`);
         }
       } catch (error) {
+        // On error, revert the claim so it can be retried
+        await prisma.kpiWeek.update({
+          where: { id: kpi.id },
+          data: {
+            whatsappFeedbackSent: false,
+            whatsappSentAt: null,
+          },
+        }).catch(() => {}); // Ignore revert errors
         results.errors.push(`${kpi.member.vorname}: ${error}`);
       }
     }

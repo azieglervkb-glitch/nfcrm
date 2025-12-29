@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getWeekInfo, getPreviousWeek } from "@/lib/date-utils";
 import { sendKpiReminderEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateFormUrl } from "@/lib/app-url";
@@ -36,10 +36,12 @@ export async function GET(request: NextRequest) {
         reason: "Already ran this minute",
       });
     }
-    const weekStart = getCurrentWeekStart();
-    const { weekNumber } = getWeekInfo(weekStart);
+    // We remind about the PREVIOUS week (e.g., Monday reminder is for last week's KPIs)
+    const previousWeekStart = getPreviousWeek(getCurrentWeekStart());
+    const { weekNumber, year } = getWeekInfo(previousWeekStart);
 
-    // Find active members who haven't submitted KPIs this week
+    // Find active members who haven't submitted KPIs for last week
+    // Query by weekNumber and year for reliable matching (avoids timezone issues)
     const membersWithoutKpi = await prisma.member.findMany({
       where: {
         status: "AKTIV",
@@ -47,7 +49,8 @@ export async function GET(request: NextRequest) {
         kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         kpiWeeks: {
           none: {
-            weekStart,
+            weekNumber,
+            year,
           },
         },
       },
@@ -70,13 +73,14 @@ export async function GET(request: NextRequest) {
 
     for (const member of membersWithoutKpi) {
       try {
-        // Generate form token
+        // Generate form token with weekStart to ensure correct week on submission
         const token = randomBytes(32).toString("hex");
         await prisma.formToken.create({
           data: {
             token,
             type: "weekly",
             memberId: member.id,
+            weekStart: previousWeekStart, // Store which week this reminder is for
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           },
         });
@@ -89,7 +93,7 @@ export async function GET(request: NextRequest) {
 
         // Send WhatsApp (if not in quiet hours)
         if (member.whatsappNummer && !inQuietHours) {
-          const message = `Hey ${member.vorname}! 👋 Deine KPIs für diese Woche (KW${weekNumber}) fehlen noch. Hier ist dein Link:\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
+          const message = `Hey ${member.vorname}! 👋 Deine KPIs für letzte Woche (KW${weekNumber}) fehlen noch. Hier ist dein Link:\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
 
           const whatsappSent = await sendWhatsApp({
             phone: member.whatsappNummer,

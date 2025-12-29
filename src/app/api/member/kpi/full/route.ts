@@ -3,22 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
-
-function getWeekNumber(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
-}
-
-function getCurrentWeekStart(): Date {
-  const now = new Date();
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay() + 1);
-  weekStart.setHours(0, 0, 0, 0);
-  return weekStart;
-}
+import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -40,6 +25,8 @@ export async function GET(request: NextRequest) {
         trackEmpfehlungen: true,
         trackEntscheider: true,
         trackAbschluesse: true,
+        trackKonvertierung: true,
+        trackAbschlussquote: true,
         umsatzSollWoche: true,
         kontakteSoll: true,
         entscheiderSoll: true,
@@ -48,6 +35,8 @@ export async function GET(request: NextRequest) {
         termineAbschlussSoll: true,
         einheitenSoll: true,
         empfehlungenSoll: true,
+        konvertierungTerminSoll: true,
+        abschlussquoteSoll: true,
         kpiWeeks: {
           orderBy: { weekStart: "desc" },
           take: 12,
@@ -66,7 +55,7 @@ export async function GET(request: NextRequest) {
       return entryWeek.getTime() === weekStart.getTime();
     });
 
-    // History (exclude current week)
+    // History (exclude current week) - return all tracked values
     const history = member.kpiWeeks
       .filter((entry) => {
         const entryWeek = new Date(entry.weekStart);
@@ -77,6 +66,17 @@ export async function GET(request: NextRequest) {
         weekNumber: entry.weekNumber,
         umsatzIst: entry.umsatzIst ? Number(entry.umsatzIst) : null,
         kontakteIst: entry.kontakteIst,
+        entscheiderIst: entry.entscheiderIst,
+        termineVereinbartIst: entry.termineVereinbartIst,
+        termineStattgefundenIst: entry.termineStattgefundenIst,
+        termineErstIst: entry.termineErstIst,
+        termineFolgeIst: entry.termineFolgeIst,
+        termineAbschlussIst: entry.termineAbschlussIst,
+        termineNoshowIst: entry.termineNoshowIst,
+        einheitenIst: entry.einheitenIst,
+        empfehlungenIst: entry.empfehlungenIst,
+        konvertierungTerminIst: entry.konvertierungTerminIst ? Number(entry.konvertierungTerminIst) : null,
+        abschlussquoteIst: entry.abschlussquoteIst ? Number(entry.abschlussquoteIst) : null,
         feelingScore: entry.feelingScore,
       }));
 
@@ -90,6 +90,8 @@ export async function GET(request: NextRequest) {
         trackEmpfehlungen: member.trackEmpfehlungen,
         trackEntscheider: member.trackEntscheider,
         trackAbschluesse: member.trackAbschluesse,
+        trackKonvertierung: member.trackKonvertierung,
+        trackAbschlussquote: member.trackAbschlussquote,
         umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
         kontakteSoll: member.kontakteSoll,
         entscheiderSoll: member.entscheiderSoll,
@@ -98,6 +100,8 @@ export async function GET(request: NextRequest) {
         termineAbschlussSoll: member.termineAbschlussSoll,
         einheitenSoll: member.einheitenSoll,
         empfehlungenSoll: member.empfehlungenSoll,
+        konvertierungTerminSoll: member.konvertierungTerminSoll ? Number(member.konvertierungTerminSoll) : null,
+        abschlussquoteSoll: member.abschlussquoteSoll ? Number(member.abschlussquoteSoll) : null,
       },
       currentWeek: currentWeek
         ? {
@@ -107,10 +111,14 @@ export async function GET(request: NextRequest) {
             entscheiderIst: currentWeek.entscheiderIst,
             termineVereinbartIst: currentWeek.termineVereinbartIst,
             termineStattgefundenIst: currentWeek.termineStattgefundenIst,
+            termineErstIst: currentWeek.termineErstIst,
+            termineFolgeIst: currentWeek.termineFolgeIst,
             termineAbschlussIst: currentWeek.termineAbschlussIst,
             termineNoshowIst: currentWeek.termineNoshowIst,
             einheitenIst: currentWeek.einheitenIst,
             empfehlungenIst: currentWeek.empfehlungenIst,
+            konvertierungTerminIst: currentWeek.konvertierungTerminIst ? Number(currentWeek.konvertierungTerminIst) : null,
+            abschlussquoteIst: currentWeek.abschlussquoteIst ? Number(currentWeek.abschlussquoteIst) : null,
             feelingScore: currentWeek.feelingScore,
             heldentat: currentWeek.heldentat,
             blockiert: currentWeek.blockiert,
@@ -138,6 +146,8 @@ export async function POST(request: NextRequest) {
       entscheiderIst,
       termineVereinbartIst,
       termineStattgefundenIst,
+      termineErstIst,
+      termineFolgeIst,
       termineAbschlussIst,
       termineNoshowIst,
       einheitenIst,
@@ -161,8 +171,7 @@ export async function POST(request: NextRequest) {
     }
 
     const weekStart = getCurrentWeekStart();
-    const weekNumber = getWeekNumber(weekStart);
-    const year = weekStart.getFullYear();
+    const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Check if already submitted this week - no edits allowed
     const existingKpi = await prisma.kpiWeek.findUnique({
@@ -204,6 +213,8 @@ export async function POST(request: NextRequest) {
         entscheiderIst,
         termineVereinbartIst,
         termineStattgefundenIst,
+        termineErstIst,
+        termineFolgeIst,
         termineAbschlussIst,
         termineNoshowIst,
         einheitenIst,

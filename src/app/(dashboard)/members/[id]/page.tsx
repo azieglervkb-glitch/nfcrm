@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { canDeleteMembers } from "@/lib/permissions";
 import {
   SectionHeader,
   StatusBadge,
@@ -23,10 +25,15 @@ import {
   AlertTriangle,
   User,
   ExternalLink,
+  GraduationCap,
+  RefreshCw,
 } from "lucide-react";
 import { KpiWeeksList } from "@/components/member/KpiWeeksList";
 import { AddNoteDialog } from "@/components/member/AddNoteDialog";
+import { SyncLearningSuiteButton } from "@/components/member/SyncLearningSuiteButton";
+import { DeleteMemberButton } from "@/components/member/DeleteMemberButton";
 import { formatDate, formatRelativeTime } from "@/lib/date-utils";
+import { DefinedTooltip } from "@/components/ui/info-tooltip";
 
 async function getMember(id: string) {
   const member = await prisma.member.findUnique({
@@ -45,10 +52,14 @@ async function getMember(id: string) {
           entscheiderIst: true,
           termineVereinbartIst: true,
           termineStattgefundenIst: true,
+          termineErstIst: true,
+          termineFolgeIst: true,
           termineAbschlussIst: true,
           termineNoshowIst: true,
           einheitenIst: true,
           empfehlungenIst: true,
+          konvertierungTerminIst: true,
+          abschlussquoteIst: true,
           feelingScore: true,
           heldentat: true,
           blockiert: true,
@@ -84,18 +95,34 @@ async function getMember(id: string) {
   return member;
 }
 
+// Get module name based on number
+function getModuleName(moduleNumber: number | null): string {
+  if (!moduleNumber) return "Nicht gestartet";
+  const moduleNames: Record<number, string> = {
+    1: "Modul 1 - Grundlagen",
+    2: "Modul 2 - Aufbau",
+    3: "Modul 3 - Vertiefung",
+    4: "Modul 4 - Fortgeschritten",
+    5: "Modul 5 - Experte",
+    6: "Modul 6 - Meister",
+  };
+  return moduleNames[moduleNumber] || `Modul ${moduleNumber}`;
+}
+
 export default async function MemberDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const member = await getMember(id);
+  const [member, session] = await Promise.all([getMember(id), auth()]);
 
   if (!member) {
     notFound();
   }
 
+  const showDeleteButton = canDeleteMembers(session?.user);
+  const canHardDelete = session?.user?.role === "SUPER_ADMIN";
   const latestKpi = member.kpiWeeks[0];
 
   // Calculate performance percentage
@@ -146,6 +173,13 @@ export default async function MemberDetailPage({
                   Bearbeiten
                 </Link>
               </Button>
+              {showDeleteButton && (
+                <DeleteMemberButton
+                  memberId={member.id}
+                  memberName={`${member.vorname} ${member.nachname}`}
+                  canHardDelete={canHardDelete}
+                />
+              )}
             </div>
           </div>
         </CardContent>
@@ -163,7 +197,7 @@ export default async function MemberDetailPage({
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
             {/* Contact Info */}
             <Card>
               <CardHeader>
@@ -284,7 +318,10 @@ export default async function MemberDetailPage({
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Churn Risk</span>
+                  <span className="text-sm flex items-center">
+                    Churn Risk
+                    <DefinedTooltip term="churnRisk" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.churnRisk ? "text-danger" : "text-muted-foreground"
@@ -294,7 +331,10 @@ export default async function MemberDetailPage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Review Flag</span>
+                  <span className="text-sm flex items-center">
+                    Review Flag
+                    <DefinedTooltip term="reviewFlag" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.reviewFlag
@@ -306,7 +346,10 @@ export default async function MemberDetailPage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Upsell Kandidat</span>
+                  <span className="text-sm flex items-center">
+                    Upsell Kandidat
+                    <DefinedTooltip term="upsellCandidate" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.upsellCandidate
@@ -318,7 +361,10 @@ export default async function MemberDetailPage({
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">Danger Zone</span>
+                  <span className="text-sm flex items-center">
+                    Danger Zone
+                    <DefinedTooltip term="dangerZone" />
+                  </span>
                   <span
                     className={`text-sm font-medium ${
                       member.dangerZone ? "text-danger" : "text-muted-foreground"
@@ -327,6 +373,45 @@ export default async function MemberDetailPage({
                     {member.dangerZone ? "Ja" : "Nein"}
                   </span>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* LearningSuite Progress */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <GraduationCap className="h-4 w-4" />
+                  LearningSuite
+                </CardTitle>
+                <SyncLearningSuiteButton memberId={member.id} />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm flex items-center">
+                    Aktuelles Modul
+                    <DefinedTooltip term="currentModule" />
+                  </span>
+                  <span className="text-sm font-medium text-primary">
+                    {member.currentModule ? getModuleName(member.currentModule) : "—"}
+                  </span>
+                </div>
+                {member.learningSuiteLastSync && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Letzter Sync</span>
+                    <span className="text-xs text-muted-foreground">
+                      {formatRelativeTime(member.learningSuiteLastSync)}
+                    </span>
+                  </div>
+                )}
+                {member.learningSuiteUserId && (
+                  <div className="pt-2 border-t">
+                    <span className="text-xs text-muted-foreground font-mono">
+                      LS-ID: {member.learningSuiteUserId.length > 12
+                        ? `${member.learningSuiteUserId.substring(0, 12)}...`
+                        : member.learningSuiteUserId}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -358,6 +443,8 @@ export default async function MemberDetailPage({
                 kpiWeeks={member.kpiWeeks.map((kpi) => ({
                   ...kpi,
                   umsatzIst: kpi.umsatzIst ? Number(kpi.umsatzIst) : null,
+                  konvertierungTerminIst: kpi.konvertierungTerminIst ? Number(kpi.konvertierungTerminIst) : null,
+                  abschlussquoteIst: kpi.abschlussquoteIst ? Number(kpi.abschlussquoteIst) : null,
                 }))}
                 memberTracking={{
                   trackKontakte: member.trackKontakte,
@@ -366,6 +453,8 @@ export default async function MemberDetailPage({
                   trackEmpfehlungen: member.trackEmpfehlungen,
                   trackEntscheider: member.trackEntscheider,
                   trackAbschluesse: member.trackAbschluesse,
+                  trackKonvertierung: member.trackKonvertierung,
+                  trackAbschlussquote: member.trackAbschlussquote,
                   umsatzSollWoche: member.umsatzSollWoche ? Number(member.umsatzSollWoche) : null,
                   kontakteSoll: member.kontakteSoll,
                   entscheiderSoll: member.entscheiderSoll,
@@ -374,6 +463,8 @@ export default async function MemberDetailPage({
                   termineAbschlussSoll: member.termineAbschlussSoll,
                   einheitenSoll: member.einheitenSoll,
                   empfehlungenSoll: member.empfehlungenSoll,
+                  konvertierungTerminSoll: member.konvertierungTerminSoll ? Number(member.konvertierungTerminSoll) : null,
+                  abschlussquoteSoll: member.abschlussquoteSoll ? Number(member.abschlussquoteSoll) : null,
                 }}
               />
             </CardContent>

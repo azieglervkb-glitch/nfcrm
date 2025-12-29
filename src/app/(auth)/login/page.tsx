@@ -16,14 +16,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, Loader2, ShieldCheck, ArrowLeft } from "lucide-react";
+import { AlertCircle, Loader2, ShieldCheck, ArrowLeft, CheckCircle } from "lucide-react";
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const message = searchParams.get("message");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(
+    message === "2fa-setup-complete" ? "2FA erfolgreich eingerichtet! Bitte melde dich jetzt an." : null
+  );
 
   // 2FA state
   const [show2FA, setShow2FA] = useState(false);
@@ -232,6 +236,12 @@ function LoginForm() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              {successMessage && (
+                <div className="flex items-center gap-2 rounded-lg bg-green-50 p-3 text-sm text-green-700 border border-green-200">
+                  <CheckCircle className="h-4 w-4" />
+                  <span>{successMessage}</span>
+                </div>
+              )}
               {error && (
                 <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
                   <AlertCircle className="h-4 w-4" />

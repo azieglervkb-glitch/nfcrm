@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getCurrentWeekStart } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -45,11 +46,7 @@ export async function GET(request: NextRequest) {
 
     // Check current week
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() + mondayOffset);
-    weekStart.setHours(0, 0, 0, 0);
+    const weekStart = getCurrentWeekStart();
 
     const currentWeekKpi = member.kpiWeeks.find((kpi) => {
       const kpiWeekStart = new Date(kpi.weekStart);
