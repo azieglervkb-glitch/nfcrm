@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, Trophy, Euro, Phone, Calendar, Handshake, Target, Gift, Settings, Percent, TrendingUp, Package } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, AlertTriangle, Euro, Phone, Calendar, Handshake, Target, Gift, Settings, Percent, TrendingUp } from "lucide-react";
 
 // Zod 4 compatible helpers - include z.null() in union so Zod infers output as number | null
 // NaN from empty number inputs is transformed to null
@@ -315,8 +315,48 @@ export default function KpiSetupFormPage({
             </div>
           )}
 
+          {/* Fehler-Zusammenfassung */}
+          {Object.keys(errors).length > 0 && (
+            <div className="rounded-lg bg-red-50 border-2 border-red-200 p-4">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <h3 className="font-semibold text-red-800 mb-2">
+                    Bitte fülle alle Pflichtfelder aus
+                  </h3>
+                  <ul className="text-sm text-red-700 space-y-1 list-disc list-inside">
+                    {errors.umsatzSollMonat && (
+                      <li>Monatliches Umsatzziel ist ein Pflichtfeld</li>
+                    )}
+                    {errors.kontakteSoll && (
+                      <li>Ziel für Kontakte ist erforderlich wenn du Kontakte trackst</li>
+                    )}
+                    {errors.termineVereinbartSoll && (
+                      <li>Ziel für Termine ist erforderlich wenn du Termine trackst</li>
+                    )}
+                    {errors.konvertierungTerminSoll && (
+                      <li>Konvertierungsquote ist erforderlich wenn du Konvertierung trackst</li>
+                    )}
+                    {errors.abschlussquoteSoll && (
+                      <li>Abschlussquote ist erforderlich wenn du Abschlussquote trackst</li>
+                    )}
+                    {errors.einheitenSoll && (
+                      <li>Ziel für Einheiten ist erforderlich wenn du Einheiten trackst</li>
+                    )}
+                    {errors.empfehlungenSoll && (
+                      <li>Ziel für Empfehlungen ist erforderlich wenn du Empfehlungen trackst</li>
+                    )}
+                    {errors.hauptzielEinSatz && (
+                      <li>Dein Hauptziel in einem Satz ist ein Pflichtfeld</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Dein Ziel */}
-          <Card>
+          <Card className={errors.umsatzSollMonat ? "border-red-300 bg-red-50/30" : ""}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Euro className="h-5 w-5 text-primary" />
@@ -349,8 +389,18 @@ export default function KpiSetupFormPage({
           <Card>
             <CardHeader>
               <CardTitle>Welche KPIs möchtest du tracken?</CardTitle>
+              <CardDescription>
+                Wähle die KPIs aus, die du tracken möchtest und gib dein Ziel ein.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Wichtig:</strong> Wenn du eine Option aktivierst (Checkbox ankreuzt),
+                  musst du auch das zugehörige Ziel ausfüllen. Felder mit <span className="text-red-500 font-bold">*</span> sind
+                  Pflichtfelder.
+                </p>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Bitte suche die für dich richtigen KPIs aus und befülle das Formular. Felder die
                 du leer lässt werden im künftigen Tracking nicht berücksichtigt. Sollte sich deine
@@ -360,7 +410,9 @@ export default function KpiSetupFormPage({
               </p>
 
               {/* Kontakte */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-colors ${
+                errors.kontakteSoll ? "border-red-300 bg-red-50/50" : "border-border"
+              }`}>
                 <Checkbox
                   id="trackKontakte"
                   checked={trackKontakte}
@@ -417,7 +469,9 @@ export default function KpiSetupFormPage({
               </div>
 
               {/* Gesamttermine */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-colors ${
+                errors.termineVereinbartSoll ? "border-red-300 bg-red-50/50" : "border-border"
+              }`}>
                 <Checkbox
                   id="trackTermine"
                   checked={trackTermine}
@@ -457,7 +511,9 @@ export default function KpiSetupFormPage({
               </div>
 
               {/* Konvertierung (Kontakt → Termin %) */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-colors ${
+                errors.konvertierungTerminSoll ? "border-red-300 bg-red-50/50" : "border-border"
+              }`}>
                 <Checkbox
                   id="trackKonvertierung"
                   checked={trackKonvertierung}
@@ -502,7 +558,7 @@ export default function KpiSetupFormPage({
               </div>
 
               {/* Abschluss-Termine */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className="flex items-start gap-3 p-4 rounded-lg border-2 border-border">
                 <Checkbox
                   id="trackAbschluesse"
                   checked={trackAbschluesse}
@@ -539,7 +595,9 @@ export default function KpiSetupFormPage({
               </div>
 
               {/* Abschlussquote (Termin → Abschluss %) */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-colors ${
+                errors.abschlussquoteSoll ? "border-red-300 bg-red-50/50" : "border-border"
+              }`}>
                 <Checkbox
                   id="trackAbschlussquote"
                   checked={trackAbschlussquote}
@@ -584,7 +642,9 @@ export default function KpiSetupFormPage({
               </div>
 
               {/* Einheiten */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-colors ${
+                errors.einheitenSoll ? "border-red-300 bg-red-50/50" : "border-border"
+              }`}>
                 <Checkbox
                   id="trackEinheiten"
                   checked={trackEinheiten}
@@ -601,7 +661,7 @@ export default function KpiSetupFormPage({
                   {trackEinheiten && (
                     <div className="space-y-2">
                       <Label htmlFor="einheitenSoll" className="text-sm">
-                        Ziel: Einheiten / Punkte pro Woche
+                        Ziel: Einheiten / Punkte pro Woche <span className="text-red-500">*</span>
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Falls du Punkte/Einheiten für dein Unternehmen trackst.
@@ -613,14 +673,20 @@ export default function KpiSetupFormPage({
                         min={1}
                         {...register("einheitenSoll", { valueAsNumber: true })}
                         placeholder="z.B. 10"
+                        className={errors.einheitenSoll ? "border-destructive" : ""}
                       />
+                      {errors.einheitenSoll && (
+                        <p className="text-xs text-destructive">{errors.einheitenSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Empfehlungen */}
-              <div className="flex items-start gap-3 p-4 rounded-lg border">
+              <div className={`flex items-start gap-3 p-4 rounded-lg border-2 transition-colors ${
+                errors.empfehlungenSoll ? "border-red-300 bg-red-50/50" : "border-border"
+              }`}>
                 <Checkbox
                   id="trackEmpfehlungen"
                   checked={trackEmpfehlungen}
@@ -637,7 +703,7 @@ export default function KpiSetupFormPage({
                   {trackEmpfehlungen && (
                     <div className="space-y-2">
                       <Label htmlFor="empfehlungenSoll" className="text-sm">
-                        Ziel: Empfehlungen pro Woche
+                        Ziel: Empfehlungen pro Woche <span className="text-red-500">*</span>
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Wie viele Empfehlungen willst du pro Woche generieren?
@@ -649,7 +715,11 @@ export default function KpiSetupFormPage({
                         min={1}
                         {...register("empfehlungenSoll", { valueAsNumber: true })}
                         placeholder="z.B. 3"
+                        className={errors.empfehlungenSoll ? "border-destructive" : ""}
                       />
+                      {errors.empfehlungenSoll && (
+                        <p className="text-xs text-destructive">{errors.empfehlungenSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -658,7 +728,7 @@ export default function KpiSetupFormPage({
           </Card>
 
           {/* Kontext & Motivation */}
-          <Card>
+          <Card className={errors.hauptzielEinSatz ? "border-red-300 bg-red-50/30" : ""}>
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Settings className="h-5 w-5 text-gray-500" />
