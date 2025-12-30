@@ -191,6 +191,69 @@ export async function sendKpiReminderEmail(
 }
 
 /**
+ * KPI Deadline Reminder Email - Sent on Monday morning with deadline warning
+ * This is the second reminder with urgency messaging
+ */
+export async function sendKpiDeadlineReminderEmail(
+  member: { id: string; email: string; vorname: string },
+  formLink: string,
+  weekNumber: number,
+  deadlineTime: string = "20:00"
+): Promise<boolean> {
+  const content = `
+    <div class="content">
+      <p class="greeting">Hey ${member.vorname}! ⏰</p>
+
+      <div class="warning">
+        <div class="warning-title">⚠️ Letzte Chance für KW${weekNumber}</div>
+        <p style="margin: 0; color: #92400e;">
+          Du hast noch bis <strong>heute ${deadlineTime} Uhr</strong> Zeit, deine KPIs für die vergangene Woche einzutragen.
+          Danach ist das Tracking für diese Woche geschlossen.
+        </p>
+      </div>
+
+      <p class="text">
+        Nimm dir jetzt 2 Minuten und trag deine Zahlen ein – so behältst du den Überblick
+        über deine Entwicklung!
+      </p>
+
+      <div style="text-align: center;">
+        <a href="${formLink}" class="button">Jetzt KPIs eintragen →</a>
+      </div>
+
+      <p class="text" style="margin-top: 24px; color: #6b6b6b; font-size: 14px;">
+        Das Tracking-Fenster öffnet wieder am Freitag um 12:00 Uhr für die nächste Woche.
+      </p>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  const sent = await sendEmail({
+    to: member.email,
+    subject: `⏰ Letzte Chance: KPIs für KW${weekNumber} bis heute ${deadlineTime} Uhr`,
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+
+  if (sent) {
+    await prisma.communicationLog.create({
+      data: {
+        memberId: member.id,
+        channel: "EMAIL",
+        type: "REMINDER",
+        subject: `Letzte Chance: KPIs für KW${weekNumber}`,
+        content: `KPI Deadline Reminder für KW${weekNumber}`,
+        recipient: member.email,
+        sent: true,
+        sentAt: new Date(),
+      },
+    });
+  }
+
+  return sent;
+}
+
+/**
  * Weekly Feedback Email - Sent after KPI submission with AI feedback
  */
 export async function sendWeeklyFeedbackEmail(

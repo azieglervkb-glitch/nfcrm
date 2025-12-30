@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Bot, Shield, Sparkles, UserPlus } from "lucide-react";
+import { Settings, Mail, MessageSquare, Brain, Bell, Clock, AlertTriangle, TrendingUp, Loader2, Check, Activity, CheckCircle2, XCircle, AlertCircle, RefreshCw, Bot, Shield, Sparkles, UserPlus, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { InfoTooltip, DefinedTooltip } from "@/components/ui/info-tooltip";
 
@@ -22,6 +22,11 @@ interface SystemSettings {
   kpiReminderDay2: number;
   kpiReminderTime2: string;
   kpiReminderChannels: string[];
+  // KPI Tracking Window Settings
+  kpiTrackingWindowOpenDay: number;
+  kpiTrackingWindowOpenTime: string;
+  kpiTrackingWindowCloseDay: number;
+  kpiTrackingWindowCloseTime: string;
   aiFeedbackEnabled: boolean;
   aiFeedbackDelay: number;
   aiFeedbackDelayMin: number;
@@ -476,6 +481,83 @@ export function SettingsForm() {
                   <span className="text-sm">WhatsApp</span>
                 </label>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* KPI Tracking Window */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Tracking-Fenster
+            </CardTitle>
+            <CardDescription>
+              Wann ist das KPI-Formular geöffnet?
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Fenster öffnet</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  value={String(settings.kpiTrackingWindowOpenDay ?? 5)}
+                  onValueChange={(v) => updateSetting("kpiTrackingWindowOpenDay", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((day) => (
+                      <SelectItem key={day.value} value={String(day.value)}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="time"
+                  value={settings.kpiTrackingWindowOpenTime ?? "12:00"}
+                  onChange={(e) => updateSetting("kpiTrackingWindowOpenTime", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Fenster schließt</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <Select
+                  value={String(settings.kpiTrackingWindowCloseDay ?? 1)}
+                  onValueChange={(v) => updateSetting("kpiTrackingWindowCloseDay", parseInt(v))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((day) => (
+                      <SelectItem key={day.value} value={String(day.value)}>
+                        {day.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  type="time"
+                  value={settings.kpiTrackingWindowCloseTime ?? "20:00"}
+                  onChange={(e) => updateSetting("kpiTrackingWindowCloseTime", e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200 text-sm">
+              <p className="font-medium mb-1">Zeitfenster-Logik:</p>
+              <ul className="list-disc list-inside space-y-1 text-xs">
+                <li><strong>Freitag 12:00:</strong> Formular öffnet für die laufende Woche</li>
+                <li><strong>Freitag 19:00:</strong> 1. Erinnerung gesendet</li>
+                <li><strong>Montag 08:00:</strong> 2. Erinnerung (Deadline-Warnung)</li>
+                <li><strong>Montag 20:00:</strong> Formular schließt - nicht getrackt = raus</li>
+                <li><strong>Di-Fr 12:00:</strong> Formular gesperrt</li>
+              </ul>
             </div>
           </CardContent>
         </Card>

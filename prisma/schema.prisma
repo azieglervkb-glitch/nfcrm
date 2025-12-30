@@ -639,11 +639,17 @@ model SystemSettings {
 
   // KPI Reminder Schedule
   kpiReminderEnabled     Boolean @default(true)
-  kpiReminderDay1        Int     @default(0) // 0 = Sonntag
-  kpiReminderTime1       String  @default("18:00")
-  kpiReminderDay2        Int     @default(1) // 1 = Montag
-  kpiReminderTime2       String  @default("10:00")
+  kpiReminderDay1        Int     @default(5) // 5 = Freitag (1. Erinnerung)
+  kpiReminderTime1       String  @default("19:00")
+  kpiReminderDay2        Int     @default(1) // 1 = Montag (2. Erinnerung)
+  kpiReminderTime2       String  @default("08:00")
   kpiReminderChannels    String[] @default(["EMAIL", "WHATSAPP"])
+
+  // KPI Tracking Window (wann kann getrackt werden?)
+  kpiTrackingWindowOpenDay    Int     @default(5) // 5 = Freitag
+  kpiTrackingWindowOpenTime   String  @default("12:00")
+  kpiTrackingWindowCloseDay   Int     @default(1) // 1 = Montag
+  kpiTrackingWindowCloseTime  String  @default("20:00")
 
   // AI Feedback Settings
   aiFeedbackEnabled      Boolean @default(true)

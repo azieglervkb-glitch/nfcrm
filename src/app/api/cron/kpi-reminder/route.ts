@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentWeekStart, getWeekInfo, getPreviousWeek } from "@/lib/date-utils";
-import { sendKpiReminderEmail } from "@/lib/email";
+import { sendKpiReminderEmail, sendKpiDeadlineReminderEmail } from "@/lib/email";
 import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateFormUrl } from "@/lib/app-url";
 import { randomBytes } from "crypto";
@@ -30,17 +30,31 @@ export async function GET(request: NextRequest) {
     }
 
     // Prevent duplicate runs within the same minute
-    if (await hasRunThisMinute("CRON", "KPI Reminder Cron")) {
+    const reminderType = scheduleCheck.reminderType || 1;
+    if (await hasRunThisMinute("CRON", `KPI Reminder ${reminderType} Cron`)) {
       return NextResponse.json({
         skipped: true,
         reason: "Already ran this minute",
       });
     }
-    // We remind about the PREVIOUS week (e.g., Monday reminder is for last week's KPIs)
-    const previousWeekStart = getPreviousWeek(getCurrentWeekStart());
-    const { weekNumber, year } = getWeekInfo(previousWeekStart);
 
-    // Find active members who haven't submitted KPIs for last week
+    // Get settings for deadline time display
+    const settings = await prisma.systemSettings.findFirst({
+      where: { id: "default" },
+    });
+    const deadlineTime = settings?.kpiTrackingWindowCloseTime || "20:00";
+
+    // Reminder 1 (Friday): For the CURRENT week (still running)
+    // Reminder 2 (Monday): For the PREVIOUS week (deadline reminder)
+    const currentWeekStart = getCurrentWeekStart();
+    const previousWeekStart = getPreviousWeek(currentWeekStart);
+
+    // For reminder 1 (Friday), we remind about the current week
+    // For reminder 2 (Monday), we remind about the previous week
+    const targetWeekStart = reminderType === 1 ? currentWeekStart : previousWeekStart;
+    const { weekNumber, year } = getWeekInfo(targetWeekStart);
+
+    // Find active members who haven't submitted KPIs for the target week
     // Query by weekNumber and year for reliable matching (avoids timezone issues)
     const membersWithoutKpi = await prisma.member.findMany({
       where: {
@@ -66,6 +80,7 @@ export async function GET(request: NextRequest) {
       total: membersWithoutKpi.length,
       emailsSent: 0,
       whatsappSent: 0,
+      reminderType,
       errors: [] as string[],
     };
 
@@ -80,20 +95,34 @@ export async function GET(request: NextRequest) {
             token,
             type: "weekly",
             memberId: member.id,
-            weekStart: previousWeekStart, // Store which week this reminder is for
+            weekStart: targetWeekStart, // Store which week this reminder is for
             expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
           },
         });
 
         const formLink = generateFormUrl("weekly", token);
 
-        // Send Email
-        const emailSent = await sendKpiReminderEmail(member, formLink, weekNumber);
+        // Send Email - different template for reminder 1 vs 2
+        let emailSent = false;
+        if (reminderType === 1) {
+          // Friday reminder - standard template for current week
+          emailSent = await sendKpiReminderEmail(member, formLink, weekNumber);
+        } else {
+          // Monday reminder - deadline template with urgency
+          emailSent = await sendKpiDeadlineReminderEmail(member, formLink, weekNumber, deadlineTime);
+        }
         if (emailSent) results.emailsSent++;
 
         // Send WhatsApp (if not in quiet hours)
         if (member.whatsappNummer && !inQuietHours) {
-          const message = `Hey ${member.vorname}! 👋 Deine KPIs für letzte Woche (KW${weekNumber}) fehlen noch. Hier ist dein Link:\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
+          let message: string;
+          if (reminderType === 1) {
+            // Friday reminder - for current week
+            message = `Hey ${member.vorname}! 👋 Zeit für dein Weekly KPI-Update (KW${weekNumber})!\n\n${formLink}\n\nEs dauert nur 2 Minuten! 💪`;
+          } else {
+            // Monday reminder - deadline warning for previous week
+            message = `⏰ Hey ${member.vorname}! Letzte Chance für KW${weekNumber}!\n\nDu hast noch bis heute ${deadlineTime} Uhr Zeit, deine KPIs einzutragen. Danach ist das Tracking geschlossen.\n\n${formLink}\n\nNimm dir jetzt 2 Minuten! 💪`;
+          }
 
           const whatsappSent = await sendWhatsApp({
             phone: member.whatsappNummer,
@@ -105,7 +134,6 @@ export async function GET(request: NextRequest) {
 
           if (whatsappSent) {
             results.whatsappSent++;
-            // Note: Communication already logged by sendWhatsApp function
           }
         }
       } catch (error) {
@@ -117,9 +145,10 @@ export async function GET(request: NextRequest) {
     await prisma.automationLog.create({
       data: {
         ruleId: "CRON",
-        ruleName: "KPI Reminder Cron",
+        ruleName: `KPI Reminder ${reminderType} Cron`,
         triggered: true,
         actionsTaken: [
+          `Reminder ${reminderType} for KW${weekNumber}`,
           `${results.emailsSent} Emails sent`,
           `${results.whatsappSent} WhatsApp messages sent`,
         ],
@@ -129,7 +158,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: `KPI reminders sent for KW${weekNumber}`,
+      message: `KPI reminder ${reminderType} sent for KW${weekNumber}`,
       results,
     });
   } catch (error) {
