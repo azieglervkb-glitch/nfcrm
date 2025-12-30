@@ -296,8 +296,9 @@ export default function MemberPortalPage() {
     );
   }
 
-  // Show KPI Setup Form if kpiSetupCompleted is false - identical to token-based form
-  if (memberInfo && !memberInfo.kpiSetupCompleted) {
+  // Show KPI Setup Form if kpiSetupCompleted is false AND kpiTrackingEnabled is also false
+  // This handles legacy members who completed setup before kpiSetupCompleted was added
+  if (memberInfo && !memberInfo.kpiSetupCompleted && !memberInfo.kpiTrackingEnabled) {
     return (
       <div className="min-h-screen bg-muted/30 py-6 px-4 sm:py-8">
         <div className="max-w-4xl mx-auto">
