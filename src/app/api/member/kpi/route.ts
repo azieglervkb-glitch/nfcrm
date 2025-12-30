@@ -68,6 +68,7 @@ export async function GET(request: NextRequest) {
         label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
         weekNumber: getWeekInfo(previousWeek).weekNumber,
         isDefault: !previousWeekSubmitted && !currentWeekSubmitted, // Default if neither is submitted
+        isPreviousWeek: true, // This is the previous week
         alreadySubmitted: previousWeekSubmitted,
       });
     }
@@ -79,6 +80,7 @@ export async function GET(request: NextRequest) {
         label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
         weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
         isDefault: previousWeekSubmitted && !currentWeekSubmitted, // Default if previous is done but current is not
+        isPreviousWeek: false, // This is the current week
         alreadySubmitted: currentWeekSubmitted,
       });
     }

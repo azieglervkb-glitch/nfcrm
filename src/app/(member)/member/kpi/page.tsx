@@ -47,6 +47,7 @@ interface WeekOption {
   label: string;
   weekNumber: number;
   isDefault: boolean;
+  isPreviousWeek?: boolean; // Indicates if this is the previous week (not current)
 }
 
 interface KPIData {
@@ -211,7 +212,7 @@ export default function MemberKPIPage() {
                   {data.availableWeeks.map((week) => (
                     <SelectItem key={week.weekStart} value={week.weekStart}>
                       {week.label}
-                      {week.isDefault && " (Vorwoche)"}
+                      {week.isPreviousWeek && " (Vorwoche)"}
                     </SelectItem>
                   ))}
                 </SelectContent>
