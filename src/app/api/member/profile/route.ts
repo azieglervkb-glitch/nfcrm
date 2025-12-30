@@ -35,12 +35,22 @@ export async function GET(request: NextRequest) {
         onboardingCompleted: true,
         kpiTrackingEnabled: true,
         kpiSetupCompleted: true,
+        kpiTrackingActive: true, // Legacy field
+        hauptzielEinSatz: true, // Required field from KPI setup
       },
     });
 
     if (!member) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
+
+    // Determine if KPI setup is completed using multiple indicators
+    // This handles legacy members who completed setup before kpiSetupCompleted was added
+    const hasCompletedKpiSetup =
+      member.kpiSetupCompleted === true ||
+      member.kpiTrackingEnabled === true ||
+      member.kpiTrackingActive === true ||
+      (member.hauptzielEinSatz !== null && member.hauptzielEinSatz.length > 0);
 
     return NextResponse.json({
       id: member.id,
@@ -54,7 +64,7 @@ export async function GET(request: NextRequest) {
       membershipStart: member.membershipStart.toISOString(),
       onboardingCompleted: member.onboardingCompleted,
       kpiTrackingEnabled: member.kpiTrackingEnabled,
-      kpiSetupCompleted: member.kpiSetupCompleted,
+      kpiSetupCompleted: hasCompletedKpiSetup, // Use computed value
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
