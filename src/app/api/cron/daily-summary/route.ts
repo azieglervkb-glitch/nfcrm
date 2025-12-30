@@ -98,26 +98,24 @@ export async function GET(request: NextRequest) {
     });
 
     // Average performance this week (umsatz)
+    // Use goal snapshots stored at submission time for accurate historical performance
     const kpisWithUmsatz = await prisma.kpiWeek.findMany({
       where: {
         weekStart,
         umsatzIst: { not: null },
       },
-      include: {
-        member: {
-          select: {
-            umsatzSollWoche: true,
-          },
-        },
+      select: {
+        umsatzIst: true,
+        umsatzSollSnapshot: true, // Use snapshot instead of current member goal
       },
     });
 
     let avgPerformance = 0;
     if (kpisWithUmsatz.length > 0) {
       const performances = kpisWithUmsatz
-        .filter(k => k.member.umsatzSollWoche && Number(k.member.umsatzSollWoche) > 0)
+        .filter(k => k.umsatzSollSnapshot && Number(k.umsatzSollSnapshot) > 0)
         .map(k => {
-          const soll = Number(k.member.umsatzSollWoche);
+          const soll = Number(k.umsatzSollSnapshot);
           const ist = Number(k.umsatzIst);
           return (ist / soll) * 100;
         });
