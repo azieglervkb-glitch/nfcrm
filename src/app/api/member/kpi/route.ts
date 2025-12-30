@@ -131,7 +131,34 @@ export async function POST(request: NextRequest) {
     const weekNumber = getWeekNumber(weekStart);
     const year = weekStart.getFullYear();
 
-    // Upsert KPI entry
+    // Fetch member's current goals for snapshot
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        umsatzSollWoche: true,
+        kontakteSoll: true,
+        entscheiderSoll: true,
+        termineVereinbartSoll: true,
+        termineStattgefundenSoll: true,
+        termineAbschlussSoll: true,
+        einheitenSoll: true,
+        empfehlungenSoll: true,
+      },
+    });
+
+    // Goal snapshot data - copy current goals to KpiWeek
+    const goalSnapshot = {
+      umsatzSollWoche: member?.umsatzSollWoche,
+      kontakteSoll: member?.kontakteSoll,
+      entscheiderSoll: member?.entscheiderSoll,
+      termineVereinbartSoll: member?.termineVereinbartSoll,
+      termineStattgefundenSoll: member?.termineStattgefundenSoll,
+      termineAbschlussSoll: member?.termineAbschlussSoll,
+      einheitenSoll: member?.einheitenSoll,
+      empfehlungenSoll: member?.empfehlungenSoll,
+    };
+
+    // Upsert KPI entry with goal snapshot
     const kpiWeek = await prisma.kpiWeek.upsert({
       where: {
         memberId_weekStart: {
@@ -146,6 +173,8 @@ export async function POST(request: NextRequest) {
         umsatzIst,
         feelingScore,
         submittedAt: new Date(),
+        // Update goals snapshot on each save
+        ...goalSnapshot,
       },
       create: {
         memberId,
@@ -158,6 +187,8 @@ export async function POST(request: NextRequest) {
         umsatzIst,
         feelingScore,
         submittedAt: new Date(),
+        // Save goals snapshot on create
+        ...goalSnapshot,
       },
     });
 

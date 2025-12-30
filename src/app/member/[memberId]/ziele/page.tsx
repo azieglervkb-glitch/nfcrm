@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +33,9 @@ import {
   Calendar,
   Pencil,
   Save,
+  Users,
+  AlertTriangle,
+  Info,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -49,6 +54,7 @@ interface MemberGoals {
   trackAbschluesse: boolean;
   trackEinheiten: boolean;
   trackEmpfehlungen: boolean;
+  trackEntscheider: boolean;
 }
 
 export default function MemberGoalsPage() {
@@ -61,7 +67,7 @@ export default function MemberGoalsPage() {
   const [saving, setSaving] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
 
-  // Edit form state
+  // Edit form state - includes track toggles
   const [editForm, setEditForm] = useState({
     hauptzielEinSatz: "",
     umsatzSollWoche: "",
@@ -71,6 +77,12 @@ export default function MemberGoalsPage() {
     termineAbschlussSoll: "",
     einheitenSoll: "",
     empfehlungenSoll: "",
+    trackKontakte: false,
+    trackTermine: false,
+    trackAbschluesse: false,
+    trackEinheiten: false,
+    trackEmpfehlungen: false,
+    trackEntscheider: false,
   });
 
   useEffect(() => {
@@ -95,6 +107,12 @@ export default function MemberGoalsPage() {
           termineAbschlussSoll: data.termineAbschlussSoll?.toString() || "",
           einheitenSoll: data.einheitenSoll?.toString() || "",
           empfehlungenSoll: data.empfehlungenSoll?.toString() || "",
+          trackKontakte: data.trackKontakte || false,
+          trackTermine: data.trackTermine || false,
+          trackAbschluesse: data.trackAbschluesse || false,
+          trackEinheiten: data.trackEinheiten || false,
+          trackEmpfehlungen: data.trackEmpfehlungen || false,
+          trackEntscheider: data.trackEntscheider || false,
         });
       }
     } catch (error) {
@@ -120,13 +138,19 @@ export default function MemberGoalsPage() {
           termineAbschlussSoll: editForm.termineAbschlussSoll ? parseInt(editForm.termineAbschlussSoll) : null,
           einheitenSoll: editForm.einheitenSoll ? parseInt(editForm.einheitenSoll) : null,
           empfehlungenSoll: editForm.empfehlungenSoll ? parseInt(editForm.empfehlungenSoll) : null,
+          trackKontakte: editForm.trackKontakte,
+          trackTermine: editForm.trackTermine,
+          trackAbschluesse: editForm.trackAbschluesse,
+          trackEinheiten: editForm.trackEinheiten,
+          trackEmpfehlungen: editForm.trackEmpfehlungen,
+          trackEntscheider: editForm.trackEntscheider,
         }),
       });
 
       if (response.ok) {
         toast({
           title: "Ziele gespeichert!",
-          description: "Deine Ziele wurden erfolgreich aktualisiert.",
+          description: "Deine Änderungen gelten ab der nächsten Woche.",
         });
         setEditDialogOpen(false);
         fetchMemberGoals(); // Refresh data
@@ -159,6 +183,16 @@ export default function MemberGoalsPage() {
     { href: `/member/${memberId}/ziele`, icon: Target, label: "Meine Ziele" },
     { href: `/member/${memberId}/profil`, icon: User, label: "Profil" },
   ];
+
+  // Count active KPIs
+  const activeKpiCount = [
+    memberGoals?.trackKontakte,
+    memberGoals?.trackTermine,
+    memberGoals?.trackAbschluesse,
+    memberGoals?.trackEinheiten,
+    memberGoals?.trackEmpfehlungen,
+    memberGoals?.trackEntscheider,
+  ].filter(Boolean).length;
 
   if (loading) {
     return (
@@ -232,6 +266,19 @@ export default function MemberGoalsPage() {
             </Button>
           </div>
 
+          {/* Info Banner */}
+          <div className="rounded-lg bg-blue-50 border border-blue-200 p-4">
+            <div className="flex items-start gap-3">
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm text-blue-800">
+                  <strong>Wichtig:</strong> Wenn du deine Ziele änderst, gelten die neuen Werte ab der nächsten Woche.
+                  Vergangene Wochen behalten ihre ursprünglichen Ziele für einen fairen Vergleich.
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Hauptziel */}
           {memberGoals?.hauptzielEinSatz && (
             <Card className="bg-gradient-to-br from-red-600 to-red-700 text-white">
@@ -285,191 +332,368 @@ export default function MemberGoalsPage() {
             </CardContent>
           </Card>
 
-          {/* Aktivitätsziele */}
+          {/* Aktive KPIs */}
           <Card>
             <CardHeader>
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-full">
-                  <Calendar className="h-5 w-5 text-blue-600" />
+                  <BarChart3 className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg">Wöchentliche Aktivitätsziele</CardTitle>
-                  <CardDescription>Deine KPI-Ziele pro Woche</CardDescription>
+                  <CardTitle className="text-lg">Aktive KPIs</CardTitle>
+                  <CardDescription>
+                    {activeKpiCount} von 6 KPIs werden getrackt
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {memberGoals?.trackKontakte && memberGoals.kontakteSoll && (
-                  <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Kontakte</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {memberGoals.kontakteSoll}
-                    </p>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className={`p-3 rounded-lg border ${memberGoals?.trackKontakte ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${memberGoals?.trackKontakte ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${memberGoals?.trackKontakte ? "text-green-800" : "text-gray-500"}`}>
+                      Kontakte
+                    </span>
                   </div>
-                )}
-                {memberGoals?.trackTermine && memberGoals.termineVereinbartSoll && (
-                  <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Termine</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {memberGoals.termineVereinbartSoll}
+                  {memberGoals?.trackKontakte && memberGoals.kontakteSoll && (
+                    <p className="text-lg font-bold text-green-700 mt-1">
+                      Ziel: {memberGoals.kontakteSoll}
                     </p>
+                  )}
+                </div>
+
+                <div className={`p-3 rounded-lg border ${memberGoals?.trackTermine ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${memberGoals?.trackTermine ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${memberGoals?.trackTermine ? "text-green-800" : "text-gray-500"}`}>
+                      Termine
+                    </span>
                   </div>
-                )}
-                {memberGoals?.trackAbschluesse && memberGoals.termineAbschlussSoll && (
-                  <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Abschlüsse</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {memberGoals.termineAbschlussSoll}
+                  {memberGoals?.trackTermine && memberGoals.termineVereinbartSoll && (
+                    <p className="text-lg font-bold text-green-700 mt-1">
+                      Ziel: {memberGoals.termineVereinbartSoll}
                     </p>
+                  )}
+                </div>
+
+                <div className={`p-3 rounded-lg border ${memberGoals?.trackAbschluesse ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${memberGoals?.trackAbschluesse ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${memberGoals?.trackAbschluesse ? "text-green-800" : "text-gray-500"}`}>
+                      Abschlüsse
+                    </span>
                   </div>
-                )}
-                {memberGoals?.trackEinheiten && memberGoals.einheitenSoll && (
-                  <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Einheiten</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {memberGoals.einheitenSoll}
+                  {memberGoals?.trackAbschluesse && memberGoals.termineAbschlussSoll && (
+                    <p className="text-lg font-bold text-green-700 mt-1">
+                      Ziel: {memberGoals.termineAbschlussSoll}
                     </p>
+                  )}
+                </div>
+
+                <div className={`p-3 rounded-lg border ${memberGoals?.trackEinheiten ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${memberGoals?.trackEinheiten ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${memberGoals?.trackEinheiten ? "text-green-800" : "text-gray-500"}`}>
+                      Einheiten
+                    </span>
                   </div>
-                )}
-                {memberGoals?.trackEmpfehlungen && memberGoals.empfehlungenSoll && (
-                  <div className="p-4 bg-gray-50 rounded-lg text-center">
-                    <p className="text-sm text-gray-500 mb-1">Empfehlungen</p>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {memberGoals.empfehlungenSoll}
+                  {memberGoals?.trackEinheiten && memberGoals.einheitenSoll && (
+                    <p className="text-lg font-bold text-green-700 mt-1">
+                      Ziel: {memberGoals.einheitenSoll}
                     </p>
+                  )}
+                </div>
+
+                <div className={`p-3 rounded-lg border ${memberGoals?.trackEmpfehlungen ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${memberGoals?.trackEmpfehlungen ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${memberGoals?.trackEmpfehlungen ? "text-green-800" : "text-gray-500"}`}>
+                      Empfehlungen
+                    </span>
                   </div>
-                )}
+                  {memberGoals?.trackEmpfehlungen && memberGoals.empfehlungenSoll && (
+                    <p className="text-lg font-bold text-green-700 mt-1">
+                      Ziel: {memberGoals.empfehlungenSoll}
+                    </p>
+                  )}
+                </div>
+
+                <div className={`p-3 rounded-lg border ${memberGoals?.trackEntscheider ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"}`}>
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${memberGoals?.trackEntscheider ? "bg-green-500" : "bg-gray-300"}`} />
+                    <span className={`text-sm font-medium ${memberGoals?.trackEntscheider ? "text-green-800" : "text-gray-500"}`}>
+                      Entscheider
+                    </span>
+                  </div>
+                  {memberGoals?.trackEntscheider && (
+                    <p className="text-xs text-green-600 mt-1">Quote wird getrackt</p>
+                  )}
+                </div>
               </div>
-              {!memberGoals?.kontakteSoll &&
-               !memberGoals?.termineVereinbartSoll &&
-               !memberGoals?.termineAbschlussSoll &&
-               !memberGoals?.einheitenSoll &&
-               !memberGoals?.empfehlungenSoll && (
-                <p className="text-center text-gray-500 py-4">
-                  Keine Aktivitätsziele definiert
-                </p>
-              )}
             </CardContent>
           </Card>
         </div>
       </main>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - Redesigned like KPI Setup */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Ziele anpassen</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-red-600" />
+              Ziele anpassen
+            </DialogTitle>
             <DialogDescription>
-              Passe deine Ziele an deine aktuelle Situation an.
+              Passe deine Ziele an. Änderungen gelten ab der nächsten Woche.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6 mt-4">
-            {/* Hauptziel */}
-            <div className="space-y-2">
-              <Label htmlFor="hauptzielEinSatz">Mein Hauptziel</Label>
-              <Input
-                id="hauptzielEinSatz"
-                placeholder="z.B. 30.000€ Monatsumsatz bis Ende des Jahres"
-                value={editForm.hauptzielEinSatz}
-                onChange={(e) => setEditForm({ ...editForm, hauptzielEinSatz: e.target.value })}
-              />
+            {/* Info Box */}
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-amber-800">
+                  Vergangene Wochen behalten ihre ursprünglichen Ziele. So bleibt dein Fortschritt fair vergleichbar.
+                </p>
+              </div>
             </div>
+
+            {/* Hauptziel */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-red-600" />
+                  Dein Hauptziel
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Input
+                  placeholder="z.B. 30.000€ Monatsumsatz bis Ende des Jahres"
+                  value={editForm.hauptzielEinSatz}
+                  onChange={(e) => setEditForm({ ...editForm, hauptzielEinSatz: e.target.value })}
+                />
+              </CardContent>
+            </Card>
 
             {/* Umsatzziele */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700">Umsatzziele</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="umsatzSollWoche">Wochenziel (€)</Label>
-                  <Input
-                    id="umsatzSollWoche"
-                    type="number"
-                    placeholder="z.B. 5000"
-                    value={editForm.umsatzSollWoche}
-                    onChange={(e) => setEditForm({ ...editForm, umsatzSollWoche: e.target.value })}
-                  />
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  Umsatzziele
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="umsatzSollWoche">Wochenziel (€)</Label>
+                    <Input
+                      id="umsatzSollWoche"
+                      type="number"
+                      placeholder="z.B. 5000"
+                      value={editForm.umsatzSollWoche}
+                      onChange={(e) => setEditForm({ ...editForm, umsatzSollWoche: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="umsatzSollMonat">Monatsziel (€)</Label>
+                    <Input
+                      id="umsatzSollMonat"
+                      type="number"
+                      placeholder="z.B. 20000"
+                      value={editForm.umsatzSollMonat}
+                      onChange={(e) => setEditForm({ ...editForm, umsatzSollMonat: e.target.value })}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="umsatzSollMonat">Monatsziel (€)</Label>
-                  <Input
-                    id="umsatzSollMonat"
-                    type="number"
-                    placeholder="z.B. 20000"
-                    value={editForm.umsatzSollMonat}
-                    onChange={(e) => setEditForm({ ...editForm, umsatzSollMonat: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
-            {/* Aktivitätsziele */}
-            <div className="space-y-4">
-              <h3 className="font-semibold text-sm text-gray-700">Wöchentliche Aktivitätsziele</h3>
-              <div className="grid grid-cols-2 gap-4">
-                {memberGoals?.trackKontakte && (
-                  <div className="space-y-2">
-                    <Label htmlFor="kontakteSoll">Kontakte</Label>
-                    <Input
-                      id="kontakteSoll"
-                      type="number"
-                      placeholder="z.B. 20"
-                      value={editForm.kontakteSoll}
-                      onChange={(e) => setEditForm({ ...editForm, kontakteSoll: e.target.value })}
-                    />
+            {/* KPIs - Like KPI Setup Form */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  KPIs zum Tracken
+                </CardTitle>
+                <CardDescription>
+                  Aktiviere die KPIs, die für dein Business relevant sind.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {/* Kontakte */}
+                <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  editForm.trackKontakte ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                }`}>
+                  <Checkbox
+                    id="trackKontakte"
+                    checked={editForm.trackKontakte}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackKontakte: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="trackKontakte" className="font-medium cursor-pointer">
+                      Kontakte / Gespräche
+                    </Label>
+                    {editForm.trackKontakte && (
+                      <div>
+                        <Label htmlFor="kontakteSoll" className="text-xs text-gray-500">Wochenziel</Label>
+                        <Input
+                          id="kontakteSoll"
+                          type="number"
+                          placeholder="z.B. 20"
+                          value={editForm.kontakteSoll}
+                          onChange={(e) => setEditForm({ ...editForm, kontakteSoll: e.target.value })}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-                {memberGoals?.trackTermine && (
-                  <div className="space-y-2">
-                    <Label htmlFor="termineVereinbartSoll">Termine</Label>
-                    <Input
-                      id="termineVereinbartSoll"
-                      type="number"
-                      placeholder="z.B. 10"
-                      value={editForm.termineVereinbartSoll}
-                      onChange={(e) => setEditForm({ ...editForm, termineVereinbartSoll: e.target.value })}
-                    />
+                </div>
+
+                {/* Termine */}
+                <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  editForm.trackTermine ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                }`}>
+                  <Checkbox
+                    id="trackTermine"
+                    checked={editForm.trackTermine}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackTermine: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="trackTermine" className="font-medium cursor-pointer">
+                      Termine (vereinbart & stattgefunden)
+                    </Label>
+                    {editForm.trackTermine && (
+                      <div>
+                        <Label htmlFor="termineVereinbartSoll" className="text-xs text-gray-500">Wochenziel vereinbarte Termine</Label>
+                        <Input
+                          id="termineVereinbartSoll"
+                          type="number"
+                          placeholder="z.B. 10"
+                          value={editForm.termineVereinbartSoll}
+                          onChange={(e) => setEditForm({ ...editForm, termineVereinbartSoll: e.target.value })}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-                {memberGoals?.trackAbschluesse && (
-                  <div className="space-y-2">
-                    <Label htmlFor="termineAbschlussSoll">Abschlüsse</Label>
-                    <Input
-                      id="termineAbschlussSoll"
-                      type="number"
-                      placeholder="z.B. 5"
-                      value={editForm.termineAbschlussSoll}
-                      onChange={(e) => setEditForm({ ...editForm, termineAbschlussSoll: e.target.value })}
-                    />
+                </div>
+
+                {/* Abschlüsse */}
+                <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  editForm.trackAbschluesse ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                }`}>
+                  <Checkbox
+                    id="trackAbschluesse"
+                    checked={editForm.trackAbschluesse}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackAbschluesse: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="trackAbschluesse" className="font-medium cursor-pointer">
+                      Abschluss-Termine & No-Shows
+                    </Label>
+                    {editForm.trackAbschluesse && (
+                      <div>
+                        <Label htmlFor="termineAbschlussSoll" className="text-xs text-gray-500">Wochenziel Abschluss-Termine</Label>
+                        <Input
+                          id="termineAbschlussSoll"
+                          type="number"
+                          placeholder="z.B. 5"
+                          value={editForm.termineAbschlussSoll}
+                          onChange={(e) => setEditForm({ ...editForm, termineAbschlussSoll: e.target.value })}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-                {memberGoals?.trackEinheiten && (
-                  <div className="space-y-2">
-                    <Label htmlFor="einheitenSoll">Einheiten</Label>
-                    <Input
-                      id="einheitenSoll"
-                      type="number"
-                      placeholder="z.B. 10"
-                      value={editForm.einheitenSoll}
-                      onChange={(e) => setEditForm({ ...editForm, einheitenSoll: e.target.value })}
-                    />
+                </div>
+
+                {/* Einheiten */}
+                <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  editForm.trackEinheiten ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                }`}>
+                  <Checkbox
+                    id="trackEinheiten"
+                    checked={editForm.trackEinheiten}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackEinheiten: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="trackEinheiten" className="font-medium cursor-pointer">
+                      Verkaufte Einheiten
+                    </Label>
+                    {editForm.trackEinheiten && (
+                      <div>
+                        <Label htmlFor="einheitenSoll" className="text-xs text-gray-500">Wochenziel</Label>
+                        <Input
+                          id="einheitenSoll"
+                          type="number"
+                          placeholder="z.B. 10"
+                          value={editForm.einheitenSoll}
+                          onChange={(e) => setEditForm({ ...editForm, einheitenSoll: e.target.value })}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-                {memberGoals?.trackEmpfehlungen && (
-                  <div className="space-y-2">
-                    <Label htmlFor="empfehlungenSoll">Empfehlungen</Label>
-                    <Input
-                      id="empfehlungenSoll"
-                      type="number"
-                      placeholder="z.B. 3"
-                      value={editForm.empfehlungenSoll}
-                      onChange={(e) => setEditForm({ ...editForm, empfehlungenSoll: e.target.value })}
-                    />
+                </div>
+
+                {/* Empfehlungen */}
+                <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  editForm.trackEmpfehlungen ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                }`}>
+                  <Checkbox
+                    id="trackEmpfehlungen"
+                    checked={editForm.trackEmpfehlungen}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackEmpfehlungen: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 space-y-2">
+                    <Label htmlFor="trackEmpfehlungen" className="font-medium cursor-pointer">
+                      Erhaltene Empfehlungen
+                    </Label>
+                    {editForm.trackEmpfehlungen && (
+                      <div>
+                        <Label htmlFor="empfehlungenSoll" className="text-xs text-gray-500">Wochenziel</Label>
+                        <Input
+                          id="empfehlungenSoll"
+                          type="number"
+                          placeholder="z.B. 3"
+                          value={editForm.empfehlungenSoll}
+                          onChange={(e) => setEditForm({ ...editForm, empfehlungenSoll: e.target.value })}
+                          className="h-9 mt-1"
+                        />
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            </div>
+                </div>
+
+                {/* Entscheider */}
+                <div className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors ${
+                  editForm.trackEntscheider ? "bg-green-50 border-green-200" : "bg-gray-50 border-gray-200"
+                }`}>
+                  <Checkbox
+                    id="trackEntscheider"
+                    checked={editForm.trackEntscheider}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackEntscheider: !!checked })}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="trackEntscheider" className="font-medium cursor-pointer">
+                      Entscheider-Quote (von Kontakten)
+                    </Label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Tracke, wie viele deiner Kontakte Entscheider sind.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Button
               className="w-full bg-red-600 hover:bg-red-700"

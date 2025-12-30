@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         trackAbschluesse: true,
         trackEinheiten: true,
         trackEmpfehlungen: true,
+        trackEntscheider: true,
       },
     });
 
@@ -49,6 +50,7 @@ export async function GET(request: NextRequest) {
       trackAbschluesse: member.trackAbschluesse,
       trackEinheiten: member.trackEinheiten,
       trackEmpfehlungen: member.trackEmpfehlungen,
+      trackEntscheider: member.trackEntscheider,
     });
   } catch (error) {
     console.error("Failed to fetch member goals:", error);
@@ -72,6 +74,12 @@ export async function PUT(request: NextRequest) {
       termineAbschlussSoll,
       einheitenSoll,
       empfehlungenSoll,
+      trackKontakte,
+      trackTermine,
+      trackAbschluesse,
+      trackEinheiten,
+      trackEmpfehlungen,
+      trackEntscheider,
     } = body;
 
     if (!memberId) {
@@ -86,7 +94,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    // Update member goals
+    // Update member goals and tracking preferences
     const updated = await prisma.member.update({
       where: { id: memberId },
       data: {
@@ -98,6 +106,13 @@ export async function PUT(request: NextRequest) {
         termineAbschlussSoll,
         einheitenSoll,
         empfehlungenSoll,
+        // Only update track fields if they are provided (not undefined)
+        ...(trackKontakte !== undefined && { trackKontakte }),
+        ...(trackTermine !== undefined && { trackTermine }),
+        ...(trackAbschluesse !== undefined && { trackAbschluesse }),
+        ...(trackEinheiten !== undefined && { trackEinheiten }),
+        ...(trackEmpfehlungen !== undefined && { trackEmpfehlungen }),
+        ...(trackEntscheider !== undefined && { trackEntscheider }),
       },
     });
 

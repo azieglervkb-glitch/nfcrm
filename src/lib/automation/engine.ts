@@ -745,7 +745,7 @@ export async function runScheduledAutomations(): Promise<void> {
 }
 
 // R2: Silent Member (Scheduled reminder for missing KPI)
-export async function checkSilentMember(member: Member): Promise<void> {
+export async function checkSilentMember(member: Pick<Member, 'id' | 'email' | 'vorname' | 'nachname' | 'whatsappNummer'>): Promise<void> {
   const ruleId = "R2";
   const ruleName = "Silent Member";
 

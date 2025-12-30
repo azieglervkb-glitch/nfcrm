@@ -153,11 +153,45 @@ export async function POST(request: NextRequest) {
 
     const member = await prisma.member.findUnique({
       where: { id: memberId },
+      select: {
+        id: true,
+        vorname: true,
+        nachname: true,
+        hauptzielEinSatz: true,
+        trackKontakte: true,
+        trackTermine: true,
+        trackEinheiten: true,
+        trackEmpfehlungen: true,
+        trackEntscheider: true,
+        trackAbschluesse: true,
+        // Goal fields for snapshot
+        umsatzSollWoche: true,
+        umsatzSollMonat: true,
+        kontakteSoll: true,
+        entscheiderSoll: true,
+        termineVereinbartSoll: true,
+        termineStattgefundenSoll: true,
+        termineAbschlussSoll: true,
+        einheitenSoll: true,
+        empfehlungenSoll: true,
+      },
     });
 
     if (!member) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
+
+    // Goal snapshot data - copy current goals to KpiWeek
+    const goalSnapshot = {
+      umsatzSollWoche: member.umsatzSollWoche,
+      kontakteSoll: member.kontakteSoll,
+      entscheiderSoll: member.entscheiderSoll,
+      termineVereinbartSoll: member.termineVereinbartSoll,
+      termineStattgefundenSoll: member.termineStattgefundenSoll,
+      termineAbschlussSoll: member.termineAbschlussSoll,
+      einheitenSoll: member.einheitenSoll,
+      empfehlungenSoll: member.empfehlungenSoll,
+    };
 
     const weekStart = getCurrentWeekStart();
     const weekNumber = getWeekNumber(weekStart);
@@ -180,7 +214,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create KPI entry (no updates allowed)
+    // Create KPI entry with goal snapshot (no updates allowed)
     const kpiWeek = await prisma.kpiWeek.create({
       data: {
         memberId,
@@ -201,6 +235,8 @@ export async function POST(request: NextRequest) {
         blockiert,
         herausforderung,
         submittedAt: new Date(),
+        // Save goals snapshot at submission time
+        ...goalSnapshot,
       },
     });
 

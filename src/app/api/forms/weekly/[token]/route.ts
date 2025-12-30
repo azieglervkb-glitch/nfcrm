@@ -122,7 +122,19 @@ export async function POST(
       }
     }
 
-    // Create or update KPI week
+    // Goal snapshot data - copy current goals from member to KpiWeek
+    const goalSnapshot = {
+      umsatzSollWoche: formToken.member.umsatzSollWoche,
+      kontakteSoll: formToken.member.kontakteSoll,
+      entscheiderSoll: formToken.member.entscheiderSoll,
+      termineVereinbartSoll: formToken.member.termineVereinbartSoll,
+      termineStattgefundenSoll: formToken.member.termineStattgefundenSoll,
+      termineAbschlussSoll: formToken.member.termineAbschlussSoll,
+      einheitenSoll: formToken.member.einheitenSoll,
+      empfehlungenSoll: formToken.member.empfehlungenSoll,
+    };
+
+    // Create or update KPI week with goal snapshot
     const kpiWeek = await prisma.kpiWeek.upsert({
       where: {
         memberId_weekStart: {
@@ -138,11 +150,15 @@ export async function POST(
         ...validatedData,
         noshowQuote,
         submittedAt: new Date(),
+        // Save goals snapshot at submission time
+        ...goalSnapshot,
       },
       update: {
         ...validatedData,
         noshowQuote,
         submittedAt: new Date(),
+        // Update goals snapshot on each save
+        ...goalSnapshot,
       },
     });
 
