@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { sendChurnWarningEmail } from "@/lib/email";
 import { subWeeks } from "date-fns";
 import { checkSilentMember } from "@/lib/automation/engine";
+import { shouldRunScheduledAutomations, hasRunThisMinute } from "@/lib/cron-scheduler";
 
-// This endpoint should be called weekly (e.g., Monday 9:00)
+// This endpoint runs every minute and checks if it should execute based on settings
+// Settings: automationsDay, automationsTime
 // It handles:
 // - Churn risk detection (2+ weeks no KPI)
 // - Danger zone detection (4+ weeks no KPI)
@@ -21,6 +22,22 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // Check if we should run based on settings
+    const scheduleCheck = await shouldRunScheduledAutomations();
+    if (!scheduleCheck.shouldRun) {
+      return NextResponse.json({
+        skipped: true,
+        reason: scheduleCheck.reason,
+      });
+    }
+
+    // Prevent duplicate runs within the same minute
+    if (await hasRunThisMinute("CRON", "Scheduled Automations")) {
+      return NextResponse.json({
+        skipped: true,
+        reason: "Already ran this minute",
+      });
+    }
     const now = new Date();
     const twoWeeksAgo = subWeeks(now, 2);
     const fourWeeksAgo = subWeeks(now, 4);
@@ -38,7 +55,8 @@ export async function GET(request: NextRequest) {
     const inactiveMembers = await prisma.member.findMany({
       where: {
         status: "AKTIV",
-        kpiTrackingActive: true,
+        kpiTrackingEnabled: true,
+        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         churnRisk: false, // Not already flagged
       },
       include: {
@@ -149,14 +167,8 @@ export async function GET(request: NextRequest) {
       const activeMembers = await prisma.member.findMany({
         where: {
           status: "AKTIV",
-          kpiTrackingActive: true,
-        },
-        select: {
-          id: true,
-          email: true,
-          vorname: true,
-          nachname: true,
-          whatsappNummer: true,
+          kpiTrackingEnabled: true,
+        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
         },
       });
 

@@ -41,12 +41,20 @@ export async function GET(request: NextRequest) {
 
         if (response.ok) {
           return NextResponse.json({ success: true });
-        } else {
-          return NextResponse.json(
-            { error: "WhatsApp API returned error" },
-            { status: 400 }
-          );
         }
+
+        if (response.status === 404 || response.status === 405) {
+          return NextResponse.json({
+            success: true,
+            message: "Health endpoint not supported; credentials are configured",
+            status: response.status,
+          });
+        }
+
+        return NextResponse.json(
+          { error: "WhatsApp API returned error", status: response.status },
+          { status: 400 }
+        );
       } catch {
         // If the health endpoint doesn't exist, assume connection is OK if we have credentials
         return NextResponse.json({ success: true, message: "Credentials configured" });

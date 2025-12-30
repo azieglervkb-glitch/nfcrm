@@ -34,8 +34,9 @@ async function getKpiData(weekStart: Date) {
         umsatzSollWoche: true,
       },
     }),
+    // Query by weekNumber and year for reliable matching (avoids timezone issues)
     prisma.kpiWeek.findMany({
-      where: { weekStart },
+      where: { weekNumber, year },
       include: {
         member: {
           select: {

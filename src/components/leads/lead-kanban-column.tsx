@@ -16,6 +16,8 @@ interface Lead {
   interessiertAn: string | null;
   notizen: string | null;
   createdAt: string;
+  assignedToId: string | null;
+  assignedTo: { id: string; vorname: string; nachname: string } | null;
 }
 
 interface StatusOption {

@@ -30,8 +30,12 @@ function getInitials(vorname: string, nachname: string): string {
 }
 
 export function Header({ user, breadcrumbs, onMenuClick }: HeaderProps) {
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: "/login" });
+  const handleLogout = () => {
+    // Use window.location for reliable redirect instead of next-auth's built-in redirect
+    // which can fail if NEXTAUTH_URL is not configured
+    signOut({ redirect: false }).then(() => {
+      window.location.href = "/login";
+    });
   };
 
   return (

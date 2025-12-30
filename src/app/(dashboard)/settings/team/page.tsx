@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -35,6 +35,8 @@ import {
   Mail,
   ClipboardList,
   Eye,
+  Camera,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -48,18 +50,34 @@ const TASK_RULES = [
   { id: "P2", name: "Funnel-Leak", description: "Training bei Konversionsproblemen" },
 ];
 
+// Granulare Berechtigungen für Dashboard-Bereiche
+const PERMISSIONS = [
+  { id: "dashboard", name: "Dashboard", description: "Zugriff auf die Übersichtsseite" },
+  { id: "leads", name: "Leads", description: "Leads anzeigen und bearbeiten" },
+  { id: "members", name: "Mitglieder", description: "Mitglieder anzeigen und bearbeiten" },
+  { id: "kpis", name: "KPIs", description: "KPI-Übersicht und Ausstehende" },
+  { id: "tasks", name: "Tasks", description: "Tasks anzeigen und bearbeiten" },
+  { id: "automations", name: "Automationen", description: "Regeln und Logs einsehen" },
+  { id: "communications", name: "Kommunikation", description: "Nachrichten-Log und Templates" },
+  { id: "upsell", name: "Upsell Pipeline", description: "Upsell-Kandidaten verwalten" },
+  { id: "settings", name: "Einstellungen", description: "System-Einstellungen (nur Admins)" },
+  { id: "team", name: "Team", description: "Team-Verwaltung (nur Admins)" },
+];
+
 interface TeamMember {
   id: string;
   email: string;
   vorname: string;
   nachname: string;
-  role: "SUPER_ADMIN" | "ADMIN" | "COACH";
+  role: "SUPER_ADMIN" | "ADMIN" | "COACH" | "MITARBEITER";
+  avatarUrl: string | null;
   isActive: boolean;
   lastLogin: string | null;
   createdAt: string;
   taskRuleIds: string[];
   showAllTasks: boolean;
-  _count?: { assignedMembers: number };
+  permissions: string[];
+  _count?: { assignedMembers: number; assignedLeads: number };
 }
 
 export default function TeamPage() {
@@ -74,11 +92,17 @@ export default function TeamPage() {
     vorname: "",
     nachname: "",
     password: "",
-    role: "COACH" as "SUPER_ADMIN" | "ADMIN" | "COACH",
+    role: "COACH" as "SUPER_ADMIN" | "ADMIN" | "COACH" | "MITARBEITER",
     isActive: true,
     taskRuleIds: [] as string[],
     showAllTasks: false,
+    permissions: ["dashboard", "tasks"] as string[],
   });
+
+  // Avatar upload state
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     fetchTeam();
@@ -109,7 +133,10 @@ export default function TeamPage() {
       isActive: member.isActive,
       taskRuleIds: member.taskRuleIds || [],
       showAllTasks: member.showAllTasks || false,
+      permissions: member.permissions || ["dashboard", "tasks"],
     });
+    setAvatarPreview(member.avatarUrl);
+    setAvatarFile(null);
     setIsDialogOpen(true);
   }
 
@@ -124,8 +151,115 @@ export default function TeamPage() {
       isActive: true,
       taskRuleIds: TASK_RULES.map(r => r.id), // Alle Regeln standardmäßig aktiv
       showAllTasks: false,
+      permissions: ["dashboard", "leads", "members", "kpis", "tasks"], // Standard für Coach
     });
+    setAvatarPreview(null);
+    setAvatarFile(null);
     setIsDialogOpen(true);
+  }
+
+  function handleAvatarSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!validTypes.includes(file.type)) {
+      toast.error("Ungültiger Dateityp. Erlaubt: JPG, PNG, WebP, GIF");
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Datei zu groß. Maximum: 5MB");
+      return;
+    }
+
+    setAvatarFile(file);
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAvatarPreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function uploadAvatar(userId: string): Promise<string | null> {
+    if (!avatarFile) return null;
+
+    setUploadingAvatar(true);
+    try {
+      const formData = new FormData();
+      formData.append("avatar", avatarFile);
+
+      const res = await fetch(`/api/team/${userId}/avatar`, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return data.avatarUrl;
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Fehler beim Hochladen des Avatars");
+        return null;
+      }
+    } catch (error) {
+      toast.error("Fehler beim Hochladen des Avatars");
+      return null;
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  async function removeAvatar() {
+    if (!editingMember) return;
+
+    setUploadingAvatar(true);
+    try {
+      const res = await fetch(`/api/team/${editingMember.id}/avatar`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) {
+        setAvatarPreview(null);
+        setAvatarFile(null);
+        toast.success("Avatar entfernt");
+        fetchTeam();
+      } else {
+        const error = await res.json();
+        toast.error(error.error || "Fehler beim Entfernen des Avatars");
+      }
+    } catch (error) {
+      toast.error("Fehler beim Entfernen des Avatars");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  function togglePermission(permId: string) {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: prev.permissions.includes(permId)
+        ? prev.permissions.filter((id) => id !== permId)
+        : [...prev.permissions, permId],
+    }));
+  }
+
+  function selectAllPermissions() {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: PERMISSIONS.map((p) => p.id),
+    }));
+  }
+
+  function deselectAllPermissions() {
+    setFormData((prev) => ({
+      ...prev,
+      permissions: [],
+    }));
   }
 
   function toggleTaskRule(ruleId: string) {
@@ -171,6 +305,14 @@ export default function TeamPage() {
       });
 
       if (res.ok) {
+        const savedUser = await res.json();
+        const userId = editingMember ? editingMember.id : savedUser.id;
+
+        // Upload avatar if selected
+        if (avatarFile && userId) {
+          await uploadAvatar(userId);
+        }
+
         toast.success(
           editingMember ? "Teammitglied aktualisiert" : "Teammitglied erstellt"
         );
@@ -223,6 +365,8 @@ export default function TeamPage() {
         return "Admin";
       case "COACH":
         return "Coach";
+      case "MITARBEITER":
+        return "Mitarbeiter";
       default:
         return role;
     }
@@ -234,10 +378,15 @@ export default function TeamPage() {
         return "destructive" as const;
       case "ADMIN":
         return "default" as const;
+      case "MITARBEITER":
+        return "outline" as const;
       default:
         return "secondary" as const;
     }
   }
+
+  // Prüft ob Permissions-UI angezeigt werden soll (nur für COACH/MITARBEITER)
+  const showPermissionsUI = formData.role === "COACH" || formData.role === "MITARBEITER";
 
   if (loading) {
     return (
@@ -263,7 +412,7 @@ export default function TeamPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
@@ -309,6 +458,21 @@ export default function TeamPage() {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-100">
+                <Users className="h-6 w-6 text-gray-600" />
+              </div>
+              <div>
+                <div className="text-2xl font-bold">
+                  {team.filter((m) => m.role === "MITARBEITER").length}
+                </div>
+                <p className="text-sm text-muted-foreground">Mitarbeiter</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Team List */}
@@ -339,6 +503,9 @@ export default function TeamPage() {
                   }`}
                 >
                   <Avatar className="h-12 w-12">
+                    {member.avatarUrl && (
+                      <AvatarImage src={member.avatarUrl} alt={`${member.vorname} ${member.nachname}`} />
+                    )}
                     <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                       {member.vorname.charAt(0)}
                       {member.nachname.charAt(0)}
@@ -400,6 +567,49 @@ export default function TeamPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-4">
+            {/* Avatar Upload */}
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  {avatarPreview && (
+                    <AvatarImage src={avatarPreview} alt="Preview" />
+                  )}
+                  <AvatarFallback className="bg-primary/10 text-primary font-semibold text-xl">
+                    {formData.vorname?.charAt(0) || "?"}
+                    {formData.nachname?.charAt(0) || "?"}
+                  </AvatarFallback>
+                </Avatar>
+                {avatarPreview && editingMember && (
+                  <button
+                    type="button"
+                    onClick={removeAvatar}
+                    disabled={uploadingAvatar}
+                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+              <div className="flex-1">
+                <Label className="mb-2 block">Profilbild</Label>
+                <div className="flex gap-2">
+                  <label className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded-md cursor-pointer hover:bg-secondary/80 text-sm">
+                    <Camera className="h-4 w-4" />
+                    {avatarPreview ? "Ändern" : "Hochladen"}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      className="hidden"
+                      onChange={handleAvatarSelect}
+                    />
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  JPG, PNG, WebP oder GIF (max. 5MB)
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="vorname">Vorname</Label>
@@ -454,7 +664,7 @@ export default function TeamPage() {
               <Label>Rolle</Label>
               <Select
                 value={formData.role}
-                onValueChange={(value: "SUPER_ADMIN" | "ADMIN" | "COACH") =>
+                onValueChange={(value: "SUPER_ADMIN" | "ADMIN" | "COACH" | "MITARBEITER") =>
                   setFormData({ ...formData, role: value })
                 }
               >
@@ -462,11 +672,18 @@ export default function TeamPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="MITARBEITER">Mitarbeiter</SelectItem>
                   <SelectItem value="COACH">Coach</SelectItem>
                   <SelectItem value="ADMIN">Admin</SelectItem>
                   <SelectItem value="SUPER_ADMIN">Super-Admin</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                {formData.role === "SUPER_ADMIN" && "Voller Zugriff auf alles"}
+                {formData.role === "ADMIN" && "Voller Zugriff, kann Team verwalten"}
+                {formData.role === "COACH" && "Zugriff auf zugewiesene Leads/Members + ausgewählte Bereiche"}
+                {formData.role === "MITARBEITER" && "Eingeschränkter Zugriff auf ausgewählte Bereiche"}
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -479,6 +696,62 @@ export default function TeamPage() {
               />
               <Label htmlFor="isActive">Account aktiv</Label>
             </div>
+
+            {/* Berechtigungen (nur für COACH/MITARBEITER) */}
+            {showPermissionsUI && (
+              <div className="space-y-3 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <Label className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Berechtigungen
+                  </Label>
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={selectAllPermissions}
+                    >
+                      Alle
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={deselectAllPermissions}
+                    >
+                      Keine
+                    </Button>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Auf welche Bereiche hat dieser Benutzer Zugriff?
+                </p>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                  {PERMISSIONS.map((perm) => (
+                    <div
+                      key={perm.id}
+                      className="flex items-start gap-3 p-2 rounded-lg border bg-muted/30 hover:bg-muted/50 transition-colors"
+                    >
+                      <Checkbox
+                        id={`perm-${perm.id}`}
+                        checked={formData.permissions.includes(perm.id)}
+                        onCheckedChange={() => togglePermission(perm.id)}
+                      />
+                      <label
+                        htmlFor={`perm-${perm.id}`}
+                        className="flex-1 cursor-pointer"
+                      >
+                        <span className="font-medium text-sm">{perm.name}</span>
+                        <p className="text-xs text-muted-foreground">
+                          {perm.description}
+                        </p>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Task-Regeln */}
             <div className="space-y-3 border-t pt-4">

@@ -27,19 +27,22 @@ async function getDashboardData() {
     prisma.member.count({ where: { status: "AKTIV" } }),
     prisma.member.count({ where: { churnRisk: true, status: "AKTIV" } }),
     prisma.member.count({ where: { upsellCandidate: true, status: "AKTIV" } }),
+    // Query by weekNumber and year for reliable matching (avoids timezone issues)
     prisma.member.count({
       where: {
         status: "AKTIV",
         kpiWeeks: {
           none: {
-            weekStart,
+            weekNumber,
+            year,
           },
         },
       },
     }),
     prisma.kpiWeek.count({
       where: {
-        weekStart,
+        weekNumber,
+        year,
       },
     }),
     prisma.task.count({ where: { status: "OPEN" } }),
@@ -53,7 +56,7 @@ async function getDashboardData() {
       orderBy: { updatedAt: "desc" },
       include: {
         kpiWeeks: {
-          where: { weekStart },
+          where: { weekNumber, year },
           take: 1,
         },
       },

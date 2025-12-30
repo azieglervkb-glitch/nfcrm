@@ -4,9 +4,6 @@ import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 
 // This endpoint should be called by an external cron service every 5 minutes
 // It sends scheduled WhatsApp feedback messages when their scheduled time arrives
-//
-// Example: cron-job.org, Railway Cron, or VPS crontab
-// Recommended: */5 * * * * (every 5 minutes)
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -20,6 +17,14 @@ export async function GET(request: NextRequest) {
   try {
     const now = new Date();
     const quietHours = await isInQuietHours();
+
+    const results = {
+      processed: 0,
+      sent: 0,
+      skippedQuietHours: 0,
+      skippedNoNumber: 0,
+      errors: [] as string[],
+    };
 
     // Find KPI weeks with scheduled feedback that's due
     const pendingFeedback = await prisma.kpiWeek.findMany({
@@ -46,27 +51,11 @@ export async function GET(request: NextRequest) {
       take: 20, // Process max 20 at a time to avoid timeouts
     });
 
-    if (pendingFeedback.length === 0) {
-      return NextResponse.json({
-        success: true,
-        message: "No pending feedback to send",
-        processed: 0,
-      });
-    }
-
-    const results = {
-      processed: 0,
-      sent: 0,
-      skippedQuietHours: 0,
-      skippedNoNumber: 0,
-      errors: [] as string[],
-    };
-
     for (const kpi of pendingFeedback) {
       results.processed++;
 
       if (!kpi.member.whatsappNummer) {
-        // No WhatsApp number, mark as done
+        // No WhatsApp number, clear schedule so it won't retry
         await prisma.kpiWeek.update({
           where: { id: kpi.id },
           data: {
@@ -78,10 +67,14 @@ export async function GET(request: NextRequest) {
       }
 
       if (quietHours) {
-        // Reschedule to next available time (8:00 AM)
+        // Reschedule to next available time (8:00 AM + random 0-60 min delay)
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(8, 0, 0, 0);
+
+        // Add random delay (0-60 minutes) so messages don't all arrive at exactly 8:00
+        const randomDelayMinutes = Math.floor(Math.random() * 60);
+        tomorrow.setMinutes(randomDelayMinutes);
 
         await prisma.kpiWeek.update({
           where: { id: kpi.id },
@@ -94,6 +87,25 @@ export async function GET(request: NextRequest) {
       }
 
       try {
+        // IMPORTANT: Claim this KPI first with atomic update to prevent race conditions
+        // Only update if whatsappFeedbackSent is still false (prevents duplicate sends)
+        const claimed = await prisma.kpiWeek.updateMany({
+          where: {
+            id: kpi.id,
+            whatsappFeedbackSent: false, // Only claim if not already sent/claimed
+          },
+          data: {
+            whatsappFeedbackSent: true, // Mark as sent BEFORE actually sending
+            whatsappSentAt: new Date(),
+          },
+        });
+
+        // If no rows were updated, another process already claimed this KPI
+        if (claimed.count === 0) {
+          continue; // Skip - already being processed by another instance
+        }
+
+        // Now send the WhatsApp message
         const sent = await sendWhatsApp({
           phone: kpi.member.whatsappNummer,
           message: kpi.aiFeedbackText!,
@@ -102,11 +114,10 @@ export async function GET(request: NextRequest) {
         });
 
         if (sent) {
+          // Clear the schedule (already marked as sent above)
           await prisma.kpiWeek.update({
             where: { id: kpi.id },
             data: {
-              whatsappFeedbackSent: true,
-              whatsappSentAt: new Date(),
               whatsappScheduledFor: null,
             },
           });
@@ -126,27 +137,49 @@ export async function GET(request: NextRequest) {
 
           results.sent++;
         } else {
+          // Sending failed - revert the claim so it can be retried
+          await prisma.kpiWeek.update({
+            where: { id: kpi.id },
+            data: {
+              whatsappFeedbackSent: false,
+              whatsappSentAt: null,
+            },
+          });
           results.errors.push(`Failed to send to ${kpi.member.vorname}`);
         }
       } catch (error) {
+        // On error, revert the claim so it can be retried
+        await prisma.kpiWeek.update({
+          where: { id: kpi.id },
+          data: {
+            whatsappFeedbackSent: false,
+            whatsappSentAt: null,
+          },
+        }).catch(() => {}); // Ignore revert errors
         results.errors.push(`${kpi.member.vorname}: ${error}`);
       }
     }
 
-    // Log the cron run if any messages were processed
-    if (results.processed > 0) {
-      await prisma.automationLog.create({
-        data: {
-          ruleId: "CRON_FEEDBACK",
-          ruleName: "Scheduled Feedback Sender",
-          triggered: true,
-          actionsTaken: [
-            `${results.sent} feedback messages sent`,
-            `${results.skippedQuietHours} rescheduled (quiet hours)`,
-            `${results.skippedNoNumber} skipped (no WhatsApp)`,
-          ],
-          details: results,
-        },
+    // Always log the cron run (even if processed=0)
+    await prisma.automationLog.create({
+      data: {
+        ruleId: "CRON_FEEDBACK",
+        ruleName: "Scheduled Feedback Sender",
+        triggered: true,
+        actionsTaken: [
+          `${results.sent} feedback messages sent`,
+          `${results.skippedQuietHours} rescheduled (quiet hours)`,
+          `${results.skippedNoNumber} skipped (no WhatsApp)`,
+        ],
+        details: { ...results, quietHours, pendingFound: pendingFeedback.length },
+      },
+    });
+
+    if (pendingFeedback.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No pending feedback to send",
+        processed: 0,
       });
     }
 

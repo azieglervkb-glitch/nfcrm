@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { SectionHeader } from "@/components/common";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Clock, CheckCircle2, Circle, Users, User } from "lucide-react";
+import { Clock, CheckCircle2, Circle, Users, User } from "lucide-react";
 import { TaskCard } from "@/components/tasks/task-card";
+import { CreateTaskDialog } from "@/components/tasks/CreateTaskDialog";
 import Link from "next/link";
 
 interface TasksPageProps {
@@ -96,10 +96,7 @@ export default async function TasksPage({ searchParams }: TasksPageProps) {
               Alle
             </Link>
           </div>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Task erstellen
-          </Button>
+          <CreateTaskDialog />
         </div>
       </div>
 

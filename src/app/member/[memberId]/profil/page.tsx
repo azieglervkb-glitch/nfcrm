@@ -34,7 +34,7 @@ interface ProfileData {
   status: string;
   membershipStart: string;
   onboardingCompleted: boolean;
-  kpiTrackingActive: boolean;
+  kpiSetupCompleted: boolean;
 }
 
 export default function MemberProfilePage() {
@@ -243,7 +243,7 @@ export default function MemberProfilePage() {
                     <div className="p-4 bg-gray-50 rounded-lg">
                       <p className="text-sm text-gray-600">KPI-Tracking</p>
                       <p className="font-medium">
-                        {profile.kpiTrackingActive ? (
+                        {profile.kpiSetupCompleted ? (
                           <span className="text-green-600">✓ Aktiv</span>
                         ) : (
                           <span className="text-orange-600">Nicht eingerichtet</span>

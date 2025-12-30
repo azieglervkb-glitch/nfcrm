@@ -13,6 +13,7 @@ interface DashboardLayoutProps {
     email?: string;
     role: string;
     avatarUrl?: string | null;
+    permissions?: string[];
   };
   breadcrumbs?: { label: string; href?: string }[];
 }

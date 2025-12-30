@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
-import { sendEmail } from "@/lib/email";
+import { sendOnboardingNotification } from "@/lib/onboarding";
 
 // Verify Copecart webhook signature
 function verifySignature(body: string, signature: string | null): boolean {
@@ -16,11 +16,11 @@ function verifySignature(body: string, signature: string | null): boolean {
 }
 
 // Map Copecart product IDs to our ProductType
-function getProductType(productId: string): "VPMC" | "NFM" | "PREMIUM" | null {
-  const productMap: Record<string, "VPMC" | "NFM" | "PREMIUM"> = {
+function getProductType(productId: string): "VPMC" | "NFM" | "MM" | null {
+  const productMap: Record<string, "VPMC" | "NFM" | "MM"> = {
     [process.env.COPECART_PRODUCT_VPMC || ""]: "VPMC",
     [process.env.COPECART_PRODUCT_NFM || ""]: "NFM",
-    [process.env.COPECART_PRODUCT_PREMIUM || ""]: "PREMIUM",
+    [process.env.COPECART_PRODUCT_MM || process.env.COPECART_PRODUCT_PREMIUM || ""]: "MM",
   };
 
   return productMap[productId] || null;
@@ -133,60 +133,21 @@ async function handleNewOrder(data: any) {
     });
   }
 
-  // Create onboarding token
-  const token = generateToken();
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-  await prisma.formToken.create({
-    data: {
-      token,
-      type: "onboarding",
-      memberId: member.id,
-      expiresAt,
-    },
-  });
-
-  // Send welcome email
-  const onboardingUrl = `${process.env.APP_URL}/form/onboarding/${token}`;
-
-  await sendEmail({
-    to: member.email,
-    subject: "Willkommen beim NF Mentoring!",
-    html: `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background: linear-gradient(135deg, #ae1d2b 0%, #8a1722 100%); padding: 40px 20px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Willkommen beim NF Mentoring!</h1>
-        </div>
-        <div style="background: #ffffff; padding: 40px 20px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px;">
-          <p style="font-size: 18px; color: #111827;">Hallo ${member.vorname}!</p>
-          <p style="color: #6b7280; line-height: 1.6;">
-            Vielen Dank für deine Anmeldung zum NF Mentoring. Wir freuen uns, dich auf deinem Weg zu unterstützen!
-          </p>
-          <p style="color: #6b7280; line-height: 1.6;">
-            Um loszulegen, fülle bitte das kurze Onboarding-Formular aus:
-          </p>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${onboardingUrl}" style="background: #ae1d2b; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">
-              Onboarding starten
-            </a>
-          </div>
-          <p style="color: #9ca3af; font-size: 14px;">
-            Der Link ist 7 Tage gültig.
-          </p>
-          <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-          <p style="color: #9ca3af; font-size: 14px; text-align: center;">
-            NF Mentoring | <a href="https://nf-mentoring.de" style="color: #ae1d2b;">nf-mentoring.de</a>
-          </p>
-        </div>
-      </div>
-    `,
+  // Send onboarding notification (Email + WhatsApp)
+  const notificationResult = await sendOnboardingNotification({
+    id: member.id,
+    email: member.email,
+    vorname: member.vorname,
+    nachname: member.nachname,
+    whatsappNummer: member.whatsappNummer,
   });
 
   // Log automation
   const actions = [
     isNewMember ? "CREATE_MEMBER" : "UPDATE_MEMBER",
     "CREATE_ONBOARDING_TOKEN",
-    "SEND_WELCOME_EMAIL",
+    notificationResult.emailSent ? "SEND_ONBOARDING_EMAIL" : "EMAIL_FAILED",
+    notificationResult.whatsappSent ? "SEND_ONBOARDING_WHATSAPP" : (member.whatsappNummer ? "WHATSAPP_FAILED" : "NO_WHATSAPP"),
   ];
 
   if (existingLead) {

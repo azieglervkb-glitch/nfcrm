@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getCurrentWeekStart } from "@/lib/date-utils";
 import type { Member, KpiWeek } from "@prisma/client";
 
 // Test endpoint for automation rules
@@ -115,12 +116,7 @@ async function testRule(
 
     case "R2": {
       // Silent Member: No KPI this week
-      const today = new Date();
-      const dayOfWeek = today.getDay();
-      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-      const weekStart = new Date(today);
-      weekStart.setDate(today.getDate() + mondayOffset);
-      weekStart.setHours(0, 0, 0, 0);
+      const weekStart = getCurrentWeekStart();
 
       const hasKpiThisWeek = recentKpis.some(
         (k) => new Date(k.weekStart).getTime() >= weekStart.getTime()
