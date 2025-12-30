@@ -111,19 +111,7 @@ export async function GET(request: NextRequest) {
             },
           });
 
-          // Log communication
-          await prisma.communicationLog.create({
-            data: {
-              memberId: kpi.member.id,
-              channel: "WHATSAPP",
-              type: "FEEDBACK",
-              content: kpi.aiFeedbackText!,
-              recipient: kpi.member.whatsappNummer,
-              sent: true,
-              sentAt: new Date(),
-            },
-          });
-
+          // Note: CommunicationLog is already created by sendWhatsApp()
           results.sent++;
         } else {
           results.errors.push(`Failed to send to ${kpi.member.vorname}`);

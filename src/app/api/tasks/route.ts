@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
+import { sendTaskNotification } from "@/lib/email";
 
 const createTaskSchema = z.object({
   title: z.string().min(1),
@@ -52,12 +53,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const data = createTaskSchema.parse(body);
 
+    const assignedToId = data.assignedToId || session.user.id;
+
     const task = await prisma.task.create({
       data: {
         title: data.title,
         description: data.description,
         memberId: data.memberId,
-        assignedToId: data.assignedToId || session.user.id,
+        assignedToId,
         createdById: session.user.id,
         priority: data.priority || "MEDIUM",
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
@@ -67,10 +70,39 @@ export async function POST(request: NextRequest) {
           select: { id: true, vorname: true, nachname: true },
         },
         assignedTo: {
-          select: { id: true, vorname: true, nachname: true },
+          select: { id: true, vorname: true, nachname: true, email: true, notifyNewTask: true },
+        },
+        createdBy: {
+          select: { vorname: true, nachname: true },
         },
       },
     });
+
+    // Send notification to assigned user (if different from creator and notifications enabled)
+    if (
+      task.assignedTo &&
+      task.assignedTo.notifyNewTask &&
+      assignedToId !== session.user.id
+    ) {
+      const memberName = task.member
+        ? `${task.member.vorname} ${task.member.nachname}`
+        : undefined;
+      const createdByName = task.createdBy
+        ? `${task.createdBy.vorname} ${task.createdBy.nachname}`
+        : "System";
+
+      // Send async, don't wait
+      sendTaskNotification({
+        to: task.assignedTo.email,
+        recipientName: task.assignedTo.vorname,
+        taskTitle: task.title,
+        taskDescription: task.description || undefined,
+        memberName,
+        priority: task.priority,
+        dueDate: task.dueDate || undefined,
+        createdByName,
+      }).catch(console.error);
+    }
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {

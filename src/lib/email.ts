@@ -513,6 +513,7 @@ export async function sendGoalCelebrationEmail(
 
 /**
  * Coach Task Notification - Sent to coach when new task is created
+ * @deprecated Use sendTaskNotification instead
  */
 export async function sendCoachTaskNotification(
   coach: { email: string; vorname: string },
@@ -523,6 +524,29 @@ export async function sendCoachTaskNotification(
     priority: string;
   }
 ): Promise<boolean> {
+  return sendTaskNotification({
+    to: coach.email,
+    recipientName: coach.vorname,
+    taskTitle: task.title,
+    taskDescription: task.description,
+    memberName: task.memberName,
+    priority: task.priority,
+  });
+}
+
+/**
+ * Task Notification - Sent when a new task is assigned
+ */
+export async function sendTaskNotification(options: {
+  to: string;
+  recipientName: string;
+  taskTitle: string;
+  taskDescription?: string;
+  memberName?: string;
+  priority: string;
+  dueDate?: Date;
+  createdByName?: string;
+}): Promise<boolean> {
   const priorityColors: Record<string, string> = {
     LOW: "#6b7280",
     MEDIUM: "#ca8a04",
@@ -537,29 +561,40 @@ export async function sendCoachTaskNotification(
     URGENT: "Dringend",
   };
 
+  const dueDateStr = options.dueDate
+    ? options.dueDate.toLocaleDateString("de-DE", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+      })
+    : null;
+
   const content = `
     <div class="content">
-      <p class="greeting">Hey ${coach.vorname},</p>
+      <p class="greeting">Hey ${options.recipientName},</p>
 
       <p class="text">
-        Eine neue Aufgabe wurde für dich erstellt:
+        ${options.createdByName ? `<strong>${options.createdByName}</strong> hat dir` : "Dir wurde"} eine neue Aufgabe zugewiesen:
       </p>
 
       <div class="stats-box">
         <div style="margin-bottom: 12px;">
-          <span style="display: inline-block; padding: 4px 12px; border-radius: 4px; background: ${priorityColors[task.priority]}; color: white; font-size: 12px; font-weight: 600;">
-            ${priorityLabels[task.priority]}
+          <span style="display: inline-block; padding: 4px 12px; border-radius: 4px; background: ${priorityColors[options.priority]}; color: white; font-size: 12px; font-weight: 600;">
+            ${priorityLabels[options.priority]}
           </span>
+          ${dueDateStr ? `<span style="margin-left: 12px; color: #6b6b6b;">📅 Fällig: ${dueDateStr}</span>` : ""}
         </div>
         <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
-          ${task.title}
+          ${options.taskTitle}
         </div>
-        <div style="color: #6b6b6b; font-size: 14px;">
-          Mitglied: ${task.memberName}
-        </div>
-        ${task.description ? `
+        ${options.memberName ? `
+          <div style="color: #6b6b6b; font-size: 14px;">
+            👤 Mitglied: ${options.memberName}
+          </div>
+        ` : ""}
+        ${options.taskDescription ? `
           <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5; color: #4a4a4a;">
-            ${task.description}
+            ${options.taskDescription}
           </div>
         ` : ""}
       </div>
@@ -573,8 +608,8 @@ export async function sendCoachTaskNotification(
   const html = wrapEmailTemplate(content);
 
   return sendEmail({
-    to: coach.email,
-    subject: `${task.priority === "URGENT" ? "🚨" : "📋"} Neue Aufgabe: ${task.title}`,
+    to: options.to,
+    subject: `${options.priority === "URGENT" ? "🚨" : "📋"} Neue Aufgabe: ${options.taskTitle}`,
     html: renderTemplate(html, { appUrl: process.env.APP_URL || "http://localhost:3000", logoUrl: `${process.env.APP_URL || "http://localhost:3000"}/nf-logo.png` }),
   });
 }

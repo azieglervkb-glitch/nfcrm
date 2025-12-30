@@ -77,8 +77,13 @@ model User {
   nachname      String
   role          UserRole  @default(COACH)
   avatarUrl     String?
+  whatsappNummer String?  // Für Admin-Benachrichtigungen per WhatsApp
   isActive      Boolean   @default(true)
   lastLogin     DateTime?
+
+  // Benachrichtigungs-Einstellungen
+  notifyNewTask      Boolean  @default(true)  // Bei neuer Task-Zuweisung
+  notifyDailySummary Boolean  @default(true)  // Tägliche Zusammenfassung
 
   // Task-Einstellungen
   taskRuleIds   String[]  @default([])  // Welche Regel-Tasks dieser User empfangen soll (z.B. ["R1", "R3", "C2"])
