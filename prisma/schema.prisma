@@ -92,6 +92,10 @@ model User {
   showAllTasks        Boolean   @default(false)
   taskWhatsappEnabled Boolean   @default(false)
 
+  // Notification Settings
+  notifyNewTask      Boolean   @default(true)  // Bei neuer Task-Zuweisung
+  notifyDailySummary Boolean   @default(true)  // Tägliche Zusammenfassung
+
   // Berechtigungen
   permissions String[] @default(["dashboard", "tasks"])
 
@@ -406,6 +410,18 @@ model KpiWeek {
   noshowQuote            Decimal? @db.Decimal(5, 4)
   konvertierungTerminIst Decimal? @db.Decimal(5, 2)
   abschlussquoteIst      Decimal? @db.Decimal(5, 2)
+
+  // Goal Snapshots (Soll-Werte zum Zeitpunkt der Einreichung)
+  umsatzSollSnapshot          Decimal? @db.Decimal(12, 2)
+  kontakteSollSnapshot        Int?
+  entscheiderSollSnapshot     Int?
+  termineVereinbartSollSnapshot    Int?
+  termineStattgefundenSollSnapshot Int?
+  termineAbschlussSollSnapshot     Int?
+  einheitenSollSnapshot       Int?
+  empfehlungenSollSnapshot    Int?
+  konvertierungTerminSollSnapshot  Decimal? @db.Decimal(5, 2)
+  abschlussquoteSollSnapshot       Decimal? @db.Decimal(5, 2)
 
   // Reflexion & Motivation
   feelingScore   Int?    // 1-10

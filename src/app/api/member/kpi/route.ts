@@ -115,7 +115,24 @@ export async function POST(request: NextRequest) {
     const weekStart = getCurrentWeekStart();
     const { weekNumber, year } = getWeekInfo(weekStart);
 
-    // Upsert KPI entry
+    // Get member's current goal values for snapshot
+    const member = await prisma.member.findUnique({
+      where: { id: memberId },
+      select: {
+        umsatzSollWoche: true,
+        kontakteSoll: true,
+        entscheiderSoll: true,
+        termineVereinbartSoll: true,
+        termineStattgefundenSoll: true,
+        termineAbschlussSoll: true,
+        einheitenSoll: true,
+        empfehlungenSoll: true,
+        konvertierungTerminSoll: true,
+        abschlussquoteSoll: true,
+      },
+    });
+
+    // Upsert KPI entry with goal snapshots
     const kpiWeek = await prisma.kpiWeek.upsert({
       where: {
         memberId_weekStart: {
@@ -130,6 +147,17 @@ export async function POST(request: NextRequest) {
         umsatzIst,
         feelingScore,
         submittedAt: new Date(),
+        // Update goal snapshots on re-submission
+        umsatzSollSnapshot: member?.umsatzSollWoche,
+        kontakteSollSnapshot: member?.kontakteSoll,
+        entscheiderSollSnapshot: member?.entscheiderSoll,
+        termineVereinbartSollSnapshot: member?.termineVereinbartSoll,
+        termineStattgefundenSollSnapshot: member?.termineStattgefundenSoll,
+        termineAbschlussSollSnapshot: member?.termineAbschlussSoll,
+        einheitenSollSnapshot: member?.einheitenSoll,
+        empfehlungenSollSnapshot: member?.empfehlungenSoll,
+        konvertierungTerminSollSnapshot: member?.konvertierungTerminSoll,
+        abschlussquoteSollSnapshot: member?.abschlussquoteSoll,
       },
       create: {
         memberId,
@@ -142,6 +170,17 @@ export async function POST(request: NextRequest) {
         umsatzIst,
         feelingScore,
         submittedAt: new Date(),
+        // Store goal snapshots at creation time
+        umsatzSollSnapshot: member?.umsatzSollWoche,
+        kontakteSollSnapshot: member?.kontakteSoll,
+        entscheiderSollSnapshot: member?.entscheiderSoll,
+        termineVereinbartSollSnapshot: member?.termineVereinbartSoll,
+        termineStattgefundenSollSnapshot: member?.termineStattgefundenSoll,
+        termineAbschlussSollSnapshot: member?.termineAbschlussSoll,
+        einheitenSollSnapshot: member?.einheitenSoll,
+        empfehlungenSollSnapshot: member?.empfehlungenSoll,
+        konvertierungTerminSollSnapshot: member?.konvertierungTerminSoll,
+        abschlussquoteSollSnapshot: member?.abschlussquoteSoll,
       },
     });
 

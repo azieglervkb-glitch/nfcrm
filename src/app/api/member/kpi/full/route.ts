@@ -201,7 +201,7 @@ export async function POST(request: NextRequest) {
       abschlussquoteIst = (termineAbschlussIst / termineStattgefundenIst) * 100;
     }
 
-    // Create KPI entry (no updates allowed)
+    // Create KPI entry with goal snapshots (no updates allowed)
     const kpiWeek = await prisma.kpiWeek.create({
       data: {
         memberId,
@@ -226,6 +226,17 @@ export async function POST(request: NextRequest) {
         blockiert,
         herausforderung,
         submittedAt: new Date(),
+        // Store goal snapshots at creation time
+        umsatzSollSnapshot: member.umsatzSollWoche,
+        kontakteSollSnapshot: member.kontakteSoll,
+        entscheiderSollSnapshot: member.entscheiderSoll,
+        termineVereinbartSollSnapshot: member.termineVereinbartSoll,
+        termineStattgefundenSollSnapshot: member.termineStattgefundenSoll,
+        termineAbschlussSollSnapshot: member.termineAbschlussSoll,
+        einheitenSollSnapshot: member.einheitenSoll,
+        empfehlungenSollSnapshot: member.empfehlungenSoll,
+        konvertierungTerminSollSnapshot: member.konvertierungTerminSoll,
+        abschlussquoteSollSnapshot: member.abschlussquoteSoll,
       },
     });
 

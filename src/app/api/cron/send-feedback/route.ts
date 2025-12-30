@@ -115,23 +115,11 @@ export async function GET(request: NextRequest) {
 
         if (sent) {
           // Clear the schedule (already marked as sent above)
+          // Note: sendWhatsApp() already logs to CommunicationLog, no need to log again
           await prisma.kpiWeek.update({
             where: { id: kpi.id },
             data: {
               whatsappScheduledFor: null,
-            },
-          });
-
-          // Log communication
-          await prisma.communicationLog.create({
-            data: {
-              memberId: kpi.member.id,
-              channel: "WHATSAPP",
-              type: "FEEDBACK",
-              content: kpi.aiFeedbackText!,
-              recipient: kpi.member.whatsappNummer,
-              sent: true,
-              sentAt: new Date(),
             },
           });
 

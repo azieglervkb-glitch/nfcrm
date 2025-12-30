@@ -703,3 +703,94 @@ export async function sendCoachTaskNotification(
     html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
   });
 }
+
+/**
+ * Task Notification Email - Sent when a task is assigned to a user
+ */
+export async function sendTaskNotificationEmail(
+  user: { email: string; vorname: string },
+  task: {
+    title: string;
+    description?: string;
+    priority: string;
+    dueDate?: Date;
+    memberName?: string;
+    createdByName?: string;
+  }
+): Promise<boolean> {
+  const priorityColors: Record<string, string> = {
+    LOW: "#6b7280",
+    MEDIUM: "#ca8a04",
+    HIGH: "#ae1d2b",
+    URGENT: "#7c2d12",
+  };
+
+  const priorityLabels: Record<string, string> = {
+    LOW: "Niedrig",
+    MEDIUM: "Mittel",
+    HIGH: "Hoch",
+    URGENT: "Dringend",
+  };
+
+  const formattedDueDate = task.dueDate
+    ? new Date(task.dueDate).toLocaleDateString("de-DE", {
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+      })
+    : null;
+
+  const content = `
+    <div class="content">
+      <p class="greeting">Hey ${user.vorname},</p>
+
+      <p class="text">
+        Dir wurde eine neue Aufgabe zugewiesen:
+      </p>
+
+      <div class="stats-box">
+        <div style="margin-bottom: 12px;">
+          <span style="display: inline-block; padding: 4px 12px; border-radius: 4px; background: ${priorityColors[task.priority] || priorityColors.MEDIUM}; color: white; font-size: 12px; font-weight: 600;">
+            ${priorityLabels[task.priority] || priorityLabels.MEDIUM}
+          </span>
+        </div>
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">
+          ${task.title}
+        </div>
+        ${task.memberName ? `
+        <div style="color: #6b6b6b; font-size: 14px;">
+          Mitglied: ${task.memberName}
+        </div>
+        ` : ""}
+        ${task.createdByName ? `
+        <div style="color: #6b6b6b; font-size: 14px;">
+          Erstellt von: ${task.createdByName}
+        </div>
+        ` : ""}
+        ${formattedDueDate ? `
+        <div style="color: #6b6b6b; font-size: 14px; margin-top: 8px;">
+          📅 Fällig: ${formattedDueDate}
+        </div>
+        ` : ""}
+        ${task.description ? `
+          <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e5e5; color: #4a4a4a;">
+            ${task.description}
+          </div>
+        ` : ""}
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${getAppUrl()}/tasks" class="button">Aufgaben ansehen</a>
+      </div>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  return sendEmail({
+    to: user.email,
+    subject: `${task.priority === "URGENT" ? "🚨" : "📋"} Neue Aufgabe: ${task.title}`,
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+}

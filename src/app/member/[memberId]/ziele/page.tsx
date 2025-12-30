@@ -20,6 +20,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import {
   BarChart3,
   Target,
@@ -31,6 +32,7 @@ import {
   Calendar,
   Pencil,
   Save,
+  Settings2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -40,15 +42,22 @@ interface MemberGoals {
   umsatzSollWoche: number | null;
   umsatzSollMonat: number | null;
   kontakteSoll: number | null;
+  entscheiderSoll: number | null;
   termineVereinbartSoll: number | null;
+  termineStattgefundenSoll: number | null;
   termineAbschlussSoll: number | null;
   einheitenSoll: number | null;
   empfehlungenSoll: number | null;
+  konvertierungTerminSoll: number | null;
+  abschlussquoteSoll: number | null;
   trackKontakte: boolean;
   trackTermine: boolean;
   trackAbschluesse: boolean;
   trackEinheiten: boolean;
   trackEmpfehlungen: boolean;
+  trackEntscheider: boolean;
+  trackKonvertierung: boolean;
+  trackAbschlussquote: boolean;
 }
 
 export default function MemberGoalsPage() {
@@ -67,10 +76,21 @@ export default function MemberGoalsPage() {
     umsatzSollWoche: "",
     umsatzSollMonat: "",
     kontakteSoll: "",
+    entscheiderSoll: "",
     termineVereinbartSoll: "",
+    termineStattgefundenSoll: "",
     termineAbschlussSoll: "",
     einheitenSoll: "",
     empfehlungenSoll: "",
+    // Track toggles
+    trackKontakte: true,
+    trackTermine: true,
+    trackAbschluesse: true,
+    trackEinheiten: false,
+    trackEmpfehlungen: false,
+    trackEntscheider: false,
+    trackKonvertierung: false,
+    trackAbschlussquote: false,
   });
 
   useEffect(() => {
@@ -91,10 +111,21 @@ export default function MemberGoalsPage() {
           umsatzSollWoche: data.umsatzSollWoche?.toString() || "",
           umsatzSollMonat: data.umsatzSollMonat?.toString() || "",
           kontakteSoll: data.kontakteSoll?.toString() || "",
+          entscheiderSoll: data.entscheiderSoll?.toString() || "",
           termineVereinbartSoll: data.termineVereinbartSoll?.toString() || "",
+          termineStattgefundenSoll: data.termineStattgefundenSoll?.toString() || "",
           termineAbschlussSoll: data.termineAbschlussSoll?.toString() || "",
           einheitenSoll: data.einheitenSoll?.toString() || "",
           empfehlungenSoll: data.empfehlungenSoll?.toString() || "",
+          // Track toggles
+          trackKontakte: data.trackKontakte ?? true,
+          trackTermine: data.trackTermine ?? true,
+          trackAbschluesse: data.trackAbschluesse ?? true,
+          trackEinheiten: data.trackEinheiten ?? false,
+          trackEmpfehlungen: data.trackEmpfehlungen ?? false,
+          trackEntscheider: data.trackEntscheider ?? false,
+          trackKonvertierung: data.trackKonvertierung ?? false,
+          trackAbschlussquote: data.trackAbschlussquote ?? false,
         });
       }
     } catch (error) {
@@ -116,10 +147,21 @@ export default function MemberGoalsPage() {
           umsatzSollWoche: editForm.umsatzSollWoche ? parseFloat(editForm.umsatzSollWoche) : null,
           umsatzSollMonat: editForm.umsatzSollMonat ? parseFloat(editForm.umsatzSollMonat) : null,
           kontakteSoll: editForm.kontakteSoll ? parseInt(editForm.kontakteSoll) : null,
+          entscheiderSoll: editForm.entscheiderSoll ? parseInt(editForm.entscheiderSoll) : null,
           termineVereinbartSoll: editForm.termineVereinbartSoll ? parseInt(editForm.termineVereinbartSoll) : null,
+          termineStattgefundenSoll: editForm.termineStattgefundenSoll ? parseInt(editForm.termineStattgefundenSoll) : null,
           termineAbschlussSoll: editForm.termineAbschlussSoll ? parseInt(editForm.termineAbschlussSoll) : null,
           einheitenSoll: editForm.einheitenSoll ? parseInt(editForm.einheitenSoll) : null,
           empfehlungenSoll: editForm.empfehlungenSoll ? parseInt(editForm.empfehlungenSoll) : null,
+          // Track toggles
+          trackKontakte: editForm.trackKontakte,
+          trackTermine: editForm.trackTermine,
+          trackAbschluesse: editForm.trackAbschluesse,
+          trackEinheiten: editForm.trackEinheiten,
+          trackEmpfehlungen: editForm.trackEmpfehlungen,
+          trackEntscheider: editForm.trackEntscheider,
+          trackKonvertierung: editForm.trackKonvertierung,
+          trackAbschlussquote: editForm.trackAbschlussquote,
         }),
       });
 
@@ -404,11 +446,69 @@ export default function MemberGoalsPage() {
               </div>
             </div>
 
+            {/* KPI Tracking Settings */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-gray-500" />
+                <h3 className="font-semibold text-sm text-gray-700">KPI Tracking aktivieren</h3>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackKontakte" className="text-sm cursor-pointer">Kontakte</Label>
+                  <Switch
+                    id="trackKontakte"
+                    checked={editForm.trackKontakte}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackKontakte: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackTermine" className="text-sm cursor-pointer">Termine</Label>
+                  <Switch
+                    id="trackTermine"
+                    checked={editForm.trackTermine}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackTermine: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackAbschluesse" className="text-sm cursor-pointer">Abschlüsse</Label>
+                  <Switch
+                    id="trackAbschluesse"
+                    checked={editForm.trackAbschluesse}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackAbschluesse: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackEinheiten" className="text-sm cursor-pointer">Einheiten</Label>
+                  <Switch
+                    id="trackEinheiten"
+                    checked={editForm.trackEinheiten}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackEinheiten: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackEmpfehlungen" className="text-sm cursor-pointer">Empfehlungen</Label>
+                  <Switch
+                    id="trackEmpfehlungen"
+                    checked={editForm.trackEmpfehlungen}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackEmpfehlungen: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackEntscheider" className="text-sm cursor-pointer">Entscheider</Label>
+                  <Switch
+                    id="trackEntscheider"
+                    checked={editForm.trackEntscheider}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackEntscheider: checked })}
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Aktivitätsziele */}
             <div className="space-y-4">
               <h3 className="font-semibold text-sm text-gray-700">Wöchentliche Aktivitätsziele</h3>
               <div className="grid grid-cols-2 gap-4">
-                {memberGoals?.trackKontakte && (
+                {editForm.trackKontakte && (
                   <div className="space-y-2">
                     <Label htmlFor="kontakteSoll">Kontakte</Label>
                     <Input
@@ -420,9 +520,21 @@ export default function MemberGoalsPage() {
                     />
                   </div>
                 )}
-                {memberGoals?.trackTermine && (
+                {editForm.trackEntscheider && (
                   <div className="space-y-2">
-                    <Label htmlFor="termineVereinbartSoll">Termine</Label>
+                    <Label htmlFor="entscheiderSoll">Entscheider</Label>
+                    <Input
+                      id="entscheiderSoll"
+                      type="number"
+                      placeholder="z.B. 10"
+                      value={editForm.entscheiderSoll}
+                      onChange={(e) => setEditForm({ ...editForm, entscheiderSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {editForm.trackTermine && (
+                  <div className="space-y-2">
+                    <Label htmlFor="termineVereinbartSoll">Termine vereinbart</Label>
                     <Input
                       id="termineVereinbartSoll"
                       type="number"
@@ -432,7 +544,19 @@ export default function MemberGoalsPage() {
                     />
                   </div>
                 )}
-                {memberGoals?.trackAbschluesse && (
+                {editForm.trackTermine && (
+                  <div className="space-y-2">
+                    <Label htmlFor="termineStattgefundenSoll">Termine stattgefunden</Label>
+                    <Input
+                      id="termineStattgefundenSoll"
+                      type="number"
+                      placeholder="z.B. 8"
+                      value={editForm.termineStattgefundenSoll}
+                      onChange={(e) => setEditForm({ ...editForm, termineStattgefundenSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {editForm.trackAbschluesse && (
                   <div className="space-y-2">
                     <Label htmlFor="termineAbschlussSoll">Abschlüsse</Label>
                     <Input
@@ -444,7 +568,7 @@ export default function MemberGoalsPage() {
                     />
                   </div>
                 )}
-                {memberGoals?.trackEinheiten && (
+                {editForm.trackEinheiten && (
                   <div className="space-y-2">
                     <Label htmlFor="einheitenSoll">Einheiten</Label>
                     <Input
@@ -456,7 +580,7 @@ export default function MemberGoalsPage() {
                     />
                   </div>
                 )}
-                {memberGoals?.trackEmpfehlungen && (
+                {editForm.trackEmpfehlungen && (
                   <div className="space-y-2">
                     <Label htmlFor="empfehlungenSoll">Empfehlungen</Label>
                     <Input

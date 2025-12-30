@@ -59,6 +59,35 @@ interface KpiWeek {
   whatsappScheduledFor: Date | null;
   whatsappSentAt: Date | null;
   submittedAt: Date;
+  // Goal Snapshots (Soll-Werte zum Zeitpunkt der Einreichung)
+  umsatzSollSnapshot?: number | null;
+  kontakteSollSnapshot?: number | null;
+  entscheiderSollSnapshot?: number | null;
+  termineVereinbartSollSnapshot?: number | null;
+  termineStattgefundenSollSnapshot?: number | null;
+  termineAbschlussSollSnapshot?: number | null;
+  einheitenSollSnapshot?: number | null;
+  empfehlungenSollSnapshot?: number | null;
+  konvertierungTerminSollSnapshot?: number | null;
+  abschlussquoteSollSnapshot?: number | null;
+}
+
+// Helper function to get goal value - prefers snapshot over current member value
+function getGoal(
+  kpi: KpiWeek,
+  snapshotKey: keyof KpiWeek,
+  memberTracking: MemberTracking,
+  memberKey: keyof MemberTracking
+): number | null {
+  const snapshotValue = kpi[snapshotKey];
+  if (snapshotValue !== undefined && snapshotValue !== null) {
+    return Number(snapshotValue);
+  }
+  const memberValue = memberTracking[memberKey];
+  if (memberValue !== undefined && memberValue !== null) {
+    return Number(memberValue);
+  }
+  return null;
 }
 
 interface MemberTracking {
@@ -144,7 +173,7 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
             <div className="flex items-center gap-6 text-right">
               <div>
                 <p className="text-sm text-muted-foreground">Umsatz</p>
-                <p className={`font-medium ${getPerformanceColor(kpi.umsatzIst, memberTracking.umsatzSollWoche)}`}>
+                <p className={`font-medium ${getPerformanceColor(kpi.umsatzIst, getGoal(kpi, 'umsatzSollSnapshot', memberTracking, 'umsatzSollWoche'))}`}>
                   {formatCurrency(kpi.umsatzIst)}
                 </p>
               </div>
@@ -192,12 +221,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                     {/* Umsatz - always shown */}
                     <div className="p-3 rounded-lg bg-muted/50">
                       <p className="text-xs text-muted-foreground">Umsatz</p>
-                      <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.umsatzIst, memberTracking.umsatzSollWoche)}`}>
+                      <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.umsatzIst, getGoal(selectedKpi, 'umsatzSollSnapshot', memberTracking, 'umsatzSollWoche'))}`}>
                         {formatCurrency(selectedKpi.umsatzIst)}
                       </p>
-                      {memberTracking.umsatzSollWoche && (
+                      {getGoal(selectedKpi, 'umsatzSollSnapshot', memberTracking, 'umsatzSollWoche') && (
                         <p className="text-xs text-muted-foreground">
-                          Ziel: {formatCurrency(memberTracking.umsatzSollWoche)}
+                          Ziel: {formatCurrency(getGoal(selectedKpi, 'umsatzSollSnapshot', memberTracking, 'umsatzSollWoche'))}
                         </p>
                       )}
                     </div>
@@ -208,12 +237,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Users className="h-3 w-3" /> Kontakte
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.kontakteIst, memberTracking.kontakteSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.kontakteIst, getGoal(selectedKpi, 'kontakteSollSnapshot', memberTracking, 'kontakteSoll'))}`}>
                           {formatNumber(selectedKpi.kontakteIst)}
                         </p>
-                        {memberTracking.kontakteSoll && (
+                        {getGoal(selectedKpi, 'kontakteSollSnapshot', memberTracking, 'kontakteSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.kontakteSoll}
+                            Ziel: {getGoal(selectedKpi, 'kontakteSollSnapshot', memberTracking, 'kontakteSoll')}
                           </p>
                         )}
                       </div>
@@ -225,12 +254,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Users className="h-3 w-3" /> Entscheider
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.entscheiderIst, memberTracking.entscheiderSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.entscheiderIst, getGoal(selectedKpi, 'entscheiderSollSnapshot', memberTracking, 'entscheiderSoll'))}`}>
                           {formatNumber(selectedKpi.entscheiderIst)}
                         </p>
-                        {memberTracking.entscheiderSoll && (
+                        {getGoal(selectedKpi, 'entscheiderSollSnapshot', memberTracking, 'entscheiderSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.entscheiderSoll}
+                            Ziel: {getGoal(selectedKpi, 'entscheiderSollSnapshot', memberTracking, 'entscheiderSoll')}
                           </p>
                         )}
                       </div>
@@ -242,12 +271,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" /> Termine vereinbart
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.termineVereinbartIst, memberTracking.termineVereinbartSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.termineVereinbartIst, getGoal(selectedKpi, 'termineVereinbartSollSnapshot', memberTracking, 'termineVereinbartSoll'))}`}>
                           {formatNumber(selectedKpi.termineVereinbartIst)}
                         </p>
-                        {memberTracking.termineVereinbartSoll && (
+                        {getGoal(selectedKpi, 'termineVereinbartSollSnapshot', memberTracking, 'termineVereinbartSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.termineVereinbartSoll}
+                            Ziel: {getGoal(selectedKpi, 'termineVereinbartSollSnapshot', memberTracking, 'termineVereinbartSoll')}
                           </p>
                         )}
                       </div>
@@ -259,12 +288,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" /> Termine stattgefunden
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.termineStattgefundenIst, memberTracking.termineStattgefundenSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.termineStattgefundenIst, getGoal(selectedKpi, 'termineStattgefundenSollSnapshot', memberTracking, 'termineStattgefundenSoll'))}`}>
                           {formatNumber(selectedKpi.termineStattgefundenIst)}
                         </p>
-                        {memberTracking.termineStattgefundenSoll && (
+                        {getGoal(selectedKpi, 'termineStattgefundenSollSnapshot', memberTracking, 'termineStattgefundenSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.termineStattgefundenSoll}
+                            Ziel: {getGoal(selectedKpi, 'termineStattgefundenSollSnapshot', memberTracking, 'termineStattgefundenSoll')}
                           </p>
                         )}
                       </div>
@@ -305,8 +334,8 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Kontakt → Termin
-                          {memberTracking.konvertierungTerminSoll && (
-                            <> (Ziel: {memberTracking.konvertierungTerminSoll}%)</>
+                          {getGoal(selectedKpi, 'konvertierungTerminSollSnapshot', memberTracking, 'konvertierungTerminSoll') && (
+                            <> (Ziel: {getGoal(selectedKpi, 'konvertierungTerminSollSnapshot', memberTracking, 'konvertierungTerminSoll')}%)</>
                           )}
                         </p>
                       </div>
@@ -318,12 +347,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Calendar className="h-3 w-3" /> Abschluss-Termine
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.termineAbschlussIst, memberTracking.termineAbschlussSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.termineAbschlussIst, getGoal(selectedKpi, 'termineAbschlussSollSnapshot', memberTracking, 'termineAbschlussSoll'))}`}>
                           {formatNumber(selectedKpi.termineAbschlussIst)}
                         </p>
-                        {memberTracking.termineAbschlussSoll && (
+                        {getGoal(selectedKpi, 'termineAbschlussSollSnapshot', memberTracking, 'termineAbschlussSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.termineAbschlussSoll}
+                            Ziel: {getGoal(selectedKpi, 'termineAbschlussSollSnapshot', memberTracking, 'termineAbschlussSoll')}
                           </p>
                         )}
                       </div>
@@ -352,8 +381,8 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           Termin → Abschluss
-                          {memberTracking.abschlussquoteSoll && (
-                            <> (Ziel: {memberTracking.abschlussquoteSoll}%)</>
+                          {getGoal(selectedKpi, 'abschlussquoteSollSnapshot', memberTracking, 'abschlussquoteSoll') && (
+                            <> (Ziel: {getGoal(selectedKpi, 'abschlussquoteSollSnapshot', memberTracking, 'abschlussquoteSoll')}%)</>
                           )}
                         </p>
                       </div>
@@ -365,12 +394,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <Package className="h-3 w-3" /> Einheiten
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.einheitenIst, memberTracking.einheitenSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.einheitenIst, getGoal(selectedKpi, 'einheitenSollSnapshot', memberTracking, 'einheitenSoll'))}`}>
                           {formatNumber(selectedKpi.einheitenIst)}
                         </p>
-                        {memberTracking.einheitenSoll && (
+                        {getGoal(selectedKpi, 'einheitenSollSnapshot', memberTracking, 'einheitenSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.einheitenSoll}
+                            Ziel: {getGoal(selectedKpi, 'einheitenSollSnapshot', memberTracking, 'einheitenSoll')}
                           </p>
                         )}
                       </div>
@@ -382,12 +411,12 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                         <p className="text-xs text-muted-foreground flex items-center gap-1">
                           <MessageSquare className="h-3 w-3" /> Empfehlungen
                         </p>
-                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.empfehlungenIst, memberTracking.empfehlungenSoll)}`}>
+                        <p className={`text-lg font-semibold ${getPerformanceColor(selectedKpi.empfehlungenIst, getGoal(selectedKpi, 'empfehlungenSollSnapshot', memberTracking, 'empfehlungenSoll'))}`}>
                           {formatNumber(selectedKpi.empfehlungenIst)}
                         </p>
-                        {memberTracking.empfehlungenSoll && (
+                        {getGoal(selectedKpi, 'empfehlungenSollSnapshot', memberTracking, 'empfehlungenSoll') && (
                           <p className="text-xs text-muted-foreground">
-                            Ziel: {memberTracking.empfehlungenSoll}
+                            Ziel: {getGoal(selectedKpi, 'empfehlungenSollSnapshot', memberTracking, 'empfehlungenSoll')}
                           </p>
                         )}
                       </div>

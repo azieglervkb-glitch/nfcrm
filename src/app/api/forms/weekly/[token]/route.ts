@@ -145,7 +145,7 @@ export async function POST(
       abschlussquoteIst = (validatedData.termineAbschlussIst / validatedData.termineStattgefundenIst) * 100;
     }
 
-    // Create or update KPI week
+    // Create or update KPI week with goal snapshots
     const kpiWeek = await prisma.kpiWeek.upsert({
       where: {
         memberId_weekStart: {
@@ -163,6 +163,17 @@ export async function POST(
         konvertierungTerminIst,
         abschlussquoteIst,
         submittedAt: new Date(),
+        // Store goal snapshots at creation time
+        umsatzSollSnapshot: formToken.member.umsatzSollWoche,
+        kontakteSollSnapshot: formToken.member.kontakteSoll,
+        entscheiderSollSnapshot: formToken.member.entscheiderSoll,
+        termineVereinbartSollSnapshot: formToken.member.termineVereinbartSoll,
+        termineStattgefundenSollSnapshot: formToken.member.termineStattgefundenSoll,
+        termineAbschlussSollSnapshot: formToken.member.termineAbschlussSoll,
+        einheitenSollSnapshot: formToken.member.einheitenSoll,
+        empfehlungenSollSnapshot: formToken.member.empfehlungenSoll,
+        konvertierungTerminSollSnapshot: formToken.member.konvertierungTerminSoll,
+        abschlussquoteSollSnapshot: formToken.member.abschlussquoteSoll,
       },
       update: {
         ...validatedData,
@@ -170,6 +181,17 @@ export async function POST(
         konvertierungTerminIst,
         abschlussquoteIst,
         submittedAt: new Date(),
+        // Update goal snapshots on re-submission
+        umsatzSollSnapshot: formToken.member.umsatzSollWoche,
+        kontakteSollSnapshot: formToken.member.kontakteSoll,
+        entscheiderSollSnapshot: formToken.member.entscheiderSoll,
+        termineVereinbartSollSnapshot: formToken.member.termineVereinbartSoll,
+        termineStattgefundenSollSnapshot: formToken.member.termineStattgefundenSoll,
+        termineAbschlussSollSnapshot: formToken.member.termineAbschlussSoll,
+        einheitenSollSnapshot: formToken.member.einheitenSoll,
+        empfehlungenSollSnapshot: formToken.member.empfehlungenSoll,
+        konvertierungTerminSollSnapshot: formToken.member.konvertierungTerminSoll,
+        abschlussquoteSollSnapshot: formToken.member.abschlussquoteSoll,
       },
     });
 
