@@ -28,6 +28,7 @@ import {
   Pencil,
   Save,
   X,
+  Send,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -122,6 +123,7 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedFeedback, setEditedFeedback] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
 
   const formatCurrency = (value: number | null) => {
     if (value === null) return "-";
@@ -645,6 +647,54 @@ export function KpiWeeksList({ kpiWeeks, memberTracking }: KpiWeeksListProps) {
                                   Neu erstellen
                                 </Button>
                               )}
+                              <Button
+                                size="sm"
+                                disabled={sending || regenerating}
+                                onClick={async () => {
+                                  try {
+                                    setSending(true);
+                                    const res = await fetch(
+                                      `/api/kpi-weeks/${selectedKpi.id}/send-feedback-now`,
+                                      { method: "POST" }
+                                    );
+                                    const data = await res.json().catch(() => ({}));
+
+                                    if (!res.ok) {
+                                      toast.error(
+                                        data?.message ||
+                                          data?.error ||
+                                          "Konnte WhatsApp nicht senden"
+                                      );
+                                      return;
+                                    }
+
+                                    const updated = data.kpiWeek;
+                                    setSelectedKpi((prev) =>
+                                      prev
+                                        ? {
+                                            ...prev,
+                                            whatsappFeedbackSent: true,
+                                            whatsappSentAt: updated.whatsappSentAt
+                                              ? new Date(updated.whatsappSentAt)
+                                              : new Date(),
+                                            whatsappScheduledFor: null,
+                                          }
+                                        : prev
+                                    );
+
+                                    toast.success(data.message || "WhatsApp-Feedback gesendet!");
+                                  } catch {
+                                    toast.error("Konnte WhatsApp nicht senden");
+                                  } finally {
+                                    setSending(false);
+                                  }
+                                }}
+                              >
+                                <Send
+                                  className={`h-4 w-4 mr-2 ${sending ? "animate-pulse" : ""}`}
+                                />
+                                {sending ? "Senden..." : "Jetzt senden"}
+                              </Button>
                             </div>
                           )}
                         </>
