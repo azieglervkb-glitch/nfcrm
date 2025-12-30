@@ -47,27 +47,54 @@ export async function GET(request: NextRequest) {
     });
     const previousWeekSubmitted = !!previousWeekEntry?.id;
 
-    const availableWeeks = [
-      {
+    // Check if current week was already submitted
+    const currentWeekEntry = member.kpiWeeks.find((entry) => {
+      const entryWeek = new Date(entry.weekStart);
+      return entryWeek.getTime() === currentWeekMonday.getTime();
+    });
+    const currentWeekSubmitted = !!currentWeekEntry?.id;
+
+    // Build available weeks array
+    // Only show weeks that are NOT submitted, UNLESS both are submitted (then show both for editing)
+    const availableWeeks = [];
+
+    // Add previous week if: not submitted OR both are submitted
+    if (!previousWeekSubmitted || (previousWeekSubmitted && currentWeekSubmitted)) {
+      availableWeeks.push({
         weekStart: previousWeek.toISOString(),
         label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
         weekNumber: getWeekInfo(previousWeek).weekNumber,
-        isDefault: !previousWeekSubmitted,
+        isDefault: !previousWeekSubmitted && !currentWeekSubmitted, // Default if neither is submitted
         alreadySubmitted: previousWeekSubmitted,
-      },
-      {
+      });
+    }
+
+    // Add current week if: not submitted OR both are submitted
+    if (!currentWeekSubmitted || (previousWeekSubmitted && currentWeekSubmitted)) {
+      availableWeeks.push({
         weekStart: currentWeekMonday.toISOString(),
         label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
         weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
-        isDefault: previousWeekSubmitted,
-        alreadySubmitted: false,
-      },
-    ];
+        isDefault: previousWeekSubmitted && !currentWeekSubmitted, // Default if previous is done but current is not
+        alreadySubmitted: currentWeekSubmitted,
+      });
+    }
 
-    // Use provided weekStart or smart default (current week if previous is submitted)
-    const weekStart = weekStartParam
-      ? new Date(weekStartParam)
-      : previousWeekSubmitted ? currentWeekMonday : previousWeek;
+    // Use provided weekStart or smart default
+    // If previous week is submitted but current is not → default to current
+    // Otherwise → default to first available week
+    let weekStart: Date;
+    if (weekStartParam) {
+      weekStart = new Date(weekStartParam);
+    } else if (previousWeekSubmitted && !currentWeekSubmitted) {
+      weekStart = currentWeekMonday;
+    } else if (availableWeeks.length > 0) {
+      // Use the first available week (which should be the default)
+      weekStart = new Date(availableWeeks.find((w) => w.isDefault)?.weekStart || availableWeeks[0].weekStart);
+    } else {
+      // Fallback to previous week if no weeks available (shouldn't happen)
+      weekStart = previousWeek;
+    }
 
     const selectedWeek = member.kpiWeeks.find((entry) => {
       const entryWeek = new Date(entry.weekStart);

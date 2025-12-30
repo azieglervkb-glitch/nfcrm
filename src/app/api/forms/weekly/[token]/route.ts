@@ -60,29 +60,45 @@ export async function GET(
     });
     const currentWeekSubmitted = !!currentWeekEntry?.id;
 
-    const availableWeeks = [
-      {
+    // Build available weeks array
+    // Only show weeks that are NOT submitted, UNLESS both are submitted (then show both for editing)
+    const availableWeeks = [];
+
+    // Add previous week if: not submitted OR both are submitted
+    if (!previousWeekSubmitted || (previousWeekSubmitted && currentWeekSubmitted)) {
+      availableWeeks.push({
         weekStart: previousWeek.toISOString(),
         label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
         weekNumber: getWeekInfo(previousWeek).weekNumber,
-        isDefault: !previousWeekSubmitted,
+        isDefault: !previousWeekSubmitted && !currentWeekSubmitted, // Default if neither is submitted
         alreadySubmitted: previousWeekSubmitted,
-      },
-      {
+      });
+    }
+
+    // Add current week if: not submitted OR both are submitted
+    if (!currentWeekSubmitted || (previousWeekSubmitted && currentWeekSubmitted)) {
+      availableWeeks.push({
         weekStart: currentWeekMonday.toISOString(),
         label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
         weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
-        isDefault: previousWeekSubmitted,
+        isDefault: previousWeekSubmitted && !currentWeekSubmitted, // Default if previous is done but current is not
         alreadySubmitted: currentWeekSubmitted,
-      },
-    ];
+      });
+    }
 
     // Use weekStart from token if available, otherwise smart default
-    const selectedWeekStart = formToken.weekStart
-      ? formToken.weekStart.toISOString()
-      : previousWeekSubmitted
-      ? currentWeekMonday.toISOString()
-      : previousWeek.toISOString();
+    let selectedWeekStart: string;
+    if (formToken.weekStart) {
+      selectedWeekStart = formToken.weekStart.toISOString();
+    } else if (previousWeekSubmitted && !currentWeekSubmitted) {
+      selectedWeekStart = currentWeekMonday.toISOString();
+    } else if (availableWeeks.length > 0) {
+      // Use the first available week (which should be the default)
+      selectedWeekStart = availableWeeks.find((w) => w.isDefault)?.weekStart || availableWeeks[0].weekStart;
+    } else {
+      // Fallback to previous week if no weeks available (shouldn't happen)
+      selectedWeekStart = previousWeek.toISOString();
+    }
 
     return NextResponse.json({
       member: {
@@ -138,27 +154,43 @@ export async function GET(
     });
     const currentWeekSubmitted = !!currentWeekEntry?.id;
 
-    const availableWeeks = [
-      {
+    // Build available weeks array
+    // Only show weeks that are NOT submitted, UNLESS both are submitted (then show both for editing)
+    const availableWeeks = [];
+
+    // Add previous week if: not submitted OR both are submitted
+    if (!previousWeekSubmitted || (previousWeekSubmitted && currentWeekSubmitted)) {
+      availableWeeks.push({
         weekStart: previousWeek.toISOString(),
         label: `KW${getWeekInfo(previousWeek).weekNumber} (${getWeekRangeString(previousWeek)})`,
         weekNumber: getWeekInfo(previousWeek).weekNumber,
-        isDefault: !previousWeekSubmitted,
+        isDefault: !previousWeekSubmitted && !currentWeekSubmitted, // Default if neither is submitted
         alreadySubmitted: previousWeekSubmitted,
-      },
-      {
+      });
+    }
+
+    // Add current week if: not submitted OR both are submitted
+    if (!currentWeekSubmitted || (previousWeekSubmitted && currentWeekSubmitted)) {
+      availableWeeks.push({
         weekStart: currentWeekMonday.toISOString(),
         label: `KW${getWeekInfo(currentWeekMonday).weekNumber} (${getWeekRangeString(currentWeekMonday)})`,
         weekNumber: getWeekInfo(currentWeekMonday).weekNumber,
-        isDefault: previousWeekSubmitted,
+        isDefault: previousWeekSubmitted && !currentWeekSubmitted, // Default if previous is done but current is not
         alreadySubmitted: currentWeekSubmitted,
-      },
-    ];
+      });
+    }
 
     // Smart default: current week if previous is submitted, otherwise previous week
-    const selectedWeekStart = previousWeekSubmitted
-      ? currentWeekMonday.toISOString()
-      : previousWeek.toISOString();
+    let selectedWeekStart: string;
+    if (previousWeekSubmitted && !currentWeekSubmitted) {
+      selectedWeekStart = currentWeekMonday.toISOString();
+    } else if (availableWeeks.length > 0) {
+      // Use the first available week (which should be the default)
+      selectedWeekStart = availableWeeks.find((w) => w.isDefault)?.weekStart || availableWeeks[0].weekStart;
+    } else {
+      // Fallback to previous week if no weeks available (shouldn't happen)
+      selectedWeekStart = previousWeek.toISOString();
+    }
 
     return NextResponse.json({
       member: {
