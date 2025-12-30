@@ -178,9 +178,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Use provided weekStart or default to previous week
-    const weekStart = weekStartParam
-      ? new Date(weekStartParam)
-      : getPreviousWeek(getCurrentWeekStart());
+    // Normalize to ensure consistent comparison (Monday 00:00:00 local time)
+    const weekStart = normalizeWeekStart(
+      weekStartParam
+        ? new Date(weekStartParam)
+        : getPreviousWeek(getCurrentWeekStart())
+    );
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Upsert KPI entry

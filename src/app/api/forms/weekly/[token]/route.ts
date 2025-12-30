@@ -253,9 +253,14 @@ export async function POST(
     const validatedData = weeklyKpiFormSchema.parse(body);
 
     // Use weekStart from body (user selection), token, or fall back to previous week
-    const weekStart = body.weekStart
-      ? new Date(body.weekStart)
-      : formToken.weekStart ?? getPreviousWeek(getCurrentWeekStart());
+    // Normalize to ensure consistent comparison (Monday 00:00:00 local time)
+    const weekStart = normalizeWeekStart(
+      body.weekStart
+        ? new Date(body.weekStart)
+        : formToken.weekStart
+        ? new Date(formToken.weekStart)
+        : getPreviousWeek(getCurrentWeekStart())
+    );
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Calculate no-show quote
