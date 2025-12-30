@@ -57,6 +57,17 @@ export default function WeeklyKpiFormPage({
   const [availableWeeks, setAvailableWeeks] = useState<WeekOption[]>([]);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
   const [selectedWeekLabel, setSelectedWeekLabel] = useState<string>("");
+  
+  // Get week number from selected week
+  const selectedWeekNumber = selectedWeek 
+    ? availableWeeks.find((w) => w.weekStart === selectedWeek)?.weekNumber 
+    : null;
+  
+  // Helper function to add KW number to text
+  const addWeekNumber = (text: string): string => {
+    if (!selectedWeekNumber) return text;
+    return text.replace(/diese Woche/g, `diese Woche (KW${selectedWeekNumber})`);
+  };
 
   const {
     register,
@@ -187,7 +198,11 @@ export default function WeeklyKpiFormPage({
             Hey {memberData?.vorname}!
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Zeit für dein Weekly Update – trage deine Zahlen ein.
+            Zeit für dein Weekly Update – trage deine Zahlen für{" "}
+            <span className="font-semibold">
+              {selectedWeekLabel || availableWeeks.find((w) => w.isDefault)?.label || "diese Woche"}
+            </span>{" "}
+            ein.
           </p>
         </div>
 
@@ -221,7 +236,7 @@ export default function WeeklyKpiFormPage({
                 </Select>
                 {availableWeeks.find((w) => w.weekStart === selectedWeek)?.alreadySubmitted && (
                   <p className="text-sm text-amber-600">
-                    Diese Woche wurde bereits eingereicht. Du kannst sie bearbeiten.
+                    {addWeekNumber("Diese Woche wurde bereits eingereicht. Du kannst sie bearbeiten.")}
                   </p>
                 )}
               </div>
@@ -256,9 +271,9 @@ export default function WeeklyKpiFormPage({
                       })}
                     </span>
                   </>
-                ) : (
-                  "Wie viel Umsatz hast du gemacht?"
-                )}
+                  ) : (
+                    addWeekNumber("Wie viel Umsatz hast du diese Woche gemacht?")
+                  )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -299,7 +314,7 @@ export default function WeeklyKpiFormPage({
                       </span>
                     </>
                   ) : (
-                    "Wie viele Kontakte hast du gemacht?"
+                    addWeekNumber("Wie viele Kontakte hast du diese Woche gemacht?")
                   )}
                 </CardDescription>
               </CardHeader>
@@ -351,7 +366,7 @@ export default function WeeklyKpiFormPage({
                       </span>
                     </>
                   ) : (
-                    "Wie viele Termine hattest du?"
+                    addWeekNumber("Wie viele Termine hattest du diese Woche?")
                   )}
                 </CardDescription>
               </CardHeader>
@@ -425,7 +440,7 @@ export default function WeeklyKpiFormPage({
                       </span>
                     </>
                   ) : (
-                    "Wie viele Abschluss-Termine hattest du?"
+                    addWeekNumber("Wie viele Abschluss-Termine hattest du diese Woche?")
                   )}
                 </CardDescription>
               </CardHeader>
@@ -525,8 +540,9 @@ export default function WeeklyKpiFormPage({
                 <CardTitle className="text-base">Wie fühlst du dich?</CardTitle>
               </div>
               <CardDescription>
-                Bewerte deine Woche auf einer Skala von 1 (schlecht) bis 10
-                (fantastisch)
+                {selectedWeekNumber 
+                  ? `Bewerte deine Woche (KW${selectedWeekNumber}) auf einer Skala von 1 (schlecht) bis 10 (fantastisch)`
+                  : "Bewerte deine Woche auf einer Skala von 1 (schlecht) bis 10 (fantastisch)"}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -558,13 +574,15 @@ export default function WeeklyKpiFormPage({
                 <CardTitle className="text-base">Reflexion</CardTitle>
               </div>
               <CardDescription>
-                Nimm dir einen Moment, um über deine Woche nachzudenken
+                {selectedWeekNumber 
+                  ? `Nimm dir einen Moment, um über deine Woche (KW${selectedWeekNumber}) nachzudenken`
+                  : "Nimm dir einen Moment, um über deine Woche nachzudenken"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="heldentat">
-                  Was war deine Heldentat?
+                  {addWeekNumber("Was war deine Heldentat diese Woche?")}
                 </Label>
                 <Textarea
                   id="heldentat"
@@ -575,7 +593,7 @@ export default function WeeklyKpiFormPage({
 
               <div className="space-y-2">
                 <Label htmlFor="blockiert">
-                  Was hat dich blockiert?
+                  {addWeekNumber("Was hat dich diese Woche blockiert?")}
                 </Label>
                 <Textarea
                   id="blockiert"
