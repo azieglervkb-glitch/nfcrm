@@ -118,6 +118,7 @@ interface MemberProgress {
   totalProgress: number;
   unlockedModules: number;
   totalModules: number;
+  createdAt?: string; // When the member was created in LearningSuite
 }
 
 // ============================================================================
@@ -467,6 +468,7 @@ export async function getMemberProgressByEmail(
     totalProgress: primaryCourse.progress,
     unlockedModules: unlockedCount,
     totalModules: modules.length,
+    createdAt: member.createdAt, // When member was created in LearningSuite
   };
 
   console.log(`[LearningSuite] ===== Result =====`);
@@ -524,6 +526,7 @@ export async function syncMemberWithLearninSuite(memberEmail: string): Promise<{
   synced: boolean;
   courses?: LearningSuiteCourse[];
   totalProgress?: number;
+  createdAt?: string; // When member was created in LearningSuite
 }> {
   const progress = await getMemberProgressByEmail(memberEmail);
 
@@ -541,6 +544,7 @@ export async function syncMemberWithLearninSuite(memberEmail: string): Promise<{
     synced: true,
     courses: progress.courses,
     totalProgress: progress.totalProgress,
+    createdAt: progress.createdAt,
   };
 }
 

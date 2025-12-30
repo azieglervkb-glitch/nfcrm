@@ -65,18 +65,36 @@ export async function POST(
     }
 
     // Update member with synced data
+    // Also sync membershipStart from LearningSuite createdAt if available
+    const updateData: {
+      learningSuiteUserId: string | null;
+      currentModule: number | null;
+      learningSuiteLastSync: Date;
+      membershipStart?: Date;
+    } = {
+      learningSuiteUserId: syncResult.learningSuiteUserId || member.learningSuiteUserId,
+      currentModule: syncResult.currentModule,
+      learningSuiteLastSync: new Date(),
+    };
+
+    // Update membershipStart from LearningSuite createdAt
+    if (syncResult.createdAt) {
+      const lsCreatedAt = new Date(syncResult.createdAt);
+      if (!isNaN(lsCreatedAt.getTime())) {
+        updateData.membershipStart = lsCreatedAt;
+        console.log(`[Sync] Updating membershipStart to LS createdAt: ${syncResult.createdAt}`);
+      }
+    }
+
     const updatedMember = await prisma.member.update({
       where: { id },
-      data: {
-        learningSuiteUserId: syncResult.learningSuiteUserId || member.learningSuiteUserId,
-        currentModule: syncResult.currentModule,
-        learningSuiteLastSync: new Date(),
-      },
+      data: updateData,
       select: {
         id: true,
         learningSuiteUserId: true,
         currentModule: true,
         learningSuiteLastSync: true,
+        membershipStart: true,
       },
     });
 
@@ -92,10 +110,12 @@ export async function POST(
         email: member.email,
         learningSuiteUserId: updatedMember.learningSuiteUserId,
         currentModule: updatedMember.currentModule,
+        membershipStart: updatedMember.membershipStart,
         lastSync: updatedMember.learningSuiteLastSync,
         apiReturned: {
           coursesCount: syncResult.courses?.length ?? 0,
           nfMentoringProgress: nfMentoringCourse?.progress ?? "nicht gefunden",
+          lsCreatedAt: syncResult.createdAt ?? null,
           hinweis: syncResult.currentModule === null
             ? "LearningSuite API liefert keine Modul-Progress-Daten"
             : undefined,
