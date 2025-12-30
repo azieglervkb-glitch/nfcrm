@@ -25,6 +25,8 @@ export async function POST(request: NextRequest) {
         status: true,
         kpiTrackingEnabled: true,
         kpiSetupCompleted: true,
+        kpiTrackingActive: true, // Legacy field
+        hauptzielEinSatz: true, // Required field from KPI setup
         onboardingCompleted: true,
         zielMonatsumsatz: true,
       },
@@ -73,6 +75,14 @@ export async function POST(request: NextRequest) {
       path: "/",
     });
 
+    // Determine if KPI setup is completed using multiple indicators
+    // This handles legacy members who completed setup before kpiSetupCompleted was added
+    const hasCompletedKpiSetup =
+      member.kpiSetupCompleted === true ||
+      member.kpiTrackingEnabled === true ||
+      member.kpiTrackingActive === true ||
+      (member.hauptzielEinSatz !== null && member.hauptzielEinSatz.length > 0);
+
     return NextResponse.json({
       success: true,
       member: {
@@ -80,7 +90,7 @@ export async function POST(request: NextRequest) {
         firstName: member.vorname,
         lastName: member.nachname,
         kpiTrackingEnabled: member.kpiTrackingEnabled,
-        kpiSetupCompleted: member.kpiSetupCompleted,
+        kpiSetupCompleted: hasCompletedKpiSetup, // Use computed value
         onboardingCompleted: member.onboardingCompleted,
         zielMonatsumsatz: member.zielMonatsumsatz ? Number(member.zielMonatsumsatz) : null,
       },
