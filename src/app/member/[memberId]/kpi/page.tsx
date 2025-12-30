@@ -30,16 +30,10 @@ import {
   Gift,
   Heart,
   MessageSquare,
+  Lock,
+  Clock,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
 
 interface MemberData {
   vorname: string;
@@ -102,6 +96,19 @@ interface KpiData {
   }>;
 }
 
+interface TrackingWindow {
+  isOpen: boolean;
+  message: string;
+  opensAt?: string;
+  closesAt?: string;
+  targetWeek: {
+    weekNumber: number;
+    year: number;
+    weekStart: string;
+    label: string;
+  };
+}
+
 export default function MemberKpiPage() {
   const params = useParams();
   const memberId = params.memberId as string;
@@ -114,20 +121,7 @@ export default function MemberKpiPage() {
   const [success, setSuccess] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [feelingScore, setFeelingScore] = useState(5);
-  const [selectedWeek, setSelectedWeek] = useState<"current" | "previous">("current");
-  const [previousWeekSubmitted, setPreviousWeekSubmitted] = useState(false);
-  const [currentWeekSubmitted, setCurrentWeekSubmitted] = useState(false);
-
-  // Calculate week options
-  const currentWeekStart = getCurrentWeekStart();
-  const previousWeekStart = getPreviousWeek(currentWeekStart);
-  const currentWeekInfo = getWeekInfo(currentWeekStart);
-  const previousWeekInfo = getWeekInfo(previousWeekStart);
-  const currentWeekLabel = `KW${currentWeekInfo.weekNumber} (${getWeekRangeString(currentWeekStart)})`;
-  const previousWeekLabel = `KW${previousWeekInfo.weekNumber} (${getWeekRangeString(previousWeekStart)})`;
-
-  // Get the selected week info for labels
-  const activeWeekInfo = selectedWeek === "current" ? currentWeekInfo : previousWeekInfo;
+  const [trackingWindow, setTrackingWindow] = useState<TrackingWindow | null>(null);
 
   const [formValues, setFormValues] = useState({
     umsatzIst: "",
@@ -148,38 +142,34 @@ export default function MemberKpiPage() {
 
   useEffect(() => {
     if (memberId) {
-      fetchKpiData();
+      fetchData();
     }
   }, [memberId]);
 
-  const fetchKpiData = async () => {
+  const fetchData = async () => {
     try {
+      // Check tracking window status first
+      const windowResponse = await fetch("/api/kpi/tracking-window");
+      if (windowResponse.ok) {
+        const windowData = await windowResponse.json();
+        setTrackingWindow(windowData);
+      }
+
+      // Fetch member KPI data
       const response = await fetch(`/api/member/kpi/full?memberId=${memberId}`);
       if (response.ok) {
         const result = await response.json();
         setData(result);
-        if (result.currentWeek?.id) {
-          setCurrentWeekSubmitted(true);
-        }
       }
 
-      // Check which weeks have already been submitted
+      // Check if target week (previous week) has already been submitted
       const weeksStatusResponse = await fetch(`/api/member/kpi/weeks-status?memberId=${memberId}`);
       if (weeksStatusResponse.ok) {
         const weeksStatus = await weeksStatusResponse.json();
-        setCurrentWeekSubmitted(weeksStatus.currentWeekSubmitted);
-        setPreviousWeekSubmitted(weeksStatus.previousWeekSubmitted);
-        // Auto-select previous week if current week is submitted but previous isn't
-        if (weeksStatus.currentWeekSubmitted && !weeksStatus.previousWeekSubmitted) {
-          setSelectedWeek("previous");
-        }
-        // Set alreadySubmitted based on both weeks
-        if (weeksStatus.currentWeekSubmitted && weeksStatus.previousWeekSubmitted) {
-          setAlreadySubmitted(true);
-        }
+        setAlreadySubmitted(weeksStatus.previousWeekSubmitted);
       }
     } catch (err) {
-      console.error("Failed to fetch KPI data:", err);
+      console.error("Failed to fetch data:", err);
     } finally {
       setLoading(false);
     }
@@ -187,11 +177,14 @@ export default function MemberKpiPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!trackingWindow?.isOpen) {
+      setError("Das Tracking-Fenster ist aktuell geschlossen.");
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
-
-    // Determine which week to submit for
-    const weekStart = selectedWeek === "current" ? currentWeekStart : previousWeekStart;
 
     try {
       const response = await fetch(`/api/member/kpi/full`, {
@@ -199,7 +192,7 @@ export default function MemberKpiPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           memberId,
-          weekStart: weekStart.toISOString(),
+          weekStart: trackingWindow.targetWeek.weekStart,
           umsatzIst: formValues.umsatzIst ? parseFloat(formValues.umsatzIst) : null,
           kontakteIst: formValues.kontakteIst ? parseInt(formValues.kontakteIst) : null,
           entscheiderIst: formValues.entscheiderIst ? parseInt(formValues.entscheiderIst) : null,
@@ -254,7 +247,158 @@ export default function MemberKpiPage() {
     );
   }
 
-  if (success || alreadySubmitted) {
+  // Show locked message if tracking window is closed
+  if (trackingWindow && !trackingWindow.isOpen) {
+    return (
+      <div className="min-h-screen bg-muted/30">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-8">
+                <img src="/nf-logo.png" alt="NF Mentoring" className="h-8 w-auto" />
+                <nav className="hidden md:flex items-center gap-1">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        item.href.includes("/kpi")
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Mobile Nav */}
+        <nav className="md:hidden bg-white border-b border-gray-200 sticky top-16 z-40">
+          <div className="flex items-center justify-around py-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium ${
+                  item.href.includes("/kpi") ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        <div className="flex items-center justify-center p-4 py-12">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6 text-center">
+              <Lock className="h-12 w-12 text-amber-500 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Tracking geschlossen</h2>
+              <p className="text-muted-foreground mb-4">
+                {trackingWindow.message}
+              </p>
+              {trackingWindow.opensAt && (
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-3">
+                  <Clock className="h-4 w-4" />
+                  <span>
+                    Nächste Möglichkeit: {new Date(trackingWindow.opensAt).toLocaleDateString("de-DE", {
+                      weekday: "long",
+                      day: "2-digit",
+                      month: "2-digit",
+                    })} um {new Date(trackingWindow.opensAt).toLocaleTimeString("de-DE", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })} Uhr
+                  </span>
+                </div>
+              )}
+              <Link href={`/member/${memberId}`} className="block mt-6">
+                <Button className="w-full">Zurück zum Dashboard</Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // Show already submitted message
+  if (alreadySubmitted && !success) {
+    return (
+      <div className="min-h-screen bg-muted/30">
+        {/* Header */}
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-8">
+                <img src="/nf-logo.png" alt="NF Mentoring" className="h-8 w-auto" />
+                <nav className="hidden md:flex items-center gap-1">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                        item.href.includes("/kpi")
+                          ? "text-primary bg-primary/10"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Mobile Nav */}
+        <nav className="md:hidden bg-white border-b border-gray-200 sticky top-16 z-40">
+          <div className="flex items-center justify-around py-2">
+            {navItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium ${
+                  item.href.includes("/kpi") ? "text-primary" : "text-muted-foreground"
+                }`}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        <div className="flex items-center justify-center p-4 py-12">
+          <Card className="w-full max-w-md">
+            <CardContent className="pt-6 text-center">
+              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+              <h2 className="text-xl font-semibold mb-2">Bereits eingereicht!</h2>
+              <p className="text-muted-foreground mb-6">
+                Du hast deine KPIs für {trackingWindow?.targetWeek.label} bereits eingereicht.
+              </p>
+              <Link href={`/member/${memberId}`}>
+                <Button className="w-full h-12">
+                  Zurück zum Dashboard
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (success) {
     return (
       <div className="min-h-screen bg-muted/30">
         {/* Header */}
@@ -307,20 +451,11 @@ export default function MemberKpiPage() {
             <CardContent className="pt-6 text-center">
               <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
               <h2 className="text-xl font-semibold mb-2">
-                {alreadySubmitted && !success ? "Bereits eingereicht!" : "Vielen Dank, " + data?.member?.vorname + "!"}
+                Vielen Dank, {data?.member?.vorname}!
               </h2>
               <p className="text-muted-foreground mb-6">
-                {alreadySubmitted && !success ? (
-                  <>
-                    Du hast deine KPIs für diese Woche bereits eingereicht.<br />
-                    Nächste Woche kannst du wieder tracken.
-                  </>
-                ) : (
-                  <>
-                    Deine KPIs wurden erfolgreich gespeichert.<br />
-                    Du erhältst in Kürze dein persönliches Feedback.
-                  </>
-                )}
+                Deine KPIs wurden erfolgreich gespeichert.<br />
+                Du erhältst in Kürze dein persönliches Feedback.
               </p>
               <Link href={`/member/${memberId}`}>
                 <Button className="w-full h-12">
@@ -335,6 +470,7 @@ export default function MemberKpiPage() {
   }
 
   const member = data?.member;
+  const targetWeekNumber = trackingWindow?.targetWeek.weekNumber || 0;
 
   return (
     <div className="min-h-screen bg-muted/30">
@@ -383,7 +519,7 @@ export default function MemberKpiPage() {
         </div>
       </nav>
 
-      {/* Content - Same styling as token form */}
+      {/* Content */}
       <main className="py-6 px-4 sm:py-8">
         <div className="max-w-lg mx-auto">
           {/* Banner */}
@@ -405,37 +541,26 @@ export default function MemberKpiPage() {
             </p>
           </div>
 
-          {/* Week Selector */}
-          <Card className="mb-6">
-            <CardContent className="pt-6">
-              <div className="space-y-2">
-                <Label>Für welche Woche möchtest du tracken?</Label>
-                <Select
-                  value={selectedWeek}
-                  onValueChange={(value: "current" | "previous") => setSelectedWeek(value)}
-                >
-                  <SelectTrigger className="w-full h-12">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem
-                      value="current"
-                      disabled={currentWeekSubmitted}
-                    >
-                      {currentWeekLabel} {currentWeekSubmitted && "(bereits eingereicht)"}
-                    </SelectItem>
-                    <SelectItem
-                      value="previous"
-                      disabled={previousWeekSubmitted}
-                    >
-                      {previousWeekLabel} {previousWeekSubmitted && "(bereits eingereicht)"}
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-                {(currentWeekSubmitted && previousWeekSubmitted) && (
-                  <p className="text-sm text-amber-600">
-                    Beide Wochen wurden bereits eingereicht.
-                  </p>
+          {/* Week Info Banner */}
+          <Card className="mb-6 border-primary/20 bg-primary/5">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Tracking für</p>
+                  <p className="font-semibold text-lg">{trackingWindow?.targetWeek.label}</p>
+                </div>
+                {trackingWindow?.closesAt && (
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Deadline</p>
+                    <p className="font-medium text-amber-600">
+                      {new Date(trackingWindow.closesAt).toLocaleDateString("de-DE", {
+                        weekday: "short",
+                      })}, {new Date(trackingWindow.closesAt).toLocaleTimeString("de-DE", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })} Uhr
+                    </p>
+                  </div>
                 )}
               </div>
             </CardContent>
@@ -475,7 +600,7 @@ export default function MemberKpiPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-2">
-                  <Label htmlFor="umsatzIst">Umsatz diese Woche (€) *</Label>
+                  <Label htmlFor="umsatzIst">Umsatz KW{targetWeekNumber} (€) *</Label>
                   <Input
                     id="umsatzIst"
                     type="number"
@@ -780,7 +905,7 @@ export default function MemberKpiPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="heldentat">
-                    Was war deine Heldentat diese Woche (KW{activeWeekInfo.weekNumber})?
+                    Was war deine Heldentat diese Woche (KW{targetWeekNumber})?
                   </Label>
                   <Textarea
                     id="heldentat"
@@ -792,7 +917,7 @@ export default function MemberKpiPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="blockiert">
-                    Was hat dich diese Woche blockiert (KW{activeWeekInfo.weekNumber})?
+                    Was hat dich diese Woche blockiert (KW{targetWeekNumber})?
                   </Label>
                   <Textarea
                     id="blockiert"
@@ -816,7 +941,7 @@ export default function MemberKpiPage() {
               </CardContent>
             </Card>
 
-            <Button type="submit" className="w-full h-12 text-base" disabled={submitting || (currentWeekSubmitted && previousWeekSubmitted)}>
+            <Button type="submit" className="w-full h-12 text-base" disabled={submitting}>
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
