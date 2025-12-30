@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { weeklyKpiFormSchema } from "@/lib/validations";
-import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString, normalizeWeekStart } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
@@ -47,16 +47,19 @@ export async function GET(
     const previousWeek = getPreviousWeek(currentWeekMonday);
 
     // Check if previous week was already submitted
+    // Normalize dates to avoid timezone issues
+    const normalizedPreviousWeek = normalizeWeekStart(previousWeek);
     const previousWeekEntry = member.kpiWeeks.find((entry) => {
-      const entryWeek = new Date(entry.weekStart);
-      return entryWeek.getTime() === previousWeek.getTime();
+      const entryWeek = normalizeWeekStart(new Date(entry.weekStart));
+      return entryWeek.getTime() === normalizedPreviousWeek.getTime();
     });
     const previousWeekSubmitted = !!previousWeekEntry?.id;
 
     // Check if current week was already submitted
+    const normalizedCurrentWeek = normalizeWeekStart(currentWeekMonday);
     const currentWeekEntry = member.kpiWeeks.find((entry) => {
-      const entryWeek = new Date(entry.weekStart);
-      return entryWeek.getTime() === currentWeekMonday.getTime();
+      const entryWeek = normalizeWeekStart(new Date(entry.weekStart));
+      return entryWeek.getTime() === normalizedCurrentWeek.getTime();
     });
     const currentWeekSubmitted = !!currentWeekEntry?.id;
 
@@ -141,16 +144,19 @@ export async function GET(
     const previousWeek = getPreviousWeek(currentWeekMonday);
 
     // Check if previous week was already submitted
+    // Normalize dates to avoid timezone issues
+    const normalizedPreviousWeek = normalizeWeekStart(previousWeek);
     const previousWeekEntry = member.kpiWeeks.find((entry) => {
-      const entryWeek = new Date(entry.weekStart);
-      return entryWeek.getTime() === previousWeek.getTime();
+      const entryWeek = normalizeWeekStart(new Date(entry.weekStart));
+      return entryWeek.getTime() === normalizedPreviousWeek.getTime();
     });
     const previousWeekSubmitted = !!previousWeekEntry?.id;
 
     // Check if current week was already submitted
+    const normalizedCurrentWeek = normalizeWeekStart(currentWeekMonday);
     const currentWeekEntry = member.kpiWeeks.find((entry) => {
-      const entryWeek = new Date(entry.weekStart);
-      return entryWeek.getTime() === currentWeekMonday.getTime();
+      const entryWeek = normalizeWeekStart(new Date(entry.weekStart));
+      return entryWeek.getTime() === normalizedCurrentWeek.getTime();
     });
     const currentWeekSubmitted = !!currentWeekEntry?.id;
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getMemberSession } from "@/lib/member-auth";
 import { prisma } from "@/lib/prisma";
-import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString, normalizeWeekStart } from "@/lib/date-utils";
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,16 +41,19 @@ export async function GET(request: NextRequest) {
     const previousWeek = getPreviousWeek(currentWeekMonday);
 
     // Check if previous week was already submitted
+    // Normalize dates to avoid timezone issues
+    const normalizedPreviousWeek = normalizeWeekStart(previousWeek);
     const previousWeekEntry = member.kpiWeeks.find((entry) => {
-      const entryWeek = new Date(entry.weekStart);
-      return entryWeek.getTime() === previousWeek.getTime();
+      const entryWeek = normalizeWeekStart(new Date(entry.weekStart));
+      return entryWeek.getTime() === normalizedPreviousWeek.getTime();
     });
     const previousWeekSubmitted = !!previousWeekEntry?.id;
 
     // Check if current week was already submitted
+    const normalizedCurrentWeek = normalizeWeekStart(currentWeekMonday);
     const currentWeekEntry = member.kpiWeeks.find((entry) => {
-      const entryWeek = new Date(entry.weekStart);
-      return entryWeek.getTime() === currentWeekMonday.getTime();
+      const entryWeek = normalizeWeekStart(new Date(entry.weekStart));
+      return entryWeek.getTime() === normalizedCurrentWeek.getTime();
     });
     const currentWeekSubmitted = !!currentWeekEntry?.id;
 
