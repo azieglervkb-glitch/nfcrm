@@ -3,9 +3,38 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, wrapEmailTemplate, renderTemplate } from "@/lib/email";
 import { sendWhatsApp } from "@/lib/whatsapp";
 import { getAppUrl, generateLogoUrl } from "@/lib/app-url";
-import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
+import { getCurrentWeekStart, getWeekInfo, getPreviousWeek } from "@/lib/date-utils";
 
 const CRON_SECRET = process.env.CRON_SECRET;
+
+/**
+ * Get current time in Europe/Berlin timezone
+ */
+function getBerlinTime(): Date {
+  const now = new Date();
+  const berlinTime = new Date(now.toLocaleString("en-US", { timeZone: "Europe/Berlin" }));
+  return berlinTime;
+}
+
+/**
+ * Determine which week to show in the daily summary based on the tracking window logic:
+ * - Saturday/Sunday: Show CURRENT week (members are tracking this week)
+ * - Monday-Friday: Show PREVIOUS week (last tracked week / will be tracked starting Friday)
+ */
+function getTargetWeekForSummary(): Date {
+  const now = getBerlinTime();
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+
+  const currentWeekStart = getCurrentWeekStart();
+
+  if (dayOfWeek === 6 || dayOfWeek === 0) {
+    // Saturday or Sunday - show current week (what members are currently tracking)
+    return currentWeekStart;
+  } else {
+    // Monday to Friday - show previous week (last tracked week)
+    return getPreviousWeek(currentWeekStart);
+  }
+}
 
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -16,7 +45,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const now = new Date();
-    const weekStart = getCurrentWeekStart();
+    // Use the target week based on tracking window logic
+    // Saturday/Sunday: current week, Monday-Friday: previous week
+    const weekStart = getTargetWeekForSummary();
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Get all ADMIN and SUPER_ADMIN users who want daily summaries
