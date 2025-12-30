@@ -82,6 +82,8 @@ export default function MemberGoalsPage() {
     termineAbschlussSoll: "",
     einheitenSoll: "",
     empfehlungenSoll: "",
+    konvertierungTerminSoll: "",
+    abschlussquoteSoll: "",
     // Track toggles
     trackKontakte: true,
     trackTermine: true,
@@ -117,6 +119,8 @@ export default function MemberGoalsPage() {
           termineAbschlussSoll: data.termineAbschlussSoll?.toString() || "",
           einheitenSoll: data.einheitenSoll?.toString() || "",
           empfehlungenSoll: data.empfehlungenSoll?.toString() || "",
+          konvertierungTerminSoll: data.konvertierungTerminSoll?.toString() || "",
+          abschlussquoteSoll: data.abschlussquoteSoll?.toString() || "",
           // Track toggles
           trackKontakte: data.trackKontakte ?? true,
           trackTermine: data.trackTermine ?? true,
@@ -153,6 +157,8 @@ export default function MemberGoalsPage() {
           termineAbschlussSoll: editForm.termineAbschlussSoll ? parseInt(editForm.termineAbschlussSoll) : null,
           einheitenSoll: editForm.einheitenSoll ? parseInt(editForm.einheitenSoll) : null,
           empfehlungenSoll: editForm.empfehlungenSoll ? parseInt(editForm.empfehlungenSoll) : null,
+          konvertierungTerminSoll: editForm.konvertierungTerminSoll ? parseFloat(editForm.konvertierungTerminSoll) : null,
+          abschlussquoteSoll: editForm.abschlussquoteSoll ? parseFloat(editForm.abschlussquoteSoll) : null,
           // Track toggles
           trackKontakte: editForm.trackKontakte,
           trackTermine: editForm.trackTermine,
@@ -501,6 +507,22 @@ export default function MemberGoalsPage() {
                     onCheckedChange={(checked) => setEditForm({ ...editForm, trackEntscheider: checked })}
                   />
                 </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackKonvertierung" className="text-sm cursor-pointer">Konvertierung %</Label>
+                  <Switch
+                    id="trackKonvertierung"
+                    checked={editForm.trackKonvertierung}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackKonvertierung: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <Label htmlFor="trackAbschlussquote" className="text-sm cursor-pointer">Abschlussquote %</Label>
+                  <Switch
+                    id="trackAbschlussquote"
+                    checked={editForm.trackAbschlussquote}
+                    onCheckedChange={(checked) => setEditForm({ ...editForm, trackAbschlussquote: checked })}
+                  />
+                </div>
               </div>
             </div>
 
@@ -589,6 +611,36 @@ export default function MemberGoalsPage() {
                       placeholder="z.B. 3"
                       value={editForm.empfehlungenSoll}
                       onChange={(e) => setEditForm({ ...editForm, empfehlungenSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {editForm.trackKonvertierung && (
+                  <div className="space-y-2">
+                    <Label htmlFor="konvertierungTerminSoll">Konvertierung (%)</Label>
+                    <Input
+                      id="konvertierungTerminSoll"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      placeholder="z.B. 15"
+                      value={editForm.konvertierungTerminSoll}
+                      onChange={(e) => setEditForm({ ...editForm, konvertierungTerminSoll: e.target.value })}
+                    />
+                  </div>
+                )}
+                {editForm.trackAbschlussquote && (
+                  <div className="space-y-2">
+                    <Label htmlFor="abschlussquoteSoll">Abschlussquote (%)</Label>
+                    <Input
+                      id="abschlussquoteSoll"
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="100"
+                      placeholder="z.B. 30"
+                      value={editForm.abschlussquoteSoll}
+                      onChange={(e) => setEditForm({ ...editForm, abschlussquoteSoll: e.target.value })}
                     />
                   </div>
                 )}

@@ -141,6 +141,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       memberId,
+      weekStart: clientWeekStart,
       umsatzIst,
       kontakteIst,
       entscheiderIst,
@@ -170,7 +171,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Member not found" }, { status: 404 });
     }
 
-    const weekStart = getCurrentWeekStart();
+    // Use client-provided weekStart or fall back to current week
+    let weekStart: Date;
+    if (clientWeekStart) {
+      weekStart = new Date(clientWeekStart);
+      weekStart.setHours(0, 0, 0, 0);
+    } else {
+      weekStart = getCurrentWeekStart();
+    }
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Check if already submitted this week - no edits allowed

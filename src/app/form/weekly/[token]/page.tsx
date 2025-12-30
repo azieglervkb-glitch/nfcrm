@@ -11,7 +11,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, CheckCircle, AlertCircle, Euro, Phone, Calendar, Target, Gift, Heart, MessageSquare, Handshake } from "lucide-react";
+import { Loader2, CheckCircle, AlertCircle, Euro, Phone, Calendar, Target, Gift, Heart, MessageSquare, Handshake, ChevronDown } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
 
 interface MemberData {
   id: string;
@@ -45,6 +53,20 @@ export default function WeeklyKpiFormPage({
   const [feelingScore, setFeelingScore] = useState(5);
   const [token, setToken] = useState<string>("");
   const [isPreview, setIsPreview] = useState(false);
+  const [selectedWeek, setSelectedWeek] = useState<"current" | "previous">("current");
+  const [previousWeekSubmitted, setPreviousWeekSubmitted] = useState(false);
+  const [currentWeekSubmitted, setCurrentWeekSubmitted] = useState(false);
+
+  // Calculate week options
+  const currentWeekStart = getCurrentWeekStart();
+  const previousWeekStart = getPreviousWeek(currentWeekStart);
+  const currentWeekInfo = getWeekInfo(currentWeekStart);
+  const previousWeekInfo = getWeekInfo(previousWeekStart);
+  const currentWeekLabel = `KW${currentWeekInfo.weekNumber} (${getWeekRangeString(currentWeekStart)})`;
+  const previousWeekLabel = `KW${previousWeekInfo.weekNumber} (${getWeekRangeString(previousWeekStart)})`;
+
+  // Get the selected week info for labels
+  const activeWeekInfo = selectedWeek === "current" ? currentWeekInfo : previousWeekInfo;
 
   const {
     register,
@@ -70,6 +92,20 @@ export default function WeeklyKpiFormPage({
         const data = await response.json();
         setMemberData(data.member);
         setIsPreview(data.isPreview || false);
+
+        // Check which weeks have already been submitted
+        if (data.member?.id) {
+          const kpiResponse = await fetch(`/api/member/kpi/weeks-status?memberId=${data.member.id}`);
+          if (kpiResponse.ok) {
+            const kpiData = await kpiResponse.json();
+            setCurrentWeekSubmitted(kpiData.currentWeekSubmitted);
+            setPreviousWeekSubmitted(kpiData.previousWeekSubmitted);
+            // Auto-select previous week if current week is submitted but previous isn't
+            if (kpiData.currentWeekSubmitted && !kpiData.previousWeekSubmitted) {
+              setSelectedWeek("previous");
+            }
+          }
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Ein Fehler ist aufgetreten");
       } finally {
@@ -83,11 +119,14 @@ export default function WeeklyKpiFormPage({
     setSubmitting(true);
     setError(null);
 
+    // Determine which week to submit for
+    const weekStart = selectedWeek === "current" ? currentWeekStart : previousWeekStart;
+
     try {
       const response = await fetch(`/api/forms/weekly/${token}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, feelingScore }),
+        body: JSON.stringify({ ...data, feelingScore, weekStart: weekStart.toISOString() }),
       });
 
       if (!response.ok) {
@@ -167,9 +206,45 @@ export default function WeeklyKpiFormPage({
             Hey {memberData?.vorname}!
           </h1>
           <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-            Zeit für dein Weekly Update – trage deine Zahlen für diese Woche ein.
+            Zeit für dein Weekly Update – trage deine Zahlen ein.
           </p>
         </div>
+
+        {/* Week Selector */}
+        <Card className="mb-6">
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <Label>Für welche Woche möchtest du tracken?</Label>
+              <Select
+                value={selectedWeek}
+                onValueChange={(value: "current" | "previous") => setSelectedWeek(value)}
+              >
+                <SelectTrigger className="w-full h-12">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem
+                    value="current"
+                    disabled={currentWeekSubmitted}
+                  >
+                    {currentWeekLabel} {currentWeekSubmitted && "(bereits eingereicht)"}
+                  </SelectItem>
+                  <SelectItem
+                    value="previous"
+                    disabled={previousWeekSubmitted}
+                  >
+                    {previousWeekLabel} {previousWeekSubmitted && "(bereits eingereicht)"}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              {(currentWeekSubmitted && previousWeekSubmitted) && (
+                <p className="text-sm text-amber-600">
+                  Beide Wochen wurden bereits eingereicht.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {error && (
@@ -506,7 +581,7 @@ export default function WeeklyKpiFormPage({
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="heldentat">
-                  Was war deine Heldentat diese Woche?
+                  Was war deine Heldentat diese Woche (KW{activeWeekInfo.weekNumber})?
                 </Label>
                 <Textarea
                   id="heldentat"
@@ -517,7 +592,7 @@ export default function WeeklyKpiFormPage({
 
               <div className="space-y-2">
                 <Label htmlFor="blockiert">
-                  Was hat dich diese Woche blockiert?
+                  Was hat dich diese Woche blockiert (KW{activeWeekInfo.weekNumber})?
                 </Label>
                 <Textarea
                   id="blockiert"

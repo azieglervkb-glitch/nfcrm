@@ -107,9 +107,19 @@ export async function POST(
     const body = await request.json();
     const validatedData = weeklyKpiFormSchema.parse(body);
 
-    // Use weekStart from token if available (from reminder), otherwise fall back to current week
-    // This ensures that when a member submits after a Monday reminder, the KPIs go to the correct (previous) week
-    const weekStart = formToken.weekStart ?? getCurrentWeekStart();
+    // Priority for weekStart:
+    // 1. Client-provided weekStart (when user selects a specific week)
+    // 2. Token weekStart (from reminder)
+    // 3. Current week (fallback)
+    let weekStart: Date;
+    if (body.weekStart) {
+      weekStart = new Date(body.weekStart);
+      weekStart.setHours(0, 0, 0, 0);
+    } else if (formToken.weekStart) {
+      weekStart = formToken.weekStart;
+    } else {
+      weekStart = getCurrentWeekStart();
+    }
     const { weekNumber, year } = getWeekInfo(weekStart);
 
     // Calculate no-show quote

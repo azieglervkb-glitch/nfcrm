@@ -31,7 +31,15 @@ import {
   Heart,
   MessageSquare,
 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { getCurrentWeekStart, getPreviousWeek, getWeekInfo, getWeekRangeString } from "@/lib/date-utils";
 
 interface MemberData {
   vorname: string;
@@ -106,6 +114,20 @@ export default function MemberKpiPage() {
   const [success, setSuccess] = useState(false);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
   const [feelingScore, setFeelingScore] = useState(5);
+  const [selectedWeek, setSelectedWeek] = useState<"current" | "previous">("current");
+  const [previousWeekSubmitted, setPreviousWeekSubmitted] = useState(false);
+  const [currentWeekSubmitted, setCurrentWeekSubmitted] = useState(false);
+
+  // Calculate week options
+  const currentWeekStart = getCurrentWeekStart();
+  const previousWeekStart = getPreviousWeek(currentWeekStart);
+  const currentWeekInfo = getWeekInfo(currentWeekStart);
+  const previousWeekInfo = getWeekInfo(previousWeekStart);
+  const currentWeekLabel = `KW${currentWeekInfo.weekNumber} (${getWeekRangeString(currentWeekStart)})`;
+  const previousWeekLabel = `KW${previousWeekInfo.weekNumber} (${getWeekRangeString(previousWeekStart)})`;
+
+  // Get the selected week info for labels
+  const activeWeekInfo = selectedWeek === "current" ? currentWeekInfo : previousWeekInfo;
 
   const [formValues, setFormValues] = useState({
     umsatzIst: "",
@@ -137,6 +159,22 @@ export default function MemberKpiPage() {
         const result = await response.json();
         setData(result);
         if (result.currentWeek?.id) {
+          setCurrentWeekSubmitted(true);
+        }
+      }
+
+      // Check which weeks have already been submitted
+      const weeksStatusResponse = await fetch(`/api/member/kpi/weeks-status?memberId=${memberId}`);
+      if (weeksStatusResponse.ok) {
+        const weeksStatus = await weeksStatusResponse.json();
+        setCurrentWeekSubmitted(weeksStatus.currentWeekSubmitted);
+        setPreviousWeekSubmitted(weeksStatus.previousWeekSubmitted);
+        // Auto-select previous week if current week is submitted but previous isn't
+        if (weeksStatus.currentWeekSubmitted && !weeksStatus.previousWeekSubmitted) {
+          setSelectedWeek("previous");
+        }
+        // Set alreadySubmitted based on both weeks
+        if (weeksStatus.currentWeekSubmitted && weeksStatus.previousWeekSubmitted) {
           setAlreadySubmitted(true);
         }
       }
@@ -152,12 +190,16 @@ export default function MemberKpiPage() {
     setSubmitting(true);
     setError(null);
 
+    // Determine which week to submit for
+    const weekStart = selectedWeek === "current" ? currentWeekStart : previousWeekStart;
+
     try {
       const response = await fetch(`/api/member/kpi/full`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           memberId,
+          weekStart: weekStart.toISOString(),
           umsatzIst: formValues.umsatzIst ? parseFloat(formValues.umsatzIst) : null,
           kontakteIst: formValues.kontakteIst ? parseInt(formValues.kontakteIst) : null,
           entscheiderIst: formValues.entscheiderIst ? parseInt(formValues.entscheiderIst) : null,
@@ -359,9 +401,45 @@ export default function MemberKpiPage() {
               Hey {member?.vorname}!
             </h1>
             <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-              Zeit für dein Weekly Update – trage deine Zahlen für diese Woche ein.
+              Zeit für dein Weekly Update – trage deine Zahlen ein.
             </p>
           </div>
+
+          {/* Week Selector */}
+          <Card className="mb-6">
+            <CardContent className="pt-6">
+              <div className="space-y-2">
+                <Label>Für welche Woche möchtest du tracken?</Label>
+                <Select
+                  value={selectedWeek}
+                  onValueChange={(value: "current" | "previous") => setSelectedWeek(value)}
+                >
+                  <SelectTrigger className="w-full h-12">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      value="current"
+                      disabled={currentWeekSubmitted}
+                    >
+                      {currentWeekLabel} {currentWeekSubmitted && "(bereits eingereicht)"}
+                    </SelectItem>
+                    <SelectItem
+                      value="previous"
+                      disabled={previousWeekSubmitted}
+                    >
+                      {previousWeekLabel} {previousWeekSubmitted && "(bereits eingereicht)"}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                {(currentWeekSubmitted && previousWeekSubmitted) && (
+                  <p className="text-sm text-amber-600">
+                    Beide Wochen wurden bereits eingereicht.
+                  </p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {error && (
@@ -702,7 +780,7 @@ export default function MemberKpiPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="heldentat">
-                    Was war deine Heldentat diese Woche?
+                    Was war deine Heldentat diese Woche (KW{activeWeekInfo.weekNumber})?
                   </Label>
                   <Textarea
                     id="heldentat"
@@ -714,7 +792,7 @@ export default function MemberKpiPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="blockiert">
-                    Was hat dich diese Woche blockiert?
+                    Was hat dich diese Woche blockiert (KW{activeWeekInfo.weekNumber})?
                   </Label>
                   <Textarea
                     id="blockiert"
@@ -738,7 +816,7 @@ export default function MemberKpiPage() {
               </CardContent>
             </Card>
 
-            <Button type="submit" className="w-full h-12 text-base" disabled={submitting}>
+            <Button type="submit" className="w-full h-12 text-base" disabled={submitting || (currentWeekSubmitted && previousWeekSubmitted)}>
               {submitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

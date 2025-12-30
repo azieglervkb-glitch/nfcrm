@@ -82,10 +82,14 @@ export async function PUT(request: NextRequest) {
       umsatzSollWoche,
       umsatzSollMonat,
       kontakteSoll,
+      entscheiderSoll,
       termineVereinbartSoll,
+      termineStattgefundenSoll,
       termineAbschlussSoll,
       einheitenSoll,
       empfehlungenSoll,
+      konvertierungTerminSoll,
+      abschlussquoteSoll,
       // Track toggles
       trackKontakte,
       trackTermine,
@@ -116,10 +120,14 @@ export async function PUT(request: NextRequest) {
     if (umsatzSollWoche !== undefined) updateData.umsatzSollWoche = umsatzSollWoche;
     if (umsatzSollMonat !== undefined) updateData.umsatzSollMonat = umsatzSollMonat;
     if (kontakteSoll !== undefined) updateData.kontakteSoll = kontakteSoll;
+    if (entscheiderSoll !== undefined) updateData.entscheiderSoll = entscheiderSoll;
     if (termineVereinbartSoll !== undefined) updateData.termineVereinbartSoll = termineVereinbartSoll;
+    if (termineStattgefundenSoll !== undefined) updateData.termineStattgefundenSoll = termineStattgefundenSoll;
     if (termineAbschlussSoll !== undefined) updateData.termineAbschlussSoll = termineAbschlussSoll;
     if (einheitenSoll !== undefined) updateData.einheitenSoll = einheitenSoll;
     if (empfehlungenSoll !== undefined) updateData.empfehlungenSoll = empfehlungenSoll;
+    if (konvertierungTerminSoll !== undefined) updateData.konvertierungTerminSoll = konvertierungTerminSoll;
+    if (abschlussquoteSoll !== undefined) updateData.abschlussquoteSoll = abschlussquoteSoll;
 
     // Track toggles
     if (trackKontakte !== undefined) updateData.trackKontakte = trackKontakte;
