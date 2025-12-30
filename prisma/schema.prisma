@@ -372,6 +372,7 @@ model Member {
   notes             MemberNote[]
   formTokens        FormToken[]
   session           MemberSession?
+  goalHistory       GoalHistory[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -379,6 +380,44 @@ model Member {
   @@index([status])
   @@index([assignedToId])
   @@index([churnRisk])
+}
+
+// Goal History - tracks changes to member goals over time
+model GoalHistory {
+  id        String   @id @default(cuid())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  memberId  String
+  changedAt DateTime @default(now())
+
+  // Snapshot of all goal values at this point in time
+  umsatzSollWoche          Decimal? @db.Decimal(12, 2)
+  umsatzSollMonat          Decimal? @db.Decimal(12, 2)
+  kontakteSoll             Int?
+  entscheiderSoll          Int?
+  termineVereinbartSoll    Int?
+  termineStattgefundenSoll Int?
+  termineAbschlussSoll     Int?
+  einheitenSoll            Int?
+  empfehlungenSoll         Int?
+  konvertierungTerminSoll  Decimal? @db.Decimal(5, 2)
+  abschlussquoteSoll       Decimal? @db.Decimal(5, 2)
+  hauptzielEinSatz         String?
+
+  // Track toggles
+  trackKontakte       Boolean @default(false)
+  trackTermine        Boolean @default(false)
+  trackAbschluesse    Boolean @default(false)
+  trackEinheiten      Boolean @default(false)
+  trackEmpfehlungen   Boolean @default(false)
+  trackEntscheider    Boolean @default(false)
+  trackKonvertierung  Boolean @default(false)
+  trackAbschlussquote Boolean @default(false)
+
+  // Source of change
+  source String? // "member_portal" | "kpi_setup" | "admin"
+
+  @@index([memberId])
+  @@index([changedAt])
 }
 
 // Wöchentliche KPI-Einträge (Formular 3: "Dein Weekly KPI-Update")

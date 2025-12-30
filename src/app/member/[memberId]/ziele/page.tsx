@@ -33,6 +33,9 @@ import {
   Pencil,
   Save,
   Settings2,
+  History,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -60,15 +63,47 @@ interface MemberGoals {
   trackAbschlussquote: boolean;
 }
 
+interface GoalHistoryEntry {
+  id: string;
+  changedAt: string;
+  source: string | null;
+  goals: {
+    hauptzielEinSatz: string | null;
+    umsatzSollWoche: number | null;
+    umsatzSollMonat: number | null;
+    kontakteSoll: number | null;
+    entscheiderSoll: number | null;
+    termineVereinbartSoll: number | null;
+    termineStattgefundenSoll: number | null;
+    termineAbschlussSoll: number | null;
+    einheitenSoll: number | null;
+    empfehlungenSoll: number | null;
+    konvertierungTerminSoll: number | null;
+    abschlussquoteSoll: number | null;
+  };
+  tracking: {
+    trackKontakte: boolean;
+    trackTermine: boolean;
+    trackAbschluesse: boolean;
+    trackEinheiten: boolean;
+    trackEmpfehlungen: boolean;
+    trackEntscheider: boolean;
+    trackKonvertierung: boolean;
+    trackAbschlussquote: boolean;
+  };
+}
+
 export default function MemberGoalsPage() {
   const params = useParams();
   const memberId = params.memberId as string;
   const { toast } = useToast();
 
   const [memberGoals, setMemberGoals] = useState<MemberGoals | null>(null);
+  const [goalHistory, setGoalHistory] = useState<GoalHistoryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -98,6 +133,7 @@ export default function MemberGoalsPage() {
   useEffect(() => {
     if (memberId) {
       fetchMemberGoals();
+      fetchGoalHistory();
     }
   }, [memberId]);
 
@@ -136,6 +172,18 @@ export default function MemberGoalsPage() {
       console.error("Failed to fetch goals:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchGoalHistory = async () => {
+    try {
+      const response = await fetch(`/api/member/goals/history?memberId=${memberId}`);
+      if (response.ok) {
+        const data = await response.json();
+        setGoalHistory(data.history || []);
+      }
+    } catch (error) {
+      console.error("Failed to fetch goal history:", error);
     }
   };
 
@@ -178,6 +226,7 @@ export default function MemberGoalsPage() {
         });
         setEditDialogOpen(false);
         fetchMemberGoals(); // Refresh data
+        fetchGoalHistory(); // Refresh history
       } else {
         throw new Error("Failed to save");
       }
@@ -399,6 +448,137 @@ export default function MemberGoalsPage() {
                 </p>
               )}
             </CardContent>
+          </Card>
+
+          {/* Goal History Section */}
+          <Card>
+            <CardHeader className="pb-3">
+              <button
+                onClick={() => setShowHistory(!showHistory)}
+                className="flex items-center justify-between w-full"
+              >
+                <div className="flex items-center gap-2">
+                  <History className="h-5 w-5 text-gray-500" />
+                  <CardTitle className="text-lg">Zielverlauf</CardTitle>
+                </div>
+                {showHistory ? (
+                  <ChevronUp className="h-5 w-5 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-5 w-5 text-gray-400" />
+                )}
+              </button>
+              <CardDescription>
+                Sieh dir an, wie sich deine Ziele entwickelt haben
+              </CardDescription>
+            </CardHeader>
+            {showHistory && (
+              <CardContent>
+                {goalHistory.length > 0 ? (
+                  <div className="space-y-4">
+                    {goalHistory.map((entry, index) => (
+                      <div
+                        key={entry.id}
+                        className={`p-4 rounded-lg border ${
+                          index === 0 ? "border-red-200 bg-red-50" : "border-gray-200 bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-gray-500" />
+                            <span className="font-medium text-sm">
+                              {new Date(entry.changedAt).toLocaleDateString("de-DE", {
+                                day: "2-digit",
+                                month: "long",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          {index === 0 && (
+                            <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full">
+                              Aktuell
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Goals summary */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+                          {entry.goals.umsatzSollMonat && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Monatsumsatz</span>
+                              <p className="font-semibold">
+                                {Number(entry.goals.umsatzSollMonat).toLocaleString("de-DE", {
+                                  style: "currency",
+                                  currency: "EUR",
+                                  minimumFractionDigits: 0,
+                                })}
+                              </p>
+                            </div>
+                          )}
+                          {entry.tracking.trackKontakte && entry.goals.kontakteSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Kontakte/Woche</span>
+                              <p className="font-semibold">{entry.goals.kontakteSoll}</p>
+                            </div>
+                          )}
+                          {entry.tracking.trackTermine && entry.goals.termineVereinbartSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Termine/Woche</span>
+                              <p className="font-semibold">{entry.goals.termineVereinbartSoll}</p>
+                            </div>
+                          )}
+                          {entry.tracking.trackAbschluesse && entry.goals.termineAbschlussSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Abschlüsse/Woche</span>
+                              <p className="font-semibold">{entry.goals.termineAbschlussSoll}</p>
+                            </div>
+                          )}
+                          {entry.tracking.trackEinheiten && entry.goals.einheitenSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Einheiten/Woche</span>
+                              <p className="font-semibold">{entry.goals.einheitenSoll}</p>
+                            </div>
+                          )}
+                          {entry.tracking.trackEmpfehlungen && entry.goals.empfehlungenSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Empfehlungen/Woche</span>
+                              <p className="font-semibold">{entry.goals.empfehlungenSoll}</p>
+                            </div>
+                          )}
+                          {entry.tracking.trackKonvertierung && entry.goals.konvertierungTerminSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Konvertierung</span>
+                              <p className="font-semibold">{entry.goals.konvertierungTerminSoll}%</p>
+                            </div>
+                          )}
+                          {entry.tracking.trackAbschlussquote && entry.goals.abschlussquoteSoll && (
+                            <div className="bg-white p-2 rounded">
+                              <span className="text-gray-500 text-xs">Abschlussquote</span>
+                              <p className="font-semibold">{entry.goals.abschlussquoteSoll}%</p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Hauptziel if changed */}
+                        {entry.goals.hauptzielEinSatz && (
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <span className="text-xs text-gray-500">Hauptziel:</span>
+                            <p className="text-sm italic">&ldquo;{entry.goals.hauptzielEinSatz}&rdquo;</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <History className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                    <p>Noch keine Änderungen dokumentiert.</p>
+                    <p className="text-sm">Zukünftige Änderungen werden hier angezeigt.</p>
+                  </div>
+                )}
+              </CardContent>
+            )}
           </Card>
         </div>
       </main>

@@ -145,6 +145,35 @@ export async function PUT(request: NextRequest) {
       data: updateData,
     });
 
+    // Create a goal history entry with the new values
+    await prisma.goalHistory.create({
+      data: {
+        memberId,
+        source: "member_portal",
+        // Snapshot all goal values (use updated values or keep existing)
+        hauptzielEinSatz: hauptzielEinSatz ?? member.hauptzielEinSatz,
+        umsatzSollWoche: umsatzSollWoche ?? member.umsatzSollWoche,
+        umsatzSollMonat: umsatzSollMonat ?? member.umsatzSollMonat,
+        kontakteSoll: kontakteSoll ?? member.kontakteSoll,
+        entscheiderSoll: entscheiderSoll ?? member.entscheiderSoll,
+        termineVereinbartSoll: termineVereinbartSoll ?? member.termineVereinbartSoll,
+        termineStattgefundenSoll: termineStattgefundenSoll ?? member.termineStattgefundenSoll,
+        termineAbschlussSoll: termineAbschlussSoll ?? member.termineAbschlussSoll,
+        einheitenSoll: einheitenSoll ?? member.einheitenSoll,
+        empfehlungenSoll: empfehlungenSoll ?? member.empfehlungenSoll,
+        konvertierungTerminSoll: konvertierungTerminSoll ?? member.konvertierungTerminSoll,
+        abschlussquoteSoll: abschlussquoteSoll ?? member.abschlussquoteSoll,
+        trackKontakte: trackKontakte ?? member.trackKontakte,
+        trackTermine: trackTermine ?? member.trackTermine,
+        trackAbschluesse: trackAbschluesse ?? member.trackAbschluesse,
+        trackEinheiten: trackEinheiten ?? member.trackEinheiten,
+        trackEmpfehlungen: trackEmpfehlungen ?? member.trackEmpfehlungen,
+        trackEntscheider: trackEntscheider ?? member.trackEntscheider,
+        trackKonvertierung: trackKonvertierung ?? member.trackKonvertierung,
+        trackAbschlussquote: trackAbschlussquote ?? member.trackAbschlussquote,
+      },
+    });
+
     return NextResponse.json({ success: true, member: updated });
   } catch (error) {
     console.error("Failed to update member goals:", error);
