@@ -125,12 +125,12 @@ export default function MemberKpiPage() {
   const [feelingScore, setFeelingScore] = useState(5);
   const [selectedWeek, setSelectedWeek] = useState<string>("");
   
-  // Get week number from selected week
+  // Get week number from selected week (only for display, not saved to DB)
   const selectedWeekNumber = selectedWeek && data?.availableWeeks
     ? data.availableWeeks.find((w) => w.weekStart === selectedWeek)?.weekNumber 
     : null;
   
-  // Helper function to add KW number to text
+  // Helper function to add KW number to text (only visual, not saved)
   const addWeekNumber = (text: string): string => {
     if (!selectedWeekNumber) return text;
     return text.replace(/diese Woche/g, `diese Woche (KW${selectedWeekNumber})`);
