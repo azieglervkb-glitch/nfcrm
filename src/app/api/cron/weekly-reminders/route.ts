@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { runWeeklyReminders } from "@/lib/automation/engine";
 
-// This endpoint should be called daily (e.g., 6:00 AM and 7:00 PM)
-// It handles weekly KPI reminders (email morning, WhatsApp evening)
+// ============================================================================
+// DEPRECATED: This endpoint is disabled
+// ============================================================================
+// Reason: This old reminder system sends URLs with member.id instead of tokens,
+// which causes the form submit button to be disabled (preview mode).
+//
+// Use /api/cron/kpi-reminder instead - it:
+// - Creates proper form tokens
+// - Runs at configurable times (Settings: kpiReminderDay1/2, kpiReminderTime1/2)
+// - Handles both Friday (current week) and Monday (previous week deadline) reminders
+// ============================================================================
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
@@ -14,49 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const startedAt = new Date();
-
-  try {
-    await runWeeklyReminders();
-
-    // Always log the cron run (even if there was nothing to do)
-    await prisma.automationLog.create({
-      data: {
-        ruleId: "CRON",
-        ruleName: "Weekly Reminders",
-        triggered: true,
-        actionsTaken: ["runWeeklyReminders executed"],
-        details: { startedAt: startedAt.toISOString() },
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: "Weekly reminders processed",
-    });
-  } catch (error) {
-    console.error("Weekly reminders cron error:", error);
-
-    // Log failed cron run
-    try {
-      await prisma.automationLog.create({
-        data: {
-          ruleId: "CRON",
-          ruleName: "Weekly Reminders",
-          triggered: false,
-          actionsTaken: ["ERROR"],
-          details: { startedAt: startedAt.toISOString(), error: String(error) },
-        },
-      });
-    } catch (e) {
-      console.error("Failed to log weekly reminders cron error:", e);
-    }
-
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
-  }
+  // Return success without doing anything - this endpoint is deprecated
+  return NextResponse.json({
+    success: true,
+    message: "DEPRECATED: This endpoint is disabled. Use /api/cron/kpi-reminder instead.",
+    deprecated: true,
+  });
 }
 
 export async function POST(request: NextRequest) {

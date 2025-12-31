@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendChurnWarningEmail } from "@/lib/email";
 import { subWeeks } from "date-fns";
-import { checkSilentMember } from "@/lib/automation/engine";
+// checkSilentMember removed - see R2 section below for reason
 import { shouldRunScheduledAutomations, hasRunThisMinute } from "@/lib/cron-scheduler";
 
 // This endpoint runs every minute and checks if it should execute based on settings
@@ -162,27 +162,15 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // R2: Check Silent Members (no KPI for current week)
-    try {
-      const activeMembers = await prisma.member.findMany({
-        where: {
-          status: "AKTIV",
-          kpiTrackingEnabled: true,
-        kpiSetupCompleted: true, // Nur Members mit abgeschlossenem Setup
-        },
-      });
-
-      for (const member of activeMembers) {
-        try {
-          await checkSilentMember(member);
-          results.silentMemberChecked++;
-        } catch (error) {
-          results.errors.push(`Silent Member check failed for ${member.email}: ${error}`);
-        }
-      }
-    } catch (error) {
-      results.errors.push(`Silent Member check error: ${error}`);
-    }
+    // R2: Check Silent Members - DISABLED
+    // ========================================================================
+    // Reason: checkSilentMember sends URLs with member.id instead of tokens,
+    // which causes the form submit button to be disabled (preview mode).
+    // KPI reminders are now handled by /api/cron/kpi-reminder which creates
+    // proper form tokens.
+    // ========================================================================
+    // Keeping the counter at 0 for backwards compatibility in logs
+    results.silentMemberChecked = 0;
 
     // Log the cron run
     await prisma.automationLog.create({
