@@ -106,10 +106,11 @@ export async function PATCH(
     });
 
     // If this is a feedback block task that was just completed, generate AI feedback
-    // Check for Q2 (Anomalie), FEEDBACK_BLOCK, or any task related to blocked feedback
+    // Check for Q2 (Anomalie), C2 (Blockade), FEEDBACK_BLOCK, or any task related to blocked feedback
     const isFeedbackBlockTask =
       taskBeforeUpdate &&
       (taskBeforeUpdate.ruleId === "Q2" ||
+        taskBeforeUpdate.ruleId === "C2" ||
         taskBeforeUpdate.ruleId === "FEEDBACK_BLOCK" ||
         taskBeforeUpdate.title?.includes("KI-Feedback") ||
         taskBeforeUpdate.title?.includes("Feedback"));
