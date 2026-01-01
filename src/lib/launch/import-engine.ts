@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { sendEmail, sendOnboardingInviteEmail } from '@/lib/email';
+import { sendWhatsApp } from '@/lib/whatsapp';
 import { generateFormUrl } from '@/lib/app-url';
 import { randomBytes } from 'crypto';
 import {
@@ -304,13 +305,14 @@ async function importSingleMember(
 }
 
 /**
- * Send onboarding invite to a member
+ * Send onboarding invite to a member (Email + WhatsApp)
  */
 async function sendOnboardingInvite(member: {
   id: string;
   email: string;
   vorname: string;
   nachname: string;
+  whatsappNummer?: string | null;
 }): Promise<void> {
   // Create form token with retry
   const token = randomBytes(32).toString('hex');
@@ -328,6 +330,9 @@ async function sendOnboardingInvite(member: {
     'FormToken erstellen'
   );
 
+  // Generate full URL (FIX: was passing raw token before!)
+  const onboardingUrl = generateFormUrl('onboarding', token);
+
   // Send email with retry
   await withRetry(
     () => sendOnboardingInviteEmail({
@@ -335,21 +340,47 @@ async function sendOnboardingInvite(member: {
       email: member.email,
       vorname: member.vorname,
       nachname: member.nachname,
-    }, token),
+    }, onboardingUrl),
     2,
     1000,
     'Onboarding E-Mail senden'
   );
+
+  // Send WhatsApp if number available
+  if (member.whatsappNummer) {
+    const message = `Hey ${member.vorname}! 👋
+
+Willkommen beim NF Mentoring! 🚀
+
+Bitte fülle kurz dein Onboarding aus, damit wir dich optimal unterstützen können:
+
+${onboardingUrl}
+
+Dauert nur 2 Minuten! 💪
+
+Dein NF Mentoring Team`;
+
+    await sendWhatsApp({
+      phone: member.whatsappNummer,
+      message,
+      memberId: member.id,
+      type: 'MANUAL',
+    }).catch(err => {
+      console.error(`[Launch] WhatsApp failed for ${member.email}:`, err);
+      // Don't fail - WhatsApp is optional
+    });
+  }
 }
 
 /**
- * Send KPI setup invite to a member
+ * Send KPI setup invite to a member (Email + WhatsApp)
  */
 async function sendKpiSetupInvite(member: {
   id: string;
   email: string;
   vorname: string;
   nachname: string;
+  whatsappNummer?: string | null;
 }): Promise<void> {
   // Enable KPI tracking with retry
   await withRetry(
@@ -412,6 +443,31 @@ async function sendKpiSetupInvite(member: {
     1000,
     'KPI-Setup E-Mail senden'
   );
+
+  // Send WhatsApp if number available
+  if (member.whatsappNummer) {
+    const message = `Hey ${member.vorname}! 👋
+
+Willkommen im NF Mentoring! 🎉
+
+Bitte richte dein persönliches KPI-Tracking ein:
+
+${kpiSetupUrl}
+
+Dauert nur 5 Minuten und hilft uns, deine Fortschritte zu verfolgen! 📊
+
+Dein NF Mentoring Team`;
+
+    await sendWhatsApp({
+      phone: member.whatsappNummer,
+      message,
+      memberId: member.id,
+      type: 'MANUAL',
+    }).catch(err => {
+      console.error(`[Launch] WhatsApp failed for ${member.email}:`, err);
+      // Don't fail - WhatsApp is optional
+    });
+  }
 }
 
 /**
