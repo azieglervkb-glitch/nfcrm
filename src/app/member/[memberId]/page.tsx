@@ -106,12 +106,6 @@ const kpiSetupSchema = z.object({
 }).refine((data) => !data.trackAbschlussquote || (data.abschlussquoteSoll !== null && data.abschlussquoteSoll !== undefined && data.abschlussquoteSoll >= 0), {
   message: "Bitte gib ein Ziel für Abschlussquote an",
   path: ["abschlussquoteSoll"],
-}).refine((data) => !data.trackEinheiten || (data.einheitenSoll && data.einheitenSoll > 0), {
-  message: "Bitte gib ein Ziel für Einheiten an",
-  path: ["einheitenSoll"],
-}).refine((data) => !data.trackEmpfehlungen || (data.empfehlungenSoll && data.empfehlungenSoll > 0), {
-  message: "Bitte gib ein Ziel für Empfehlungen an",
-  path: ["empfehlungenSoll"],
 });
 
 type KpiSetupInput = z.infer<typeof kpiSetupSchema>;
@@ -602,13 +596,13 @@ export default function MemberPortalPage() {
                     <div className="flex items-center gap-2">
                       <Target className="h-5 w-5 text-blue-500" />
                       <Label htmlFor="trackEinheiten" className="font-semibold cursor-pointer">
-                        Einheiten / Punkte tracken *
+                        Einheiten / Punkte tracken
                       </Label>
                     </div>
                     {trackEinheiten && (
                       <div className="space-y-2">
                         <Label htmlFor="einheitenSoll" className="text-sm">
-                          Ziel: Einheiten / Punkte pro Woche *
+                          Ziel: Einheiten / Punkte pro Woche
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           Falls du Punkte/Einheiten für dein Unternehmen trackst.
@@ -620,11 +614,7 @@ export default function MemberPortalPage() {
                           min={1}
                           {...register("einheitenSoll", { valueAsNumber: true })}
                           placeholder="z.B. 10"
-                          className={errors.einheitenSoll ? "border-destructive" : ""}
                         />
-                        {errors.einheitenSoll && (
-                          <p className="text-xs text-destructive">{errors.einheitenSoll.message}</p>
-                        )}
                       </div>
                     )}
                   </div>
@@ -642,13 +632,13 @@ export default function MemberPortalPage() {
                     <div className="flex items-center gap-2">
                       <Gift className="h-5 w-5 text-amber-500" />
                       <Label htmlFor="trackEmpfehlungen" className="font-semibold cursor-pointer">
-                        Empfehlungen tracken *
+                        Empfehlungen tracken
                       </Label>
                     </div>
                     {trackEmpfehlungen && (
                       <div className="space-y-2">
                         <Label htmlFor="empfehlungenSoll" className="text-sm">
-                          Ziel: Empfehlungen pro Woche *
+                          Ziel: Empfehlungen pro Woche
                         </Label>
                         <p className="text-xs text-muted-foreground">
                           Wie viele Empfehlungen willst du pro Woche generieren?
@@ -660,11 +650,7 @@ export default function MemberPortalPage() {
                           min={1}
                           {...register("empfehlungenSoll", { valueAsNumber: true })}
                           placeholder="z.B. 3"
-                          className={errors.empfehlungenSoll ? "border-destructive" : ""}
                         />
-                        {errors.empfehlungenSoll && (
-                          <p className="text-xs text-destructive">{errors.empfehlungenSoll.message}</p>
-                        )}
                       </div>
                     )}
                   </div>
