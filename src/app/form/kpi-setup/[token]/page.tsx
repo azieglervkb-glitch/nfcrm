@@ -374,7 +374,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Phone className="h-5 w-5 text-red-500" />
                     <Label htmlFor="trackKontakte" className="font-semibold cursor-pointer">
-                      Kontakte / Calls pro Woche tracken
+                      Kontakte / Calls pro Woche tracken *
                     </Label>
                   </div>
                   {trackKontakte && (
@@ -428,7 +428,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-primary" />
                     <Label htmlFor="trackTermine" className="font-semibold cursor-pointer">
-                      Gesamttermine tracken
+                      Gesamttermine tracken *
                     </Label>
                   </div>
                   {trackTermine && (
@@ -468,7 +468,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-purple-500" />
                     <Label htmlFor="trackKonvertierung" className="font-semibold cursor-pointer">
-                      Konvertierung tracken (Kontakt → Termin)
+                      Konvertierung tracken (Kontakt → Termin) *
                     </Label>
                   </div>
                   {trackKonvertierung && (
@@ -550,7 +550,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Percent className="h-5 w-5 text-orange-500" />
                     <Label htmlFor="trackAbschlussquote" className="font-semibold cursor-pointer">
-                      Abschlussquote tracken (Termin → Abschluss)
+                      Abschlussquote tracken (Termin → Abschluss) *
                     </Label>
                   </div>
                   {trackAbschlussquote && (
@@ -595,7 +595,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Target className="h-5 w-5 text-blue-500" />
                     <Label htmlFor="trackEinheiten" className="font-semibold cursor-pointer">
-                      Einheiten / Punkte tracken
+                      Einheiten / Punkte tracken *
                     </Label>
                   </div>
                   {trackEinheiten && (
@@ -631,7 +631,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Gift className="h-5 w-5 text-amber-500" />
                     <Label htmlFor="trackEmpfehlungen" className="font-semibold cursor-pointer">
-                      Empfehlungen tracken
+                      Empfehlungen tracken *
                     </Label>
                   </div>
                   {trackEmpfehlungen && (
