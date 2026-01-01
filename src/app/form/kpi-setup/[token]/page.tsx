@@ -601,7 +601,7 @@ export default function KpiSetupFormPage({
                   {trackEinheiten && (
                     <div className="space-y-2">
                       <Label htmlFor="einheitenSoll" className="text-sm">
-                        Ziel: Einheiten / Punkte pro Woche
+                        Ziel: Einheiten / Punkte pro Woche *
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Falls du Punkte/Einheiten für dein Unternehmen trackst.
@@ -613,7 +613,11 @@ export default function KpiSetupFormPage({
                         min={1}
                         {...register("einheitenSoll", { valueAsNumber: true })}
                         placeholder="z.B. 10"
+                        className={errors.einheitenSoll ? "border-destructive" : ""}
                       />
+                      {errors.einheitenSoll && (
+                        <p className="text-xs text-destructive">{errors.einheitenSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -637,7 +641,7 @@ export default function KpiSetupFormPage({
                   {trackEmpfehlungen && (
                     <div className="space-y-2">
                       <Label htmlFor="empfehlungenSoll" className="text-sm">
-                        Ziel: Empfehlungen pro Woche
+                        Ziel: Empfehlungen pro Woche *
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Wie viele Empfehlungen willst du pro Woche generieren?
@@ -649,7 +653,11 @@ export default function KpiSetupFormPage({
                         min={1}
                         {...register("empfehlungenSoll", { valueAsNumber: true })}
                         placeholder="z.B. 3"
+                        className={errors.empfehlungenSoll ? "border-destructive" : ""}
                       />
+                      {errors.empfehlungenSoll && (
+                        <p className="text-xs text-destructive">{errors.empfehlungenSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
