@@ -259,7 +259,7 @@ export async function POST(
       {
         weekNumber,
         year,
-        umsatzIst: kpiWeek.umsatzIst,
+        umsatzIst: kpiWeek.umsatzIst ? Number(kpiWeek.umsatzIst) : null,
         feelingScore: kpiWeek.feelingScore,
       }
     ).catch(console.error);
