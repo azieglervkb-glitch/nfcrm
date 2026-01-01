@@ -20,10 +20,20 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { StatusBadge, getMemberStatusType, FeelingEmoji } from "@/components/common";
-import { Eye, MoreHorizontal, TrendingUp, Square } from "lucide-react";
+import { Eye, MoreHorizontal, TrendingUp, Square, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { InfoTooltip } from "@/components/ui/info-tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Member {
   id: string;
@@ -48,6 +58,7 @@ interface MembersTableProps {
 export function MembersTable({ members, onRefresh }: MembersTableProps) {
   const [selectedMembers, setSelectedMembers] = useState<Set<string>>(new Set());
   const [processing, setProcessing] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   function toggleMemberSelection(memberId: string) {
     const newSelected = new Set(selectedMembers);
@@ -67,7 +78,7 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
     }
   }
 
-  async function handleBulkAction(action: "activate_kpi_tracking" | "deactivate_kpi_tracking") {
+  async function handleBulkAction(action: "activate_kpi_tracking" | "deactivate_kpi_tracking" | "delete") {
     if (selectedMembers.size === 0) {
       toast.error("Bitte wähle mindestens ein Mitglied aus");
       return;
@@ -90,7 +101,9 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
         const actionLabel =
           action === "activate_kpi_tracking"
             ? "KPI-Tracking aktiviert"
-            : "KPI-Tracking deaktiviert";
+            : action === "deactivate_kpi_tracking"
+            ? "KPI-Tracking deaktiviert"
+            : "Member gelöscht";
 
         toast.success(
           `${actionLabel}: ${data.results.success} von ${data.results.total} Mitgliedern`
@@ -110,6 +123,7 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
       toast.error("Fehler bei Bulk-Aktion");
     } finally {
       setProcessing(false);
+      setShowDeleteDialog(false);
     }
   }
 
@@ -161,9 +175,58 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
               )}
               <span className="hidden sm:inline">KPI-Tracking</span> deaktivieren
             </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setShowDeleteDialog(true)}
+              disabled={processing}
+              className="gap-2"
+            >
+              {processing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline">Member</span> löschen
+            </Button>
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Member löschen?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bist du sicher, dass du <strong>{selectedMembers.size} Member</strong> löschen möchtest?
+              <br /><br />
+              Diese Aktion kann nicht rückgängig gemacht werden. Alle zugehörigen Daten
+              (KPIs, Tasks, Notizen, etc.) werden ebenfalls gelöscht.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={processing}>Abbrechen</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleBulkAction("delete")}
+              disabled={processing}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {processing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Löschen...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {selectedMembers.size} Member löschen
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Table */}
       <Table>
