@@ -134,11 +134,11 @@ export default function KpiSetupFormPage({
   } = useForm<KpiSetupInput>({
     resolver: zodResolver(kpiSetupSchema),
     defaultValues: {
-      trackKontakte: false,
+      trackKontakte: true,      // PFLICHT
       trackEntscheider: false,
-      trackTermine: false,
+      trackTermine: true,       // PFLICHT
       trackKonvertierung: false,
-      trackAbschluesse: false,
+      trackAbschluesse: true,   // PFLICHT
       trackAbschlussquote: false,
       trackEinheiten: false,
       trackEmpfehlungen: false,
@@ -462,7 +462,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <TrendingUp className="h-5 w-5 text-purple-500" />
                     <Label htmlFor="trackKonvertierung" className="font-semibold cursor-pointer">
-                      Konvertierung tracken (Kontakt → Termin) *
+                      Konvertierung tracken (Kontakt → Termin)
                     </Label>
                   </div>
                   {trackKonvertierung && (
@@ -507,7 +507,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Handshake className="h-5 w-5 text-green-600" />
                     <Label htmlFor="trackAbschluesse" className="font-semibold cursor-pointer">
-                      Abschluss-Termine & No-Shows tracken
+                      Abschluss-Termine & No-Shows tracken *
                     </Label>
                   </div>
                   {trackAbschluesse && (
@@ -544,7 +544,7 @@ export default function KpiSetupFormPage({
                   <div className="flex items-center gap-2">
                     <Percent className="h-5 w-5 text-orange-500" />
                     <Label htmlFor="trackAbschlussquote" className="font-semibold cursor-pointer">
-                      Abschlussquote tracken (Termin → Abschluss) *
+                      Abschlussquote tracken (Termin → Abschluss)
                     </Label>
                   </div>
                   {trackAbschlussquote && (
