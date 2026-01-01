@@ -93,8 +93,9 @@ model User {
   taskWhatsappEnabled Boolean   @default(false)
 
   // Notification Settings
-  notifyNewTask      Boolean   @default(true)  // Bei neuer Task-Zuweisung
-  notifyDailySummary Boolean   @default(true)  // Tägliche Zusammenfassung
+  notifyNewTask         Boolean   @default(true)  // Bei neuer Task-Zuweisung
+  notifyDailySummary    Boolean   @default(true)  // Tägliche Zusammenfassung
+  notifyOnKpiSubmission Boolean   @default(false) // Bei neuer KPI-Einreichung
 
   // Berechtigungen
   permissions String[] @default(["dashboard", "tasks"])

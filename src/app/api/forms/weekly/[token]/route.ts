@@ -5,6 +5,7 @@ import { getCurrentWeekStart, getWeekInfo } from "@/lib/date-utils";
 import { generateKpiFeedback, hasDataAnomaly } from "@/lib/openai";
 import { runKpiAutomations } from "@/lib/automation/engine";
 import { createFeedbackBlockTask } from "@/lib/feedback-block-helper";
+import { notifyAdminsOnKpiSubmission } from "@/lib/email";
 
 export async function GET(
   request: NextRequest,
@@ -251,6 +252,17 @@ export async function POST(
 
     // Run automation rules (async, don't wait)
     runKpiAutomations(formToken.memberId, kpiWeek.id).catch(console.error);
+
+    // Notify admins with notification enabled (async, don't wait)
+    notifyAdminsOnKpiSubmission(
+      { vorname: formToken.member.vorname, nachname: formToken.member.nachname },
+      {
+        weekNumber,
+        year,
+        umsatzIst: kpiWeek.umsatzIst,
+        feelingScore: kpiWeek.feelingScore,
+      }
+    ).catch(console.error);
 
     return NextResponse.json({ success: true, kpiWeekId: kpiWeek.id });
   } catch (error) {

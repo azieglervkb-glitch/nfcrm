@@ -31,7 +31,9 @@ import {
   ShieldOff,
   Smartphone,
   CheckCircle2,
+  Bell,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 
 interface ProfileData {
   id: string;
@@ -40,6 +42,7 @@ interface ProfileData {
   role: string;
   whatsappNummer?: string | null;
   taskWhatsappEnabled?: boolean;
+  notifyOnKpiSubmission?: boolean;
 }
 
 export default function ProfileSettingsPage() {
@@ -52,6 +55,7 @@ export default function ProfileSettingsPage() {
     email: "",
     whatsappNummer: "",
     taskWhatsappEnabled: false,
+    notifyOnKpiSubmission: false,
   });
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -87,6 +91,7 @@ export default function ProfileSettingsPage() {
           email: data.email || "",
           whatsappNummer: data.whatsappNummer || "",
           taskWhatsappEnabled: Boolean(data.taskWhatsappEnabled),
+          notifyOnKpiSubmission: Boolean(data.notifyOnKpiSubmission),
         });
       }
     } catch (error) {
@@ -483,6 +488,53 @@ export default function ProfileSettingsPage() {
               <>
                 <Key className="h-4 w-4 mr-2" />
                 Passwort ändern
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Benachrichtigungen */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bell className="h-5 w-5" />
+            Benachrichtigungen
+          </CardTitle>
+          <CardDescription>
+            Wähle, worüber du per E-Mail informiert werden möchtest
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+            <div className="flex-1">
+              <p className="font-medium">KPI-Einreichungen</p>
+              <p className="text-sm text-muted-foreground">
+                Erhalte eine E-Mail, wenn ein Member seine Weekly KPIs einreicht
+              </p>
+            </div>
+            <Switch
+              checked={formData.notifyOnKpiSubmission}
+              onCheckedChange={(checked) =>
+                setFormData({ ...formData, notifyOnKpiSubmission: checked })
+              }
+            />
+          </div>
+
+          <Button
+            onClick={handleSaveProfile}
+            disabled={saving}
+            className="bg-red-600 hover:bg-red-700"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Speichere...
+              </>
+            ) : (
+              <>
+                <Save className="h-4 w-4 mr-2" />
+                Änderungen speichern
               </>
             )}
           </Button>

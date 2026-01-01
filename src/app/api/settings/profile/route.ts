@@ -19,6 +19,7 @@ export async function GET() {
         role: true,
         whatsappNummer: true,
         taskWhatsappEnabled: true,
+        notifyOnKpiSubmission: true,
       },
     });
 
@@ -35,6 +36,7 @@ export async function GET() {
       role: user.role,
       whatsappNummer: user.whatsappNummer,
       taskWhatsappEnabled: user.taskWhatsappEnabled,
+      notifyOnKpiSubmission: user.notifyOnKpiSubmission,
     });
   } catch (error) {
     console.error("Failed to fetch profile:", error);
@@ -53,7 +55,7 @@ export async function PUT(request: Request) {
     }
 
     const body = await request.json();
-    const { vorname, nachname, name, email, whatsappNummer, taskWhatsappEnabled } = body;
+    const { vorname, nachname, name, email, whatsappNummer, taskWhatsappEnabled, notifyOnKpiSubmission } = body;
 
     // Support both name (legacy) and vorname/nachname
     let updateVorname = vorname;
@@ -87,6 +89,7 @@ export async function PUT(request: Request) {
         email,
         whatsappNummer: typeof whatsappNummer === "string" ? whatsappNummer : undefined,
         taskWhatsappEnabled: typeof taskWhatsappEnabled === "boolean" ? taskWhatsappEnabled : undefined,
+        notifyOnKpiSubmission: typeof notifyOnKpiSubmission === "boolean" ? notifyOnKpiSubmission : undefined,
       },
       select: {
         id: true,
@@ -96,6 +99,7 @@ export async function PUT(request: Request) {
         role: true,
         whatsappNummer: true,
         taskWhatsappEnabled: true,
+        notifyOnKpiSubmission: true,
       },
     });
 
@@ -108,6 +112,7 @@ export async function PUT(request: Request) {
       role: updatedUser.role,
       whatsappNummer: updatedUser.whatsappNummer,
       taskWhatsappEnabled: updatedUser.taskWhatsappEnabled,
+      notifyOnKpiSubmission: updatedUser.notifyOnKpiSubmission,
     });
   } catch (error) {
     console.error("Failed to update profile:", error);

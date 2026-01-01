@@ -768,6 +768,101 @@ export async function sendCoachTaskNotification(
 }
 
 /**
+ * KPI Submission Notification - Sent to admins when a member submits weekly KPIs
+ */
+export async function sendKpiSubmissionNotification(
+  admin: { email: string; vorname: string },
+  member: { vorname: string; nachname: string },
+  kpiWeek: {
+    weekNumber: number;
+    year: number;
+    umsatzIst?: number | null;
+    feelingScore?: number | null;
+  }
+): Promise<boolean> {
+  const umsatzFormatted = kpiWeek.umsatzIst
+    ? Number(kpiWeek.umsatzIst).toLocaleString("de-DE", { style: "currency", currency: "EUR", minimumFractionDigits: 0 })
+    : "nicht angegeben";
+
+  const feelingEmoji = kpiWeek.feelingScore
+    ? kpiWeek.feelingScore >= 8 ? "🟢" : kpiWeek.feelingScore >= 5 ? "🟡" : "🔴"
+    : "⚪";
+
+  const content = `
+    <div class="content">
+      <p class="greeting">Hey ${admin.vorname},</p>
+
+      <p class="text">
+        <strong>${member.vorname} ${member.nachname}</strong> hat gerade die Weekly KPIs eingereicht.
+      </p>
+
+      <div class="stats-box">
+        <div class="stats-row">
+          <span class="stats-label">Kalenderwoche</span>
+          <span class="stats-value">KW ${kpiWeek.weekNumber}/${kpiWeek.year}</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">Umsatz</span>
+          <span class="stats-value">${umsatzFormatted}</span>
+        </div>
+        <div class="stats-row">
+          <span class="stats-label">Feeling</span>
+          <span class="stats-value">${feelingEmoji} ${kpiWeek.feelingScore ?? "-"}/10</span>
+        </div>
+      </div>
+
+      <div style="text-align: center;">
+        <a href="${getAppUrl()}/members" class="button">Member ansehen</a>
+      </div>
+    </div>
+  `;
+
+  const html = wrapEmailTemplate(content);
+
+  return sendEmail({
+    to: admin.email,
+    subject: `📊 Neuer KPI-Eintrag: ${member.vorname} ${member.nachname} (KW${kpiWeek.weekNumber})`,
+    html: renderTemplate(html, { appUrl: getAppUrl(), logoUrl: generateLogoUrl() }),
+  });
+}
+
+/**
+ * Notify all admins with notifyOnKpiSubmission enabled
+ */
+export async function notifyAdminsOnKpiSubmission(
+  member: { vorname: string; nachname: string },
+  kpiWeek: {
+    weekNumber: number;
+    year: number;
+    umsatzIst?: number | null;
+    feelingScore?: number | null;
+  }
+): Promise<void> {
+  // Find all users with the notification enabled
+  const adminsToNotify = await prisma.user.findMany({
+    where: {
+      isActive: true,
+      notifyOnKpiSubmission: true,
+    },
+    select: {
+      email: true,
+      vorname: true,
+    },
+  });
+
+  // Send emails in parallel
+  await Promise.allSettled(
+    adminsToNotify.map((admin) =>
+      sendKpiSubmissionNotification(admin, member, kpiWeek)
+    )
+  );
+
+  if (adminsToNotify.length > 0) {
+    console.log(`[KPI Notification] Sent to ${adminsToNotify.length} admin(s)`);
+  }
+}
+
+/**
  * Task Notification Email - Sent when a task is assigned to a user
  */
 export async function sendTaskNotificationEmail(
