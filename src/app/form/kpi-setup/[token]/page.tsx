@@ -72,6 +72,9 @@ const kpiSetupSchema = z.object({
 }).refine((data) => !data.trackTermine || (data.termineVereinbartSoll && data.termineVereinbartSoll > 0), {
   message: "Bitte gib ein Ziel für Termine an",
   path: ["termineVereinbartSoll"],
+}).refine((data) => !data.trackAbschluesse || (data.termineAbschlussSoll && data.termineAbschlussSoll > 0), {
+  message: "Bitte gib ein Ziel für Abschluss-Termine an",
+  path: ["termineAbschlussSoll"],
 }).refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll >= 0), {
   message: "Bitte gib ein Ziel für Konvertierung an",
   path: ["konvertierungTerminSoll"],
@@ -325,6 +328,7 @@ export default function KpiSetupFormPage({
                 {errors.umsatzSollMonat && <li>Monatliches Umsatzziel</li>}
                 {errors.kontakteSoll && <li>Ziel für Kontakte pro Woche</li>}
                 {errors.termineVereinbartSoll && <li>Ziel für Termine pro Woche</li>}
+                {errors.termineAbschlussSoll && <li>Ziel für Abschluss-Termine pro Woche</li>}
                 {errors.konvertierungTerminSoll && <li>Ziel für Konvertierungsquote</li>}
                 {errors.abschlussquoteSoll && <li>Ziel für Abschlussquote</li>}
                 {errors.hauptzielEinSatz && <li>Dein Hauptziel in einem Satz</li>}
@@ -547,7 +551,7 @@ export default function KpiSetupFormPage({
                   {trackAbschluesse && (
                     <div className="space-y-2">
                       <Label htmlFor="termineAbschlussSoll" className="text-sm">
-                        Ziel: Abschluss-Termine pro Woche
+                        Ziel: Abschluss-Termine pro Woche *
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Wie viele Abschluss-Termine planst du pro Woche? No-Shows werden automatisch
@@ -560,7 +564,11 @@ export default function KpiSetupFormPage({
                         min={1}
                         {...register("termineAbschlussSoll", { valueAsNumber: true })}
                         placeholder="z.B. 5"
+                        className={errors.termineAbschlussSoll ? "border-destructive" : ""}
                       />
+                      {errors.termineAbschlussSoll && (
+                        <p className="text-xs text-destructive">{errors.termineAbschlussSoll.message}</p>
+                      )}
                     </div>
                   )}
                 </div>
