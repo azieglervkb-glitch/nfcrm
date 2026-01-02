@@ -160,10 +160,12 @@ export default function MemberPortalPage() {
     handleSubmit,
     watch,
     setValue,
+    trigger,
     formState: { errors, isSubmitted },
   } = useForm<KpiSetupInput>({
     resolver: zodResolver(kpiSetupSchema),
-    mode: "onBlur", // Validate fields when user leaves them
+    mode: "onTouched", // Validate when field is touched, then on change
+    reValidateMode: "onChange", // Re-validate on every change after first validation
     defaultValues: {
       trackKontakte: true,      // PFLICHT
       trackEntscheider: false,
@@ -389,6 +391,7 @@ export default function MemberPortalPage() {
                     onCheckedChange={(checked) => {
                       setValue("trackKontakte", !!checked);
                       if (!checked) setValue("trackEntscheider", false);
+                      setTimeout(() => trigger("kontakteSoll"), 0);
                     }}
                     className="mt-1"
                   />
@@ -443,7 +446,10 @@ export default function MemberPortalPage() {
                   <Checkbox
                     id="trackTermine"
                     checked={trackTermine}
-                    onCheckedChange={(checked) => setValue("trackTermine", !!checked)}
+                    onCheckedChange={(checked) => {
+                      setValue("trackTermine", !!checked);
+                      setTimeout(() => trigger("termineVereinbartSoll"), 0);
+                    }}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-3">
@@ -483,7 +489,10 @@ export default function MemberPortalPage() {
                   <Checkbox
                     id="trackKonvertierung"
                     checked={trackKonvertierung}
-                    onCheckedChange={(checked) => setValue("trackKonvertierung", !!checked)}
+                    onCheckedChange={(checked) => {
+                      setValue("trackKonvertierung", !!checked);
+                      setTimeout(() => trigger("konvertierungTerminSoll"), 0);
+                    }}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-3">
@@ -528,7 +537,10 @@ export default function MemberPortalPage() {
                   <Checkbox
                     id="trackAbschluesse"
                     checked={trackAbschluesse}
-                    onCheckedChange={(checked) => setValue("trackAbschluesse", !!checked)}
+                    onCheckedChange={(checked) => {
+                      setValue("trackAbschluesse", !!checked);
+                      setTimeout(() => trigger("termineAbschlussSoll"), 0);
+                    }}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-3">
@@ -565,7 +577,10 @@ export default function MemberPortalPage() {
                   <Checkbox
                     id="trackAbschlussquote"
                     checked={trackAbschlussquote}
-                    onCheckedChange={(checked) => setValue("trackAbschlussquote", !!checked)}
+                    onCheckedChange={(checked) => {
+                      setValue("trackAbschlussquote", !!checked);
+                      setTimeout(() => trigger("abschlussquoteSoll"), 0);
+                    }}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-3">
@@ -610,7 +625,10 @@ export default function MemberPortalPage() {
                   <Checkbox
                     id="trackEinheiten"
                     checked={trackEinheiten}
-                    onCheckedChange={(checked) => setValue("trackEinheiten", !!checked)}
+                    onCheckedChange={(checked) => {
+                      setValue("trackEinheiten", !!checked);
+                      setTimeout(() => trigger("einheitenSoll"), 0);
+                    }}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-3">
@@ -646,7 +664,10 @@ export default function MemberPortalPage() {
                   <Checkbox
                     id="trackEmpfehlungen"
                     checked={trackEmpfehlungen}
-                    onCheckedChange={(checked) => setValue("trackEmpfehlungen", !!checked)}
+                    onCheckedChange={(checked) => {
+                      setValue("trackEmpfehlungen", !!checked);
+                      setTimeout(() => trigger("empfehlungenSoll"), 0);
+                    }}
                     className="mt-1"
                   />
                   <div className="flex-1 space-y-3">
