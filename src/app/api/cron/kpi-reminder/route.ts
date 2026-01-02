@@ -6,43 +6,80 @@ import { sendWhatsApp, isInQuietHours } from "@/lib/whatsapp";
 import { generateFormUrl } from "@/lib/app-url";
 import { randomBytes } from "crypto";
 import { shouldRunKpiReminder, hasRunThisMinute } from "@/lib/cron-scheduler";
+import { auth } from "@/lib/auth";
 
 // This endpoint runs every minute and checks if it should execute based on settings
 // Settings: kpiReminderDay1, kpiReminderTime1, kpiReminderDay2, kpiReminderTime2
+// Supports force=true to bypass time check and send immediately
+// Auth: CRON_SECRET for automated cron jobs, OR session auth for admin UI
 
 const CRON_SECRET = process.env.CRON_SECRET;
 
+// Helper to add random delay between sends
+function randomDelay(maxSeconds: number): Promise<void> {
+  const delay = Math.floor(Math.random() * maxSeconds * 1000);
+  return new Promise(resolve => setTimeout(resolve, delay));
+}
+
 export async function GET(request: NextRequest) {
-  // Verify cron secret
+  // Check authentication: CRON_SECRET OR admin session
   const authHeader = request.headers.get("authorization");
-  if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
+  const isCronAuth = CRON_SECRET && authHeader === `Bearer ${CRON_SECRET}`;
+
+  let isAdminAuth = false;
+  if (!isCronAuth) {
+    const session = await auth();
+    isAdminAuth = !!session?.user;
+  }
+
+  if (!isCronAuth && !isAdminAuth) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
-    // Check if we should run based on settings
-    const scheduleCheck = await shouldRunKpiReminder();
-    if (!scheduleCheck.shouldRun) {
-      return NextResponse.json({
-        skipped: true,
-        reason: scheduleCheck.reason,
-      });
-    }
+    const { searchParams } = new URL(request.url);
+    const force = searchParams.get("force") === "true";
+    const reminderTypeParam = searchParams.get("reminderType");
 
-    // Prevent duplicate runs within the same minute
-    const reminderType = scheduleCheck.reminderType || 1;
-    if (await hasRunThisMinute("CRON", `KPI Reminder ${reminderType} Cron`)) {
-      return NextResponse.json({
-        skipped: true,
-        reason: "Already ran this minute",
-      });
-    }
-
-    // Get settings for deadline time display
+    // Get settings
     const settings = await prisma.systemSettings.findFirst({
       where: { id: "default" },
     });
+
+    // Check if we should run based on settings (skip if force=true)
+    let scheduleCheck;
+    let reminderType: 1 | 2;
+
+    if (force) {
+      // Force mode: use reminderType from param or default to 1
+      const forcedType = reminderTypeParam ? parseInt(reminderTypeParam) : 1;
+      reminderType = (forcedType === 2 ? 2 : 1) as 1 | 2;
+      scheduleCheck = {
+        shouldRun: true,
+        reminderType,
+        reason: `Manual trigger (force=true, type=${reminderType})`
+      };
+    } else {
+      scheduleCheck = await shouldRunKpiReminder();
+      if (!scheduleCheck.shouldRun) {
+        return NextResponse.json({
+          skipped: true,
+          reason: scheduleCheck.reason,
+        });
+      }
+      reminderType = scheduleCheck.reminderType || 1;
+
+      // Prevent duplicate runs within the same minute (only for automatic runs)
+      if (await hasRunThisMinute("CRON", `KPI Reminder ${reminderType} Cron`)) {
+        return NextResponse.json({
+          skipped: true,
+          reason: "Already ran this minute",
+        });
+      }
+    }
+
     const deadlineTime = settings?.kpiTrackingWindowCloseTime || "20:00";
+    const kpiReminderChannels = settings?.kpiReminderChannels || ["EMAIL"];
 
     // Reminder 1 (Friday): For the CURRENT week (still running)
     // Reminder 2 (Monday): For the PREVIOUS week (deadline reminder)
@@ -81,12 +118,27 @@ export async function GET(request: NextRequest) {
       emailsSent: 0,
       whatsappSent: 0,
       reminderType,
+      forced: force,
+      channels: kpiReminderChannels,
       errors: [] as string[],
     };
 
     const inQuietHours = await isInQuietHours();
 
-    for (const member of membersWithoutKpi) {
+    // Calculate max delay based on number of members (2s per member, max 60s)
+    const maxDelaySeconds = Math.min(60, Math.max(5, membersWithoutKpi.length * 2));
+
+    // Shuffle members for random order
+    const shuffledMembers = [...membersWithoutKpi].sort(() => Math.random() - 0.5);
+
+    for (let i = 0; i < shuffledMembers.length; i++) {
+      const member = shuffledMembers[i];
+
+      // Add random delay between sends (except first one)
+      if (i > 0) {
+        await randomDelay(maxDelaySeconds / shuffledMembers.length);
+      }
+
       try {
         // Generate form token with weekStart to ensure correct week on submission
         const token = randomBytes(32).toString("hex");
@@ -103,18 +155,24 @@ export async function GET(request: NextRequest) {
         const formLink = generateFormUrl("weekly", token);
 
         // Send Email - different template for reminder 1 vs 2
-        let emailSent = false;
-        if (reminderType === 1) {
-          // Friday reminder - standard template for current week
-          emailSent = await sendKpiReminderEmail(member, formLink, weekNumber);
-        } else {
-          // Monday reminder - deadline template with urgency
-          emailSent = await sendKpiDeadlineReminderEmail(member, formLink, weekNumber, deadlineTime);
+        if (kpiReminderChannels.includes("EMAIL")) {
+          let emailSent = false;
+          if (reminderType === 1) {
+            // Friday reminder - standard template for current week
+            emailSent = await sendKpiReminderEmail(member, formLink, weekNumber);
+          } else {
+            // Monday reminder - deadline template with urgency
+            emailSent = await sendKpiDeadlineReminderEmail(member, formLink, weekNumber, deadlineTime);
+          }
+          if (emailSent) results.emailsSent++;
         }
-        if (emailSent) results.emailsSent++;
 
-        // Send WhatsApp (if not in quiet hours)
-        if (member.whatsappNummer && !inQuietHours) {
+        // Send WhatsApp (if not in quiet hours, unless force mode)
+        const shouldSendWhatsapp = member.whatsappNummer &&
+          kpiReminderChannels.includes("WHATSAPP") &&
+          (!inQuietHours || force);
+
+        if (shouldSendWhatsapp && member.whatsappNummer) {
           let message: string;
           if (reminderType === 1) {
             // Friday reminder - for current week
@@ -129,7 +187,7 @@ export async function GET(request: NextRequest) {
             message,
             memberId: member.id,
             type: "REMINDER",
-            ruleId: "CRON",
+            ruleId: force ? "MANUAL_TRIGGER" : "CRON",
           });
 
           if (whatsappSent) {
@@ -144,13 +202,14 @@ export async function GET(request: NextRequest) {
     // Log the cron run
     await prisma.automationLog.create({
       data: {
-        ruleId: "CRON",
-        ruleName: `KPI Reminder ${reminderType} Cron`,
+        ruleId: force ? "MANUAL_TRIGGER" : "CRON",
+        ruleName: force ? `KPI Reminder ${reminderType} Manual` : `KPI Reminder ${reminderType} Cron`,
         triggered: true,
         actionsTaken: [
           `Reminder ${reminderType} for KW${weekNumber}`,
           `${results.emailsSent} Emails sent`,
           `${results.whatsappSent} WhatsApp messages sent`,
+          force ? "Manually triggered" : "Scheduled run",
         ],
         details: results,
       },

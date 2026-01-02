@@ -86,7 +86,8 @@ export function SettingsForm() {
   const [saved, setSaved] = useState(false);
   const [cronjobStatuses, setCronjobStatuses] = useState<CronjobStatus[]>([]);
   const [loadingCronStatus, setLoadingCronStatus] = useState(false);
-  
+  const [sendingReminder, setSendingReminder] = useState(false);
+
   // AI System Health
   interface HealthCheckResult {
     status: "OK" | "WARNING" | "ERROR" | "UNKNOWN";
@@ -209,6 +210,33 @@ export function SettingsForm() {
   function updateSetting<K extends keyof SystemSettings>(key: K, value: SystemSettings[K]) {
     if (settings) {
       setSettings({ ...settings, [key]: value });
+    }
+  }
+
+  async function sendKpiReminder(reminderType: 1 | 2) {
+    setSendingReminder(true);
+    try {
+      // Uses session auth, no CRON_SECRET needed for admin users
+      const response = await fetch(`/api/cron/kpi-reminder?force=true&reminderType=${reminderType}`, {
+        method: "POST",
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(
+          `Reminder ${reminderType} gesendet: ${data.results.emailsSent} Emails, ${data.results.whatsappSent} WhatsApp`,
+          { description: `${data.results.total} Members ohne KPIs für die Woche` }
+        );
+      } else if (data.skipped) {
+        toast.info(data.reason || "Reminder übersprungen");
+      } else {
+        toast.error(data.error || "Fehler beim Senden der Reminder");
+      }
+    } catch (error) {
+      console.error("Error sending KPI reminder:", error);
+      toast.error("Fehler beim Senden der Reminder");
+    } finally {
+      setSendingReminder(false);
     }
   }
 
@@ -480,6 +508,46 @@ export function SettingsForm() {
                   />
                   <span className="text-sm">WhatsApp</span>
                 </label>
+              </div>
+            </div>
+
+            {/* Manual Trigger */}
+            <div className="flex flex-col gap-3 pt-4 border-t">
+              <div>
+                <Label className="text-sm font-medium">Manueller Versand</Label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Reminder jetzt sofort an alle Members ohne KPIs für diese Woche senden
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendKpiReminder(1)}
+                  disabled={sendingReminder}
+                >
+                  {sendingReminder ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <Bell className="h-4 w-4 mr-2" />
+                  )}
+                  Reminder 1 (Freitag)
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => sendKpiReminder(2)}
+                  disabled={sendingReminder}
+                >
+                  {sendingReminder ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <AlertTriangle className="h-4 w-4 mr-2" />
+                  )}
+                  Reminder 2 (Deadline)
+                </Button>
               </div>
             </div>
           </CardContent>
