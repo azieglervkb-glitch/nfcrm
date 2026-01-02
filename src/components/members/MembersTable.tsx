@@ -210,7 +210,7 @@ export function MembersTable({ members, onRefresh }: MembersTableProps) {
             <AlertDialogAction
               onClick={() => handleBulkAction("delete")}
               disabled={processing}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90"
             >
               {processing ? (
                 <>

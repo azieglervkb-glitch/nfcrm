@@ -227,7 +227,7 @@ export function TaskCard({ task }: TaskCardProps) {
             <AlertDialogAction
               onClick={deleteTask}
               disabled={isLoading}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-white hover:bg-destructive/90"
             >
               {isLoading ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

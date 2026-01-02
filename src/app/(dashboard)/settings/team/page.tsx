@@ -584,7 +584,7 @@ export default function TeamPage() {
                     type="button"
                     onClick={removeAvatar}
                     disabled={uploadingAvatar}
-                    className="absolute -top-1 -right-1 bg-destructive text-destructive-foreground rounded-full p-1 hover:bg-destructive/90"
+                    className="absolute -top-1 -right-1 bg-destructive text-white rounded-full p-1 hover:bg-destructive/90"
                   >
                     <X className="h-3 w-3" />
                   </button>
