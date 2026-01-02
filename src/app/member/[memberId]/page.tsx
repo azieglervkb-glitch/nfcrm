@@ -160,9 +160,10 @@ export default function MemberPortalPage() {
     handleSubmit,
     watch,
     setValue,
-    formState: { errors },
+    formState: { errors, isSubmitted },
   } = useForm<KpiSetupInput>({
     resolver: zodResolver(kpiSetupSchema),
+    mode: "onBlur", // Validate fields when user leaves them
     defaultValues: {
       trackKontakte: true,      // PFLICHT
       trackEntscheider: false,
@@ -316,6 +317,26 @@ export default function MemberPortalPage() {
           </div>
 
           <form onSubmit={handleSubmit(onKpiSetupSubmit)} className="space-y-6">
+            {/* Validation Error Summary - shows after first submit attempt */}
+            {isSubmitted && Object.keys(errors).length > 0 && (
+              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-destructive" />
+                  <p className="font-semibold text-destructive">
+                    Bitte fülle folgende Pflichtfelder aus:
+                  </p>
+                </div>
+                <ul className="list-disc list-inside text-sm text-destructive space-y-1 ml-2">
+                  {errors.umsatzSollMonat && <li>Monatliches Umsatzziel</li>}
+                  {errors.kontakteSoll && <li>Ziel für Kontakte pro Woche</li>}
+                  {errors.termineVereinbartSoll && <li>Ziel für Termine pro Woche</li>}
+                  {errors.konvertierungTerminSoll && <li>Ziel für Konvertierungsquote</li>}
+                  {errors.abschlussquoteSoll && <li>Ziel für Abschlussquote</li>}
+                  {errors.hauptzielEinSatz && <li>Dein Hauptziel in einem Satz</li>}
+                </ul>
+              </div>
+            )}
+
             {/* Dein Ziel */}
             <Card>
               <CardHeader>
