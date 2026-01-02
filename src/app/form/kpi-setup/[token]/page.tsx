@@ -66,22 +66,25 @@ const kpiSetupSchema = z.object({
   // Kontext & Motivation
   wasNervtAmMeisten: z.string().optional(),
   hauptzielEinSatz: z.string().min(5, "Bitte formuliere dein Ziel (mind. 5 Zeichen)"),
-}).refine((data) => !data.trackKontakte || (data.kontakteSoll && data.kontakteSoll > 0), {
+})
+// PFLICHT KPIs: Kontakte und Termine müssen Zielwert haben wenn aktiviert
+.refine((data) => !data.trackKontakte || (data.kontakteSoll && data.kontakteSoll > 0), {
   message: "Bitte gib ein Ziel für Kontakte an",
   path: ["kontakteSoll"],
 }).refine((data) => !data.trackTermine || (data.termineVereinbartSoll && data.termineVereinbartSoll > 0), {
   message: "Bitte gib ein Ziel für Termine an",
   path: ["termineVereinbartSoll"],
-}).refine((data) => !data.trackAbschluesse || (data.termineAbschlussSoll && data.termineAbschlussSoll > 0), {
-  message: "Bitte gib ein Ziel für Abschluss-Termine an",
-  path: ["termineAbschlussSoll"],
-}).refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll >= 0), {
+})
+// Abschluss-Termine: Zielwert ist OPTIONAL (trackAbschluesse ist Pflicht, aber Ziel nicht)
+// OPTIONAL KPIs: Konvertierung und Abschlussquote müssen Zielwert haben wenn aktiviert
+.refine((data) => !data.trackKonvertierung || (data.konvertierungTerminSoll !== null && data.konvertierungTerminSoll >= 0), {
   message: "Bitte gib ein Ziel für Konvertierung an",
   path: ["konvertierungTerminSoll"],
 }).refine((data) => !data.trackAbschlussquote || (data.abschlussquoteSoll !== null && data.abschlussquoteSoll >= 0), {
   message: "Bitte gib ein Ziel für Abschlussquote an",
   path: ["abschlussquoteSoll"],
 });
+// Einheiten und Empfehlungen: Zielwert ist komplett OPTIONAL
 
 type KpiSetupInput = z.infer<typeof kpiSetupSchema>;
 
@@ -570,7 +573,6 @@ export default function KpiSetupFormPage({
                   checked={trackAbschluesse}
                   onCheckedChange={(checked) => {
                     setValue("trackAbschluesse", !!checked);
-                    setTimeout(() => trigger("termineAbschlussSoll"), 0);
                   }}
                   className="mt-1"
                 />
@@ -584,7 +586,7 @@ export default function KpiSetupFormPage({
                   {trackAbschluesse && (
                     <div className="space-y-2">
                       <Label htmlFor="termineAbschlussSoll" className="text-sm">
-                        Ziel: Abschluss-Termine pro Woche *
+                        Ziel: Abschluss-Termine pro Woche (optional)
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Wie viele Abschluss-Termine planst du pro Woche? No-Shows werden automatisch
@@ -597,11 +599,7 @@ export default function KpiSetupFormPage({
                         min={1}
                         {...register("termineAbschlussSoll", { valueAsNumber: true })}
                         placeholder="z.B. 5"
-                        className={errors.termineAbschlussSoll ? "border-destructive" : ""}
                       />
-                      {errors.termineAbschlussSoll && (
-                        <p className="text-xs text-destructive">{errors.termineAbschlussSoll.message}</p>
-                      )}
                     </div>
                   )}
                 </div>
