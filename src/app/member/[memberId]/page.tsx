@@ -323,25 +323,45 @@ export default function MemberPortalPage() {
 
           <form onSubmit={handleSubmit(onKpiSetupSubmit)} className="space-y-6">
             {/* Validation Error Summary - shows after first submit attempt */}
-            {isSubmitted && Object.keys(errors).length > 0 && (
-              <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <AlertCircle className="h-5 w-5 text-destructive" />
-                  <p className="font-semibold text-destructive">
-                    Bitte fülle folgende Pflichtfelder aus:
-                  </p>
+            {isSubmitted && Object.keys(errors).length > 0 && (() => {
+              // Map of field keys to German labels
+              const errorLabels: Record<string, string> = {
+                umsatzSollMonat: "Monatliches Umsatzziel",
+                kontakteSoll: "Ziel für Kontakte pro Woche",
+                termineVereinbartSoll: "Ziel für Termine pro Woche",
+                termineAbschlussSoll: "Ziel für Abschluss-Termine pro Woche",
+                konvertierungTerminSoll: "Ziel für Konvertierungsquote",
+                abschlussquoteSoll: "Ziel für Abschlussquote",
+                hauptzielEinSatz: "Dein Hauptziel in einem Satz",
+              };
+
+              // Get all error keys and map to labels
+              const errorKeys = Object.keys(errors);
+              const errorItems = errorKeys.map(key => {
+                const label = errorLabels[key];
+                const errorObj = errors[key as keyof typeof errors];
+                const message = errorObj && typeof errorObj === 'object' && 'message' in errorObj
+                  ? (errorObj as { message?: string }).message
+                  : null;
+                return label || message || `Fehler bei: ${key}`;
+              });
+
+              return (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-5 w-5 text-destructive" />
+                    <p className="font-semibold text-destructive">
+                      Bitte fülle folgende Pflichtfelder aus:
+                    </p>
+                  </div>
+                  <ul className="list-disc list-inside text-sm text-destructive space-y-1 ml-2">
+                    {errorItems.map((item, index) => (
+                      <li key={index}>{item}</li>
+                    ))}
+                  </ul>
                 </div>
-                <ul className="list-disc list-inside text-sm text-destructive space-y-1 ml-2">
-                  {errors.umsatzSollMonat && <li>Monatliches Umsatzziel</li>}
-                  {errors.kontakteSoll && <li>Ziel für Kontakte pro Woche</li>}
-                  {errors.termineVereinbartSoll && <li>Ziel für Termine pro Woche</li>}
-                  {errors.termineAbschlussSoll && <li>Ziel für Abschluss-Termine pro Woche</li>}
-                  {errors.konvertierungTerminSoll && <li>Ziel für Konvertierungsquote</li>}
-                  {errors.abschlussquoteSoll && <li>Ziel für Abschlussquote</li>}
-                  {errors.hauptzielEinSatz && <li>Dein Hauptziel in einem Satz</li>}
-                </ul>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Dein Ziel */}
             <Card>
