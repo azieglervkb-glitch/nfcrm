@@ -140,6 +140,16 @@ export default function KpiSetupFormPage({
     mode: "onTouched", // Validate when field is touched, then on change
     reValidateMode: "onChange", // Re-validate on every change after first validation
     defaultValues: {
+      // Numeric fields - NaN represents empty (same as valueAsNumber for empty input)
+      umsatzSollMonat: NaN,
+      kontakteSoll: NaN,
+      termineVereinbartSoll: NaN,
+      termineAbschlussSoll: NaN,
+      konvertierungTerminSoll: NaN,
+      abschlussquoteSoll: NaN,
+      einheitenSoll: NaN,
+      empfehlungenSoll: NaN,
+      // Boolean fields
       trackKontakte: true,      // PFLICHT
       trackEntscheider: false,
       trackTermine: true,       // PFLICHT
@@ -148,6 +158,9 @@ export default function KpiSetupFormPage({
       trackAbschlussquote: false,
       trackEinheiten: false,
       trackEmpfehlungen: false,
+      // Text fields
+      hauptzielEinSatz: "",
+      wasNervtAmMeisten: "",
     },
   });
 
