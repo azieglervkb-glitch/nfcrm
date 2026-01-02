@@ -24,6 +24,7 @@ export default auth((req) => {
     "/api/setup",
     "/api/cron",
     "/api/member",
+    "/api/kpi/tracking-window", // Public for weekly KPI form
   ];
 
   const isPublicPath = publicPaths.some(
