@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
     if (action === "activate_kpi_tracking") {
       for (const memberId of memberIds) {
         try {
-          // force: true skips onboarding/module checks for admin bulk actions
-          const result = await activateKpiTracking(memberId, "manual", { force: true });
+          // force: false ensures onboarding must be completed first
+          const result = await activateKpiTracking(memberId, "manual", { force: false });
           if (result.activated) {
             results.success.push(memberId);
           } else {
