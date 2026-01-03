@@ -11,49 +11,77 @@ type CronLogConfig = {
   logRuleName: string;
 };
 
-// Cronjob-Konfigurationen (Status basiert auf Cron-Run Logs)
-const CRONJOBS: CronLogConfig[] = [
-  {
-    id: "kpi-reminder",
-    name: "KPI Reminder",
-    endpoint: "/api/cron/kpi-reminder",
-    schedule: "Sonntag 18:00 + Montag 10:00",
-    logRuleId: "CRON",
-    logRuleName: "KPI Reminder Cron",
-  },
-  {
-    id: "scheduled-automations",
-    name: "Scheduled Automations",
-    endpoint: "/api/cron/scheduled-automations",
-    schedule: "Montag 9:00",
-    logRuleId: "CRON",
-    logRuleName: "Scheduled Automations",
-  },
-  {
-    id: "send-feedback",
-    name: "Send Feedback",
-    endpoint: "/api/cron/send-feedback",
-    schedule: "Alle 5 Minuten",
-    logRuleId: "CRON_FEEDBACK",
-    logRuleName: "Scheduled Feedback Sender",
-  },
-  {
-    id: "weekly-reminders",
-    name: "Weekly Reminders",
-    endpoint: "/api/cron/weekly-reminders",
-    schedule: "Täglich 6:00 + 19:00",
-    logRuleId: "CRON",
-    logRuleName: "Weekly Reminders",
-  },
-  {
-    id: "system-health",
-    name: "KI-Systemüberwacher",
-    endpoint: "/api/cron/system-health",
-    schedule: "Täglich 07:00",
-    logRuleId: "SYSTEM_HEALTH",
-    logRuleName: "System Health Check",
-  },
-];
+// Helper to convert day number (0-6) to German day name
+const DAYS_DE: Record<number, string> = {
+  0: "Sonntag",
+  1: "Montag",
+  2: "Dienstag",
+  3: "Mittwoch",
+  4: "Donnerstag",
+  5: "Freitag",
+  6: "Samstag",
+};
+
+// Build dynamic cronjob configs based on current settings
+async function getCronjobs(): Promise<CronLogConfig[]> {
+  const settings = await prisma.systemSettings.findFirst({
+    where: { id: "default" },
+  });
+
+  // Build dynamic schedule descriptions
+  const kpiReminderDay1 = DAYS_DE[settings?.kpiReminderDay1 ?? 5];
+  const kpiReminderTime1 = settings?.kpiReminderTime1 ?? "19:00";
+  const kpiReminderDay2 = DAYS_DE[settings?.kpiReminderDay2 ?? 1];
+  const kpiReminderTime2 = settings?.kpiReminderTime2 ?? "08:00";
+  const kpiReminderSchedule = `${kpiReminderDay1} ${kpiReminderTime1} + ${kpiReminderDay2} ${kpiReminderTime2}`;
+
+  const automationsDay = DAYS_DE[settings?.automationsDay ?? 2];
+  const automationsTime = settings?.automationsTime ?? "09:00";
+  const automationsSchedule = `${automationsDay} ${automationsTime}`;
+
+  return [
+    {
+      id: "kpi-reminder",
+      name: "KPI Reminder",
+      endpoint: "/api/cron/kpi-reminder",
+      schedule: kpiReminderSchedule,
+      logRuleId: "CRON",
+      logRuleName: "KPI Reminder Cron",
+    },
+    {
+      id: "scheduled-automations",
+      name: "Scheduled Automations",
+      endpoint: "/api/cron/scheduled-automations",
+      schedule: automationsSchedule,
+      logRuleId: "CRON",
+      logRuleName: "Scheduled Automations",
+    },
+    {
+      id: "send-feedback",
+      name: "Send Feedback",
+      endpoint: "/api/cron/send-feedback",
+      schedule: "Alle 5 Minuten",
+      logRuleId: "CRON_FEEDBACK",
+      logRuleName: "Scheduled Feedback Sender",
+    },
+    {
+      id: "weekly-reminders",
+      name: "Weekly Reminders",
+      endpoint: "/api/cron/weekly-reminders",
+      schedule: "Täglich 06:00 + 19:00",
+      logRuleId: "CRON",
+      logRuleName: "Weekly Reminders",
+    },
+    {
+      id: "system-health",
+      name: "KI-Systemüberwacher",
+      endpoint: "/api/cron/system-health",
+      schedule: "Täglich 07:00",
+      logRuleId: "SYSTEM_HEALTH",
+      logRuleName: "System Health Check",
+    },
+  ];
+}
 
 export async function GET() {
   const session = await auth();
@@ -67,8 +95,9 @@ export async function GET() {
   }
 
   try {
+    const cronjobs = await getCronjobs();
     const cronjobStatuses = await Promise.all(
-      CRONJOBS.map(async (cronjob) => {
+      cronjobs.map(async (cronjob) => {
         let lastExecution: Date | null = null;
         let lastSuccess: Date | null = null;
         let lastError: Date | null = null;

@@ -4,6 +4,17 @@ import OpenAI from "openai";
 import { shouldRunSystemHealth, hasRunThisMinute } from "@/lib/cron-scheduler";
 import { getCurrentWeekStart } from "@/lib/date-utils";
 
+// Helper to convert day number (0-6) to German day name
+const DAYS_DE: Record<number, string> = {
+  0: "So",
+  1: "Mo",
+  2: "Di",
+  3: "Mi",
+  4: "Do",
+  5: "Fr",
+  6: "Sa",
+};
+
 // Daily AI-powered system health check (runs at 07:00)
 export async function GET(request: NextRequest) {
   // Verify cron secret
@@ -148,15 +159,31 @@ export async function GET(request: NextRequest) {
       automationCounts[log.ruleId] = (automationCounts[log.ruleId] || 0) + 1;
     }
 
+    // 8. Fetch current settings for dynamic schedule descriptions
+    const settings = await prisma.systemSettings.findFirst({
+      where: { id: "default" },
+    });
+
+    // Build dynamic schedule descriptions
+    const kpiReminderDay1 = DAYS_DE[settings?.kpiReminderDay1 ?? 5];
+    const kpiReminderTime1 = settings?.kpiReminderTime1 ?? "19:00";
+    const kpiReminderDay2 = DAYS_DE[settings?.kpiReminderDay2 ?? 1];
+    const kpiReminderTime2 = settings?.kpiReminderTime2 ?? "08:00";
+    const kpiReminderScheduleDesc = `${kpiReminderDay1} ${kpiReminderTime1} + ${kpiReminderDay2} ${kpiReminderTime2}`;
+
+    const automationsDay = DAYS_DE[settings?.automationsDay ?? 2];
+    const automationsTime = settings?.automationsTime ?? "09:00";
+    const automationsScheduleDesc = `${automationsDay} ${automationsTime}`;
+
     // Build analysis prompt for GPT
     const systemData = {
       timestamp: now.toISOString(),
       cronjobs: {
         description: "Anzahl Ausführungen in den letzten 24h",
         sendFeedback: `${cronStatus.sendFeedback} (sollte ~288 sein, alle 5 Min)`,
-        weeklyReminders: `${cronStatus.weeklyReminders} (sollte 2 sein, 6:00 + 19:00)`,
-        scheduledAutomations: `${cronStatus.scheduledAutomations} (sollte 0-1 sein, nur Dienstag 09:00)`,
-        kpiReminder: `${cronStatus.kpiReminder} (sollte 0-2 sein, Mo 08:05 + 18:02)`,
+        weeklyReminders: `${cronStatus.weeklyReminders} (sollte 2 sein, 06:00 + 19:00)`,
+        scheduledAutomations: `${cronStatus.scheduledAutomations} (sollte 0-1 sein, nur ${automationsScheduleDesc})`,
+        kpiReminder: `${cronStatus.kpiReminder} (sollte 0-2 sein, ${kpiReminderScheduleDesc})`,
       },
       errors: {
         count: errorLogs.length,
