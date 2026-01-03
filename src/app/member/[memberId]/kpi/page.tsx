@@ -67,6 +67,8 @@ interface KpiData {
     entscheiderIst: number | null;
     termineVereinbartIst: number | null;
     termineStattgefundenIst: number | null;
+    termineErstIst: number | null;
+    termineFolgeIst: number | null;
     termineAbschlussIst: number | null;
     termineNoshowIst: number | null;
     einheitenIst: number | null;
@@ -119,7 +121,7 @@ export default function MemberKpiPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [isUpdate, setIsUpdate] = useState(false);
   const [feelingScore, setFeelingScore] = useState(5);
   const [trackingWindow, setTrackingWindow] = useState<TrackingWindow | null>(null);
 
@@ -150,8 +152,9 @@ export default function MemberKpiPage() {
     try {
       // Check tracking window status first
       const windowResponse = await fetch("/api/kpi/tracking-window");
+      let windowData: TrackingWindow | null = null;
       if (windowResponse.ok) {
-        const windowData = await windowResponse.json();
+        windowData = await windowResponse.json();
         setTrackingWindow(windowData);
       }
 
@@ -160,13 +163,29 @@ export default function MemberKpiPage() {
       if (response.ok) {
         const result = await response.json();
         setData(result);
-      }
 
-      // Check if target week (previous week) has already been submitted
-      const weeksStatusResponse = await fetch(`/api/member/kpi/weeks-status?memberId=${memberId}`);
-      if (weeksStatusResponse.ok) {
-        const weeksStatus = await weeksStatusResponse.json();
-        setAlreadySubmitted(weeksStatus.previousWeekSubmitted);
+        // Pre-fill form with existing data if current week has been submitted
+        if (result.currentWeek) {
+          const cw = result.currentWeek;
+          setIsUpdate(true);
+          setFeelingScore(cw.feelingScore ?? 5);
+          setFormValues({
+            umsatzIst: cw.umsatzIst !== null ? String(cw.umsatzIst) : "",
+            kontakteIst: cw.kontakteIst !== null ? String(cw.kontakteIst) : "",
+            entscheiderIst: cw.entscheiderIst !== null ? String(cw.entscheiderIst) : "",
+            termineVereinbartIst: cw.termineVereinbartIst !== null ? String(cw.termineVereinbartIst) : "",
+            termineStattgefundenIst: cw.termineStattgefundenIst !== null ? String(cw.termineStattgefundenIst) : "",
+            termineErstIst: cw.termineErstIst !== null ? String(cw.termineErstIst) : "",
+            termineFolgeIst: cw.termineFolgeIst !== null ? String(cw.termineFolgeIst) : "",
+            termineAbschlussIst: cw.termineAbschlussIst !== null ? String(cw.termineAbschlussIst) : "",
+            termineNoshowIst: cw.termineNoshowIst !== null ? String(cw.termineNoshowIst) : "",
+            einheitenIst: cw.einheitenIst !== null ? String(cw.einheitenIst) : "",
+            empfehlungenIst: cw.empfehlungenIst !== null ? String(cw.empfehlungenIst) : "",
+            heldentat: cw.heldentat || "",
+            blockiert: cw.blockiert || "",
+            herausforderung: cw.herausforderung || "",
+          });
+        }
       }
     } catch (err) {
       console.error("Failed to fetch data:", err);
@@ -329,74 +348,6 @@ export default function MemberKpiPage() {
     );
   }
 
-  // Show already submitted message
-  if (alreadySubmitted && !success) {
-    return (
-      <div className="min-h-screen bg-muted/30">
-        {/* Header */}
-        <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <div className="flex items-center gap-8">
-                <img src="/nf-logo.png" alt="NF Mentoring" className="h-8 w-auto" />
-                <nav className="hidden md:flex items-center gap-1">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-                        item.href.includes("/kpi")
-                          ? "text-primary bg-primary/10"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                      }`}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        {/* Mobile Nav */}
-        <nav className="md:hidden bg-white border-b border-gray-200 sticky top-16 z-40">
-          <div className="flex items-center justify-around py-2">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-2 text-xs font-medium ${
-                  item.href.includes("/kpi") ? "text-primary" : "text-muted-foreground"
-                }`}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        </nav>
-
-        <div className="flex items-center justify-center p-4 py-12">
-          <Card className="w-full max-w-md">
-            <CardContent className="pt-6 text-center">
-              <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
-              <h2 className="text-xl font-semibold mb-2">Bereits eingereicht!</h2>
-              <p className="text-muted-foreground mb-6">
-                Du hast deine KPIs für {trackingWindow?.targetWeek.label} bereits eingereicht.
-              </p>
-              <Link href={`/member/${memberId}`}>
-                <Button className="w-full h-12">
-                  Zurück zum Dashboard
-                </Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-    );
-  }
 
   if (success) {
     return (
@@ -540,6 +491,13 @@ export default function MemberKpiPage() {
               Zeit für dein Weekly Update – trage deine Zahlen ein.
             </p>
           </div>
+
+          {/* Update Banner */}
+          {isUpdate && (
+            <div className="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-2 rounded-lg mb-4 text-center text-sm">
+              Du aktualisierst deine bereits eingetragenen KPIs für {trackingWindow?.targetWeek.label}
+            </div>
+          )}
 
           {/* Week Info Banner */}
           <Card className="mb-6 border-primary/20 bg-primary/5">
@@ -947,6 +905,8 @@ export default function MemberKpiPage() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Wird gespeichert...
                 </>
+              ) : isUpdate ? (
+                "KPIs aktualisieren"
               ) : (
                 "KPIs absenden"
               )}

@@ -181,23 +181,6 @@ export async function POST(request: NextRequest) {
     }
     const { weekNumber, year } = getWeekInfo(weekStart);
 
-    // Check if already submitted this week - no edits allowed
-    const existingKpi = await prisma.kpiWeek.findUnique({
-      where: {
-        memberId_weekStart: {
-          memberId,
-          weekStart,
-        },
-      },
-    });
-
-    if (existingKpi) {
-      return NextResponse.json(
-        { error: "already_submitted", message: "KPIs wurden bereits eingereicht" },
-        { status: 400 }
-      );
-    }
-
     // Calculate konvertierungTerminIst and abschlussquoteIst
     let konvertierungTerminIst = null;
     if (kontakteIst && termineVereinbartIst && kontakteIst > 0) {
@@ -209,9 +192,24 @@ export async function POST(request: NextRequest) {
       abschlussquoteIst = (termineAbschlussIst / termineStattgefundenIst) * 100;
     }
 
-    // Create KPI entry with goal snapshots (no updates allowed)
-    const kpiWeek = await prisma.kpiWeek.create({
-      data: {
+    // Calculate no-show quote
+    let noshowQuote = null;
+    if (termineStattgefundenIst && termineNoshowIst) {
+      const total = termineStattgefundenIst + termineNoshowIst;
+      if (total > 0) {
+        noshowQuote = termineNoshowIst / total;
+      }
+    }
+
+    // Create or update KPI entry with goal snapshots
+    const kpiWeek = await prisma.kpiWeek.upsert({
+      where: {
+        memberId_weekStart: {
+          memberId,
+          weekStart,
+        },
+      },
+      create: {
         memberId,
         weekStart,
         weekNumber,
@@ -225,6 +223,7 @@ export async function POST(request: NextRequest) {
         termineFolgeIst,
         termineAbschlussIst,
         termineNoshowIst,
+        noshowQuote,
         einheitenIst,
         empfehlungenIst,
         konvertierungTerminIst,
@@ -235,6 +234,38 @@ export async function POST(request: NextRequest) {
         herausforderung,
         submittedAt: new Date(),
         // Store goal snapshots at creation time
+        umsatzSollSnapshot: member.umsatzSollWoche,
+        kontakteSollSnapshot: member.kontakteSoll,
+        entscheiderSollSnapshot: member.entscheiderSoll,
+        termineVereinbartSollSnapshot: member.termineVereinbartSoll,
+        termineStattgefundenSollSnapshot: member.termineStattgefundenSoll,
+        termineAbschlussSollSnapshot: member.termineAbschlussSoll,
+        einheitenSollSnapshot: member.einheitenSoll,
+        empfehlungenSollSnapshot: member.empfehlungenSoll,
+        konvertierungTerminSollSnapshot: member.konvertierungTerminSoll,
+        abschlussquoteSollSnapshot: member.abschlussquoteSoll,
+      },
+      update: {
+        umsatzIst,
+        kontakteIst,
+        entscheiderIst,
+        termineVereinbartIst,
+        termineStattgefundenIst,
+        termineErstIst,
+        termineFolgeIst,
+        termineAbschlussIst,
+        termineNoshowIst,
+        noshowQuote,
+        einheitenIst,
+        empfehlungenIst,
+        konvertierungTerminIst,
+        abschlussquoteIst,
+        feelingScore,
+        heldentat,
+        blockiert,
+        herausforderung,
+        submittedAt: new Date(),
+        // Update goal snapshots on re-submission
         umsatzSollSnapshot: member.umsatzSollWoche,
         kontakteSollSnapshot: member.kontakteSoll,
         entscheiderSollSnapshot: member.entscheiderSoll,
@@ -331,7 +362,11 @@ async function generateAiFeedbackAsync(
 
     // Calculate random delay between min and max
     const delayMinutes = delayMin + Math.random() * (delayMax - delayMin);
-    const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
+    let scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
+
+    // Adjust for quiet hours - if scheduled time falls in quiet hours, move to after quiet hours
+    const { adjustForQuietHours } = await import("@/lib/whatsapp");
+    scheduledFor = await adjustForQuietHours(scheduledFor);
 
     // Save feedback with scheduled send time
     await prisma.kpiWeek.update({
