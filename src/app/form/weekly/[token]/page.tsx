@@ -44,6 +44,24 @@ interface TrackingWindow {
   };
 }
 
+interface ExistingKpi {
+  umsatzIst: number | null;
+  kontakteIst: number | null;
+  entscheiderIst: number | null;
+  termineVereinbartIst: number | null;
+  termineStattgefundenIst: number | null;
+  termineErstIst: number | null;
+  termineFolgeIst: number | null;
+  termineAbschlussIst: number | null;
+  termineNoshowIst: number | null;
+  einheitenIst: number | null;
+  empfehlungenIst: number | null;
+  feelingScore: number | null;
+  heldentat: string | null;
+  blockiert: string | null;
+  herausforderung: string | null;
+}
+
 export default function WeeklyKpiFormPage({
   params,
 }: {
@@ -60,10 +78,12 @@ export default function WeeklyKpiFormPage({
   const [isPreview, setIsPreview] = useState(false);
   const [trackingWindow, setTrackingWindow] = useState<TrackingWindow | null>(null);
   const [alreadySubmitted, setAlreadySubmitted] = useState(false);
+  const [isUpdate, setIsUpdate] = useState(false);
 
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<WeeklyKpiFormInput>({
     resolver: zodResolver(weeklyKpiFormSchema),
@@ -94,8 +114,38 @@ export default function WeeklyKpiFormPage({
         setMemberData(data.member);
         setIsPreview(data.isPreview || false);
 
-        // Check if target week has already been submitted
-        if (data.member?.id) {
+        // If there's existing KPI data, pre-fill the form
+        if (data.existingKpi) {
+          setIsUpdate(true);
+          const existingKpi = data.existingKpi as ExistingKpi;
+
+          // Set feeling score state
+          if (existingKpi.feelingScore) {
+            setFeelingScore(existingKpi.feelingScore);
+          }
+
+          // Reset form with existing values
+          reset({
+            umsatzIst: existingKpi.umsatzIst ?? undefined,
+            kontakteIst: existingKpi.kontakteIst ?? undefined,
+            entscheiderIst: existingKpi.entscheiderIst ?? undefined,
+            termineVereinbartIst: existingKpi.termineVereinbartIst ?? undefined,
+            termineStattgefundenIst: existingKpi.termineStattgefundenIst ?? undefined,
+            termineErstIst: existingKpi.termineErstIst ?? undefined,
+            termineFolgeIst: existingKpi.termineFolgeIst ?? undefined,
+            termineAbschlussIst: existingKpi.termineAbschlussIst ?? undefined,
+            termineNoshowIst: existingKpi.termineNoshowIst ?? undefined,
+            einheitenIst: existingKpi.einheitenIst ?? undefined,
+            empfehlungenIst: existingKpi.empfehlungenIst ?? undefined,
+            feelingScore: existingKpi.feelingScore ?? 5,
+            heldentat: existingKpi.heldentat ?? undefined,
+            blockiert: existingKpi.blockiert ?? undefined,
+            herausforderung: existingKpi.herausforderung ?? undefined,
+          });
+        }
+
+        // Check if target week has already been submitted (only if no existingKpi - for old tokens)
+        if (data.member?.id && !data.existingKpi) {
           const kpiResponse = await fetch(`/api/member/kpi/weeks-status?memberId=${data.member.id}`);
           if (kpiResponse.ok) {
             const kpiData = await kpiResponse.json();
@@ -248,6 +298,13 @@ export default function WeeklyKpiFormPage({
         {isPreview && (
           <div className="bg-amber-100 border border-amber-300 text-amber-800 px-4 py-2 rounded-lg mb-4 text-center text-sm">
             Vorschau-Modus – Daten werden nicht gespeichert
+          </div>
+        )}
+
+        {/* Update Banner */}
+        {isUpdate && !isPreview && (
+          <div className="bg-blue-100 border border-blue-300 text-blue-800 px-4 py-2 rounded-lg mb-4 text-center text-sm">
+            Du aktualisierst deine bereits eingetragenen KPIs
           </div>
         )}
 
@@ -671,6 +728,8 @@ export default function WeeklyKpiFormPage({
               </>
             ) : isPreview ? (
               "Vorschau-Modus"
+            ) : isUpdate ? (
+              "KPIs aktualisieren"
             ) : (
               "KPIs absenden"
             )}

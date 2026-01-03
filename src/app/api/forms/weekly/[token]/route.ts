@@ -28,6 +28,36 @@ export async function GET(
       return NextResponse.json({ error: "Ungültiger Token-Typ" }, { status: 400 });
     }
 
+    // Check if there's already a KpiWeek for this member/week (for pre-filling the form)
+    let existingKpi = null;
+    if (formToken.weekStart) {
+      existingKpi = await prisma.kpiWeek.findUnique({
+        where: {
+          memberId_weekStart: {
+            memberId: formToken.memberId,
+            weekStart: formToken.weekStart,
+          },
+        },
+        select: {
+          umsatzIst: true,
+          kontakteIst: true,
+          entscheiderIst: true,
+          termineVereinbartIst: true,
+          termineStattgefundenIst: true,
+          termineErstIst: true,
+          termineFolgeIst: true,
+          termineAbschlussIst: true,
+          termineNoshowIst: true,
+          einheitenIst: true,
+          empfehlungenIst: true,
+          feelingScore: true,
+          heldentat: true,
+          blockiert: true,
+          herausforderung: true,
+        },
+      });
+    }
+
     return NextResponse.json({
       member: {
         id: formToken.member.id,
@@ -46,6 +76,24 @@ export async function GET(
         einheitenSoll: formToken.member.einheitenSoll,
         empfehlungenSoll: formToken.member.empfehlungenSoll,
       },
+      // Include existing KPI data for pre-filling form (converted to numbers)
+      existingKpi: existingKpi ? {
+        umsatzIst: existingKpi.umsatzIst ? Number(existingKpi.umsatzIst) : null,
+        kontakteIst: existingKpi.kontakteIst,
+        entscheiderIst: existingKpi.entscheiderIst,
+        termineVereinbartIst: existingKpi.termineVereinbartIst,
+        termineStattgefundenIst: existingKpi.termineStattgefundenIst,
+        termineErstIst: existingKpi.termineErstIst,
+        termineFolgeIst: existingKpi.termineFolgeIst,
+        termineAbschlussIst: existingKpi.termineAbschlussIst,
+        termineNoshowIst: existingKpi.termineNoshowIst,
+        einheitenIst: existingKpi.einheitenIst,
+        empfehlungenIst: existingKpi.empfehlungenIst,
+        feelingScore: existingKpi.feelingScore,
+        heldentat: existingKpi.heldentat,
+        blockiert: existingKpi.blockiert,
+        herausforderung: existingKpi.herausforderung,
+      } : null,
       isPreview: false,
     });
   }
