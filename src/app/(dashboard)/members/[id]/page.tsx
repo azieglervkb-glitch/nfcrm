@@ -111,10 +111,13 @@ function getModuleName(moduleNumber: number | null): string {
 
 export default async function MemberDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
-  const { id } = await params;
+  const [{ id }, resolvedSearchParams] = await Promise.all([params, searchParams]);
+  const defaultTab = resolvedSearchParams.tab || "overview";
   const [member, session] = await Promise.all([getMember(id), auth()]);
 
   if (!member) {
@@ -186,7 +189,7 @@ export default async function MemberDetailPage({
       </Card>
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-6">
+      <Tabs defaultValue={defaultTab} className="space-y-6">
         <TabsList className="bg-secondary">
           <TabsTrigger value="overview">Übersicht</TabsTrigger>
           <TabsTrigger value="kpis">KPIs</TabsTrigger>

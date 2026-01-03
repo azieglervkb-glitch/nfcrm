@@ -772,7 +772,7 @@ export async function sendCoachTaskNotification(
  */
 export async function sendKpiSubmissionNotification(
   admin: { email: string; vorname: string },
-  member: { vorname: string; nachname: string },
+  member: { id: string; vorname: string; nachname: string },
   kpiWeek: {
     weekNumber: number;
     year: number;
@@ -812,7 +812,7 @@ export async function sendKpiSubmissionNotification(
       </div>
 
       <div style="text-align: center;">
-        <a href="${getAppUrl()}/members" class="button">Member ansehen</a>
+        <a href="${getAppUrl()}/members/${member.id}?tab=kpis" class="button">KPI-Feedback ansehen</a>
       </div>
     </div>
   `;
@@ -830,7 +830,7 @@ export async function sendKpiSubmissionNotification(
  * Notify all admins with notifyOnKpiSubmission enabled
  */
 export async function notifyAdminsOnKpiSubmission(
-  member: { vorname: string; nachname: string },
+  member: { id: string; vorname: string; nachname: string },
   kpiWeek: {
     weekNumber: number;
     year: number;

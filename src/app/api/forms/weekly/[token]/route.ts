@@ -255,7 +255,7 @@ export async function POST(
 
     // Notify admins with notification enabled (async, don't wait)
     notifyAdminsOnKpiSubmission(
-      { vorname: formToken.member.vorname, nachname: formToken.member.nachname },
+      { id: formToken.memberId, vorname: formToken.member.vorname, nachname: formToken.member.nachname },
       {
         weekNumber,
         year,

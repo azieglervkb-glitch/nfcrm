@@ -223,10 +223,16 @@ export default function WeeklyKpiFormPage({
           <CardContent className="pt-6 text-center">
             <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
             <h2 className="text-xl font-semibold mb-2">Vielen Dank, {memberData?.vorname}!</h2>
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mb-6">
               Deine KPIs wurden erfolgreich gespeichert. Du erhältst in Kürze
               dein persönliches Feedback.
             </p>
+            <Button
+              onClick={() => router.push("/member")}
+              className="w-full"
+            >
+              Zu meinem Dashboard
+            </Button>
           </CardContent>
         </Card>
       </div>
