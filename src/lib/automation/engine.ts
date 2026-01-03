@@ -958,6 +958,11 @@ export async function checkMissingTrackedField(
   const quietHours = await isInQuietHours();
   if (quietHours || !member.whatsappNummer) return;
 
+  // Check if tracking window is still open - no point sending if they can't update
+  const { isKpiTrackingWindowOpen } = await import("@/lib/cron-scheduler");
+  const trackingWindow = await isKpiTrackingWindowOpen();
+  if (!trackingWindow.isOpen) return;
+
   const missingFields: string[] = [];
 
   if (member.trackKontakte && !kpiWeek.kontakteIst) {
@@ -984,7 +989,22 @@ export async function checkMissingTrackedField(
     if (await isCooldownActive(member.id, cooldownKey)) return;
 
     const actions: string[] = [];
-    const message = `Hey ${member.vorname}! Dir fehlt noch "${field}" in deinem KPI-Update diese Woche. Kannst du das noch nachtragen?`;
+
+    // Generate a new token so member can actually update their KPIs
+    const token = randomBytes(32).toString("hex");
+    await prisma.formToken.create({
+      data: {
+        token,
+        type: "weekly",
+        memberId: member.id,
+        weekStart: kpiWeek.weekStart,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      },
+    });
+    const formLink = generateFormUrl("weekly", token);
+    actions.push("GENERATE_UPDATE_TOKEN");
+
+    const message = `Hey ${member.vorname}! Dir fehlt noch "${field}" in deinem KPI-Update diese Woche. Hier kannst du es ergänzen:\n\n${formLink}`;
 
     await sendWhatsApp({
       phone: member.whatsappNummer,
