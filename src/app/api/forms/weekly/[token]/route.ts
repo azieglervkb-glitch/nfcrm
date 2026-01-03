@@ -309,7 +309,11 @@ async function generateAiFeedback(
 
     // Calculate random delay between min and max
     const delayMinutes = delayMin + Math.random() * (delayMax - delayMin);
-    const scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
+    let scheduledFor = new Date(Date.now() + delayMinutes * 60 * 1000);
+
+    // Adjust for quiet hours - if scheduled time falls in quiet hours, move to after quiet hours
+    const { adjustForQuietHours } = await import("@/lib/whatsapp");
+    scheduledFor = await adjustForQuietHours(scheduledFor);
 
     // Save feedback with scheduled send time
     await prisma.kpiWeek.update({
