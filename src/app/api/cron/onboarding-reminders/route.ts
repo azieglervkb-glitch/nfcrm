@@ -30,17 +30,17 @@ export async function GET(request: NextRequest) {
   try {
     const result = await sendOnboardingReminders();
 
-    // Log execution
+    // Log execution - triggered=true means job ran successfully (even if nothing to remind)
     await prisma.automationLog.create({
       data: {
         ruleId: "CRON",
         ruleName: "Onboarding Reminders Cron",
-        triggered: result.reminded > 0,
+        triggered: true, // Job ran successfully
         actionsTaken: [
-          `PROCESSED: ${result.processed}`,
-          `REMINDED: ${result.reminded}`,
-          `SKIPPED: ${result.skipped}`,
-          ...(result.errors.length > 0 ? [`ERRORS: ${result.errors.length}`] : []),
+          `Geprüft: ${result.processed} Members`,
+          `Erinnert: ${result.reminded} Members`,
+          `Übersprungen: ${result.skipped}`,
+          ...(result.errors.length > 0 ? [`Fehler: ${result.errors.length}`] : []),
         ],
         details: result,
       },
@@ -52,6 +52,18 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Onboarding reminders cron error:", error);
+
+    // Log the error
+    await prisma.automationLog.create({
+      data: {
+        ruleId: "CRON",
+        ruleName: "Onboarding Reminders Cron",
+        triggered: false, // Job failed
+        actionsTaken: ["Fehler beim Ausführen"],
+        details: { error: error instanceof Error ? error.message : "Unknown error" },
+      },
+    }).catch(() => {}); // Ignore logging errors
+
     return NextResponse.json(
       { error: "Failed to send onboarding reminders" },
       { status: 500 }
