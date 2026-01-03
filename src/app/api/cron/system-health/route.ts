@@ -53,11 +53,11 @@ export async function GET(request: NextRequest) {
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     // 1. Collect Cronjob Status
-    // Note: send-feedback uses CRON_FEEDBACK, others use CRON
+    // Note: send-feedback uses CRON_FEEDBACK, daily-summary uses CRON_DAILY_SUMMARY, others use CRON
     const cronLogs = await prisma.automationLog.findMany({
       where: {
         firedAt: { gte: oneDayAgo },
-        ruleId: { in: ["CRON", "CRON_FEEDBACK"] },
+        ruleId: { in: ["CRON", "CRON_FEEDBACK", "CRON_DAILY_SUMMARY"] },
       },
       orderBy: { firedAt: "desc" },
     });
@@ -65,12 +65,16 @@ export async function GET(request: NextRequest) {
     const cronStatus = {
       // send-feedback uses ruleId: "CRON_FEEDBACK", ruleName: "Scheduled Feedback Sender"
       sendFeedback: cronLogs.filter((l) => l.ruleId === "CRON_FEEDBACK" && l.ruleName === "Scheduled Feedback Sender").length,
-      // weekly-reminders uses ruleId: "CRON", ruleName: "Weekly Reminders"
-      weeklyReminders: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "Weekly Reminders").length,
       // scheduled-automations uses ruleId: "CRON", ruleName: "Scheduled Automations"
       scheduledAutomations: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "Scheduled Automations").length,
       // kpi-reminder uses ruleId: "CRON", ruleName: "KPI Reminder Cron"
       kpiReminder: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "KPI Reminder Cron").length,
+      // onboarding-reminders uses ruleId: "CRON", ruleName: "Onboarding Reminders Cron"
+      onboardingReminders: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "Onboarding Reminders Cron").length,
+      // kpi-setup-reminders uses ruleId: "CRON", ruleName: "KPI Setup Reminders"
+      kpiSetupReminders: cronLogs.filter((l) => l.ruleId === "CRON" && l.ruleName === "KPI Setup Reminders").length,
+      // daily-summary uses ruleId: "CRON_DAILY_SUMMARY", ruleName: "Daily Summary for Admins"
+      dailySummary: cronLogs.filter((l) => l.ruleId === "CRON_DAILY_SUMMARY" && l.ruleName === "Daily Summary for Admins").length,
     };
 
     // 2. Collect Error Logs (automation failures)
@@ -181,9 +185,11 @@ export async function GET(request: NextRequest) {
       cronjobs: {
         description: "Anzahl Ausführungen in den letzten 24h",
         sendFeedback: `${cronStatus.sendFeedback} (sollte ~288 sein, alle 5 Min)`,
-        weeklyReminders: `${cronStatus.weeklyReminders} (sollte 2 sein, 06:00 + 19:00)`,
-        scheduledAutomations: `${cronStatus.scheduledAutomations} (sollte 0-1 sein, nur ${automationsScheduleDesc})`,
         kpiReminder: `${cronStatus.kpiReminder} (sollte 0-2 sein, ${kpiReminderScheduleDesc})`,
+        scheduledAutomations: `${cronStatus.scheduledAutomations} (sollte 0-1 sein, nur ${automationsScheduleDesc})`,
+        onboardingReminders: `${cronStatus.onboardingReminders} (sollte 0-1 sein, täglich 10:00)`,
+        kpiSetupReminders: `${cronStatus.kpiSetupReminders} (sollte 0-1 sein, täglich 10:30)`,
+        dailySummary: `${cronStatus.dailySummary} (sollte 0-1 sein, täglich morgens)`,
       },
       errors: {
         count: errorLogs.length,
@@ -276,12 +282,6 @@ REGELN:
       healthStatus = "ERROR";
     } else if (cronStatus.sendFeedback < 50) {
       issues.push(`Send-Feedback Cronjob läuft unregelmäßig (${cronStatus.sendFeedback} statt ~288)`);
-      healthStatus = "WARNING";
-    }
-    
-    // weeklyReminders should run 2x per day (06:00 + 19:00)
-    if (cronStatus.weeklyReminders === 0) {
-      issues.push("Weekly-Reminders Cronjob wurde in den letzten 24h nicht ausgeführt");
       healthStatus = "WARNING";
     }
     if (overdueTasks > 5) {

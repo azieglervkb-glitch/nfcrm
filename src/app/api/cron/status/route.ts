@@ -65,12 +65,28 @@ async function getCronjobs(): Promise<CronLogConfig[]> {
       logRuleName: "Scheduled Feedback Sender",
     },
     {
-      id: "weekly-reminders",
-      name: "Weekly Reminders",
-      endpoint: "/api/cron/weekly-reminders",
-      schedule: "Täglich 06:00 + 19:00",
+      id: "onboarding-reminders",
+      name: "Onboarding Reminders",
+      endpoint: "/api/cron/onboarding-reminders",
+      schedule: "Täglich 10:00",
       logRuleId: "CRON",
-      logRuleName: "Weekly Reminders",
+      logRuleName: "Onboarding Reminders Cron",
+    },
+    {
+      id: "kpi-setup-reminders",
+      name: "KPI-Setup Reminders",
+      endpoint: "/api/cron/kpi-setup-reminders",
+      schedule: "Täglich 10:30",
+      logRuleId: "CRON",
+      logRuleName: "KPI Setup Reminders",
+    },
+    {
+      id: "daily-summary",
+      name: "Daily Summary",
+      endpoint: "/api/cron/daily-summary",
+      schedule: "Täglich (morgens)",
+      logRuleId: "CRON_DAILY_SUMMARY",
+      logRuleName: "Daily Summary for Admins",
     },
     {
       id: "system-health",
@@ -137,6 +153,7 @@ export async function GET() {
             (Date.now() - lastExecution.getTime()) / (1000 * 60 * 60);
 
           if (cronjob.id === "send-feedback") {
+            // Runs every 5 minutes - should have recent execution
             if (hoursSinceLastExecution < 1) {
               status = "healthy";
               statusMessage = "Läuft normal";
@@ -147,18 +164,8 @@ export async function GET() {
               status = "error";
               statusMessage = "Keine Ausführung seit > 6 Stunden";
             }
-          } else if (cronjob.id === "weekly-reminders") {
-            if (hoursSinceLastExecution < 25) {
-              status = "healthy";
-              statusMessage = "Läuft normal";
-            } else if (hoursSinceLastExecution < 48) {
-              status = "warning";
-              statusMessage = "Lange keine Ausführung";
-            } else {
-              status = "error";
-              statusMessage = "Keine Ausführung seit > 48 Stunden";
-            }
           } else if (cronjob.id === "kpi-reminder") {
+            // Runs 2x per week (Friday + Monday) - allow up to 8 days
             const daysSinceLastExecution = hoursSinceLastExecution / 24;
             if (daysSinceLastExecution < 8) {
               status = "healthy";
@@ -171,6 +178,7 @@ export async function GET() {
               statusMessage = "Keine Ausführung seit > 14 Tagen";
             }
           } else if (cronjob.id === "scheduled-automations") {
+            // Runs 1x per week - allow up to 8 days
             const daysSinceLastExecution = hoursSinceLastExecution / 24;
             if (daysSinceLastExecution < 8) {
               status = "healthy";
@@ -182,7 +190,13 @@ export async function GET() {
               status = "error";
               statusMessage = "Keine Ausführung seit > 14 Tagen";
             }
-          } else if (cronjob.id === "system-health") {
+          } else if (
+            cronjob.id === "system-health" ||
+            cronjob.id === "onboarding-reminders" ||
+            cronjob.id === "kpi-setup-reminders" ||
+            cronjob.id === "daily-summary"
+          ) {
+            // Daily jobs - should run every 24-26 hours
             if (hoursSinceLastExecution < 26) {
               status = "healthy";
               statusMessage = "Läuft normal";
