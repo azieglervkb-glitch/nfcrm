@@ -59,8 +59,15 @@ Gib NUR den Nachrichtentext aus, keine Einleitung oder Erklärung.`,
     id: "KPI_FEEDBACK_USER",
     promptKey: "KPI_FEEDBACK_USER",
     name: "KPI Feedback - User Prompt Template",
-    description: "Das Template für den User-Prompt mit den KPI-Daten des Members. Variablen: {{vorname}}, {{feeling_score}}, etc.",
-    content: `Member:
+    description: "Das Template für den User-Prompt mit den KPI-Daten des Members. Variablen für Datum/Zeit, Member-Daten und alle KPI-Werte verfügbar.",
+    content: `AKTUELLER ZEITPUNKT:
+- datum: {{datum}}
+- uhrzeit: {{uhrzeit}}
+- wochentag: {{wochentag}}
+- kalenderwoche: {{kalenderwoche}}
+- jahr: {{jahr}}
+
+Member:
 - vorname: {{vorname}}
 - feeling_score: {{feeling_score}}
 - heldentat: {{heldentat}}

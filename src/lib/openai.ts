@@ -58,11 +58,24 @@ Gib NUR den Nachrichtentext aus, keine Einleitung oder Erklärung.`;
 
 function buildUserPrompt(
   member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll" | "konvertierungTerminSoll" | "abschlussquoteSoll">,
-  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst" | "konvertierungTerminIst" | "abschlussquoteIst">,
+  kpiWeek: Pick<KpiWeek, "weekNumber" | "year" | "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst" | "konvertierungTerminIst" | "abschlussquoteIst">,
   userPromptTemplate?: string
 ): string {
+  // Get current date/time in Berlin timezone
+  const now = new Date();
+  const berlinOptions = { timeZone: "Europe/Berlin" };
+  const datum = now.toLocaleDateString("de-DE", { ...berlinOptions, day: "2-digit", month: "2-digit", year: "numeric" });
+  const uhrzeit = now.toLocaleTimeString("de-DE", { ...berlinOptions, hour: "2-digit", minute: "2-digit" });
+  const wochentag = now.toLocaleDateString("de-DE", { ...berlinOptions, weekday: "long" });
   // Use template from database if provided, otherwise use default
-  const template = userPromptTemplate || `Member:
+  const template = userPromptTemplate || `AKTUELLER ZEITPUNKT:
+- datum: {{datum}}
+- uhrzeit: {{uhrzeit}}
+- wochentag: {{wochentag}}
+- kalenderwoche: {{kalenderwoche}}
+- jahr: {{jahr}}
+
+Member:
 - vorname: {{vorname}}
 - feeling_score: {{feeling_score}}
 - heldentat: {{heldentat}}
@@ -100,6 +113,13 @@ AUFGABE:
 
   // Replace template variables
   return template
+    // Date/time variables
+    .replace(/\{\{datum\}\}/g, datum)
+    .replace(/\{\{uhrzeit\}\}/g, uhrzeit)
+    .replace(/\{\{wochentag\}\}/g, wochentag)
+    .replace(/\{\{kalenderwoche\}\}/g, String(kpiWeek.weekNumber || ""))
+    .replace(/\{\{jahr\}\}/g, String(kpiWeek.year || ""))
+    // Member variables
     .replace(/\{\{vorname\}\}/g, member.vorname)
     .replace(/\{\{feeling_score\}\}/g, String(kpiWeek.feelingScore || "nicht angegeben"))
     .replace(/\{\{heldentat\}\}/g, kpiWeek.heldentat || "keine")
@@ -136,7 +156,7 @@ export interface GenerateFeedbackResult {
 
 export async function generateKpiFeedback(
   member: Pick<Member, "vorname" | "umsatzSollWoche" | "kontakteSoll" | "entscheiderSoll" | "termineVereinbartSoll" | "termineStattgefundenSoll" | "termineAbschlussSoll" | "einheitenSoll" | "empfehlungenSoll" | "konvertierungTerminSoll" | "abschlussquoteSoll">,
-  kpiWeek: Pick<KpiWeek, "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst" | "konvertierungTerminIst" | "abschlussquoteIst">
+  kpiWeek: Pick<KpiWeek, "weekNumber" | "year" | "feelingScore" | "heldentat" | "blockiert" | "herausforderung" | "umsatzIst" | "kontakteIst" | "entscheiderIst" | "termineVereinbartIst" | "termineStattgefundenIst" | "termineAbschlussIst" | "einheitenIst" | "empfehlungenIst" | "konvertierungTerminIst" | "abschlussquoteIst">
 ): Promise<GenerateFeedbackResult> {
   // Load prompts from database (or use defaults)
   let systemPromptContent = SYSTEM_PROMPT;

@@ -228,31 +228,100 @@ export default function PromptsSettingsPage() {
 
                 {prompt.promptKey === "KPI_FEEDBACK_USER" && (
                   <Card className="bg-gray-50">
-                    <CardContent className="pt-4">
-                      <h4 className="font-medium text-sm mb-2">Verfügbare Variablen:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {[
-                          "{{vorname}}",
-                          "{{feeling_score}}",
-                          "{{heldentat}}",
-                          "{{blockiert}}",
-                          "{{herausforderung}}",
-                          "{{umsatz_soll}}",
-                          "{{umsatz_ist}}",
-                          "{{kontakte_soll}}",
-                          "{{kontakte_ist}}",
-                          "{{termine_vereinbart_soll}}",
-                          "{{termine_vereinbart_ist}}",
-                        ].map((variable) => (
-                          <code
-                            key={variable}
-                            className="px-2 py-1 bg-gray-200 rounded text-xs cursor-pointer hover:bg-gray-300"
-                            onClick={() => copyToClipboard(variable)}
-                          >
-                            {variable}
-                          </code>
-                        ))}
+                    <CardContent className="pt-4 space-y-4">
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">📅 Datum & Zeit:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "{{datum}}",
+                            "{{uhrzeit}}",
+                            "{{wochentag}}",
+                            "{{kalenderwoche}}",
+                            "{{jahr}}",
+                          ].map((variable) => (
+                            <code
+                              key={variable}
+                              className="px-2 py-1 bg-blue-100 rounded text-xs cursor-pointer hover:bg-blue-200"
+                              onClick={() => copyToClipboard(variable)}
+                            >
+                              {variable}
+                            </code>
+                          ))}
+                        </div>
                       </div>
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">👤 Member-Daten:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "{{vorname}}",
+                            "{{feeling_score}}",
+                            "{{heldentat}}",
+                            "{{blockiert}}",
+                            "{{herausforderung}}",
+                          ].map((variable) => (
+                            <code
+                              key={variable}
+                              className="px-2 py-1 bg-green-100 rounded text-xs cursor-pointer hover:bg-green-200"
+                              onClick={() => copyToClipboard(variable)}
+                            >
+                              {variable}
+                            </code>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">📊 SOLL-Werte (Ziele):</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "{{umsatz_soll}}",
+                            "{{kontakte_soll}}",
+                            "{{entscheider_soll}}",
+                            "{{termine_vereinbart_soll}}",
+                            "{{termine_stattgefunden_soll}}",
+                            "{{termine_abschluss_soll}}",
+                            "{{einheiten_soll}}",
+                            "{{empfehlungen_soll}}",
+                            "{{konvertierung_termin_soll}}",
+                            "{{abschlussquote_soll}}",
+                          ].map((variable) => (
+                            <code
+                              key={variable}
+                              className="px-2 py-1 bg-orange-100 rounded text-xs cursor-pointer hover:bg-orange-200"
+                              onClick={() => copyToClipboard(variable)}
+                            >
+                              {variable}
+                            </code>
+                          ))}
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-sm mb-2">📈 IST-Werte (Erreicht):</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {[
+                            "{{umsatz_ist}}",
+                            "{{kontakte_ist}}",
+                            "{{entscheider_ist}}",
+                            "{{termine_vereinbart_ist}}",
+                            "{{termine_stattgefunden_ist}}",
+                            "{{termine_abschluss_ist}}",
+                            "{{einheiten_ist}}",
+                            "{{empfehlungen_ist}}",
+                            "{{konvertierung_termin_ist}}",
+                            "{{abschlussquote_ist}}",
+                          ].map((variable) => (
+                            <code
+                              key={variable}
+                              className="px-2 py-1 bg-purple-100 rounded text-xs cursor-pointer hover:bg-purple-200"
+                              onClick={() => copyToClipboard(variable)}
+                            >
+                              {variable}
+                            </code>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Klicke auf eine Variable, um sie in die Zwischenablage zu kopieren
+                      </p>
                     </CardContent>
                   </Card>
                 )}
