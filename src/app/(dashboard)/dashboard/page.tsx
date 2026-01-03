@@ -28,9 +28,12 @@ async function getDashboardData() {
     prisma.member.count({ where: { churnRisk: true, status: "AKTIV" } }),
     prisma.member.count({ where: { upsellCandidate: true, status: "AKTIV" } }),
     // Query by weekNumber and year for reliable matching (avoids timezone issues)
+    // Only count members who have completed KPI setup (they're the ones expected to submit)
     prisma.member.count({
       where: {
         status: "AKTIV",
+        kpiSetupCompleted: true,
+        kpiTrackingEnabled: true,
         kpiWeeks: {
           none: {
             weekNumber,

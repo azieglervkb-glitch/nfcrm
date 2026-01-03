@@ -23,9 +23,14 @@ interface SearchParams {
 async function getKpiData(weekStart: Date) {
   const { weekNumber, year } = getWeekInfo(weekStart);
 
+  // Only count members who have completed KPI setup for "pending" calculation
   const [activeMembers, kpis] = await Promise.all([
     prisma.member.findMany({
-      where: { status: "AKTIV" },
+      where: {
+        status: "AKTIV",
+        kpiSetupCompleted: true,
+        kpiTrackingEnabled: true,
+      },
       select: {
         id: true,
         vorname: true,

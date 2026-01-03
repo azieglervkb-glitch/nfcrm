@@ -20,9 +20,12 @@ async function getPendingKpis() {
   const { weekNumber, year } = getWeekInfo(weekStart);
 
   // Query by weekNumber and year for reliable matching (avoids timezone issues)
+  // Only show members who have completed KPI setup (they're the ones expected to submit)
   const activeMembers = await prisma.member.findMany({
     where: {
       status: "AKTIV",
+      kpiSetupCompleted: true,
+      kpiTrackingEnabled: true,
       kpiWeeks: {
         none: {
           weekNumber,

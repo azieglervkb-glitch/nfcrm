@@ -150,11 +150,12 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Active members without KPIs this week
+    // Active members without KPIs this week (only those who completed setup)
     const activeMembersWithKpiTracking = await prisma.member.count({
       where: {
         status: "AKTIV",
         kpiTrackingEnabled: true,
+        kpiSetupCompleted: true,
       },
     });
 
